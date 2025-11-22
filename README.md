@@ -13,6 +13,7 @@ AI agents inherit discounts via ERC-8004-style attestations and pay autonomously
 We’re SecureDrop + ZK provenance + dynamic pricing + AI agent economy in one protocol.
 
 ## High-level abstract & value proposition
+![zkx402 new flow](zkx402-protocol-flow-white-background.png)
 ### Consumers (Journalists & AI Agents)
 - Variable pricing based on verified identity (50% discount for verified parties)
 - Eligibility proven via zkproofs, no trusted third party needed
