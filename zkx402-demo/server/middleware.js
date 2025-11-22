@@ -1,6 +1,4 @@
-import { NextFunction, Request, Response } from "express";
-import { Address, getAddress } from "viem";
-import { Address as SolanaAddress } from "@solana/kit";
+import { getAddress } from "viem";
 import { exact } from "x402/schemes";
 import {
   computeRoutePatterns,
@@ -11,14 +9,7 @@ import {
 } from "x402/shared";
 import { getPaywallHtml } from "x402/paywall";
 import {
-  FacilitatorConfig,
-  ERC20TokenAmount,
   moneySchema,
-  PaymentPayload,
-  PaymentRequirements,
-  PaywallConfig,
-  Resource,
-  RoutesConfig,
   settleResponseHeader,
   SupportedEVMNetworks,
   SupportedSVMNetworks,
@@ -35,7 +26,7 @@ import { useFacilitator } from "x402/verify";
  * @returns An Express middleware handler
  *
  * @example
- * ```typescript
+ * ```javascript
  * // Simple configuration - All endpoints are protected by $0.01 of USDC on base-sepolia
  * app.use(paymentMiddleware(
  *   '0x123...', // payTo address
@@ -73,10 +64,10 @@ import { useFacilitator } from "x402/verify";
  * ```
  */
 export function paymentMiddleware(
-  payTo: Address | SolanaAddress,
-  routes: RoutesConfig,
-  facilitator?: FacilitatorConfig,
-  paywall?: PaywallConfig,
+  payTo,
+  routes,
+  facilitator,
+  paywall,
 ) {
   const { verify, settle, supported } = useFacilitator(facilitator);
   const x402Version = 1;
@@ -85,10 +76,10 @@ export function paymentMiddleware(
   const routePatterns = computeRoutePatterns(routes);
 
   return async function paymentMiddleware(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+    req,
+    res,
+    next,
+  ) {
     const matchingRoute = findMatchingRoute(routePatterns, req.path, req.method.toUpperCase());
 
     if (!matchingRoute) {
@@ -113,10 +104,10 @@ export function paymentMiddleware(
     }
     const { maxAmountRequired, asset } = atomicAmountForAsset;
 
-    const resourceUrl: Resource =
-      resource || (`${req.protocol}://${req.headers.host}${req.path}` as Resource);
+    const resourceUrl =
+      resource || `${req.protocol}://${req.headers.host}${req.path}`;
 
-    let paymentRequirements: PaymentRequirements[] = [];
+    let paymentRequirements = [];
 
     // TODO: create a shared middleware function to build payment requirements
     // evm networks
@@ -141,7 +132,7 @@ export function paymentMiddleware(
           },
           output: outputSchema,
         },
-        extra: (asset as ERC20TokenAmount["asset"]).eip712, // add zk requests here
+        extra: asset.eip712, // add zk requests here
       });
     }
 
@@ -151,7 +142,7 @@ export function paymentMiddleware(
       const paymentKinds = await supported();
 
       // find the payment kind that matches the network and scheme
-      let feePayer: string | undefined;
+      let feePayer;
       for (const kind of paymentKinds.kinds) {
         if (kind.network === network && kind.scheme === "exact") {
           feePayer = kind?.extra?.feePayer;
@@ -200,7 +191,7 @@ export function paymentMiddleware(
     if (!payment) {
       // TODO handle paywall html for solana
       if (isWebBrowser) {
-        let displayAmount: number;
+        let displayAmount;
         if (typeof price === "string" || typeof price === "number") {
           const parsed = moneySchema.safeParse(price);
           if (parsed.success) {
@@ -216,9 +207,7 @@ export function paymentMiddleware(
           customPaywallHtml ||
           getPaywallHtml({
             amount: displayAmount,
-            paymentRequirements: toJsonSafe(paymentRequirements) as Parameters<
-              typeof getPaywallHtml
-            >[0]["paymentRequirements"],
+            paymentRequirements: toJsonSafe(paymentRequirements),
             currentUrl: req.originalUrl,
             testnet: network === "base-sepolia",
             cdpClientKey: paywall?.cdpClientKey,
@@ -237,7 +226,7 @@ export function paymentMiddleware(
       return;
     }
 
-    let decodedPayment: PaymentPayload;
+    let decodedPayment;
     try {
       decodedPayment = exact.evm.decodePayment(payment);
       decodedPayment.x402Version = x402Version;
@@ -291,37 +280,32 @@ export function paymentMiddleware(
     const originalEnd = res.end.bind(res);
     const originalFlushHeaders = res.flushHeaders.bind(res);
 
-    type BufferedCall =
-      | ["writeHead", Parameters<typeof originalWriteHead>]
-      | ["write", Parameters<typeof originalWrite>]
-      | ["end", Parameters<typeof originalEnd>]
-      | ["flushHeaders", []];
-    let bufferedCalls: BufferedCall[] = [];
+    let bufferedCalls = [];
     let settled = false;
 
-    res.writeHead = function (...args: Parameters<typeof originalWriteHead>) {
+    res.writeHead = function (...args) {
       if (!settled) {
         bufferedCalls.push(["writeHead", args]);
         return res;
       }
       return originalWriteHead(...args);
-    } as typeof originalWriteHead;
+    };
 
-    res.write = function (...args: Parameters<typeof originalWrite>) {
+    res.write = function (...args) {
       if (!settled) {
         bufferedCalls.push(["write", args]);
         return true;
       }
       return originalWrite(...args);
-    } as typeof originalWrite;
+    };
 
-    res.end = function (...args: Parameters<typeof originalEnd>) {
+    res.end = function (...args) {
       if (!settled) {
         bufferedCalls.push(["end", args]);
         return res;
       }
       return originalEnd(...args);
-    } as typeof originalEnd;
+    };
 
     res.flushHeaders = function () {
       if (!settled) {
@@ -344,9 +328,9 @@ export function paymentMiddleware(
       // Replay all buffered calls in order
       for (const [method, args] of bufferedCalls) {
         if (method === "writeHead")
-          originalWriteHead(...(args as Parameters<typeof originalWriteHead>));
-        else if (method === "write") originalWrite(...(args as Parameters<typeof originalWrite>));
-        else if (method === "end") originalEnd(...(args as Parameters<typeof originalEnd>));
+          originalWriteHead(...args);
+        else if (method === "write") originalWrite(...args);
+        else if (method === "end") originalEnd(...args);
         else if (method === "flushHeaders") originalFlushHeaders();
       }
       bufferedCalls = [];
@@ -390,9 +374,9 @@ export function paymentMiddleware(
       // Replay all buffered calls in order
       for (const [method, args] of bufferedCalls) {
         if (method === "writeHead")
-          originalWriteHead(...(args as Parameters<typeof originalWriteHead>));
-        else if (method === "write") originalWrite(...(args as Parameters<typeof originalWrite>));
-        else if (method === "end") originalEnd(...(args as Parameters<typeof originalEnd>));
+          originalWriteHead(...args);
+        else if (method === "write") originalWrite(...args);
+        else if (method === "end") originalEnd(...args);
         else if (method === "flushHeaders") originalFlushHeaders();
       }
       bufferedCalls = [];
