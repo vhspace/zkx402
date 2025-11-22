@@ -537,8 +537,8 @@ Content-Type: application/json
   "description": "Get a motivational quote",
   "extra": {
     "gasLimit": "200000"`}<span style={{ color: '#33FF33' }}>,</span>{`
-    `}<span style={{ color: '#33FF33' }}>"variableAmountRequired"</span>{`: [{ `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)", "amountRequired": "5000"</span>{` }]
-    `}<span style={{ color: '#C9FFD2' }}>"contentMetadata"</span>{`: [{ `}<span style={{ color: '#C9FFD2' }}>"zkproof": "zkproof(abc)", "description": "passport-number"</span>{` },{ `}<span style={{ color: '#C9FFD2' }}>"zkproof": "zkproof(abc)", "description": "gps-coordinates"</span>{` }]
+    `}<span style={{ color: '#33FF33' }}>"variableAmountRequired"</span>{`: [{ `}<span style={{ color: '#33FF33' }}>"requestedProofs": "zkproofOf(human), zkproofOf(instituion=NYT)", "amountRequired": "5000"</span>{` }]
+    `}<span style={{ color: '#C9FFD2' }}>"contentMetadata"</span>{`: [{ `}<span style={{ color: '#C9FFD2' }}>"proof": "zkproof("Edward Snowden")"</span>{` },{ `}<span style={{ color: '#C9FFD2' }}>"proof": "zkproof(human)"</span>{` }]
   }
 }`}
               </pre>
@@ -546,7 +546,7 @@ Content-Type: application/json
           </li>
           
           <li>
-            <strong>client creates and signs payment transaction</strong>
+            <strong>client <span style={{ color: '#C9FFD2' }}>verifies contentMetadata</span> then creates and signs payment transaction</strong>
             <details style={{ marginTop: "8px" }}>
               <summary style={{ cursor: "pointer", color: "#0052ff" }}>view technical details →</summary>
               <div style={{ fontSize: "13px", marginTop: "8px", lineHeight: "1.6" }}>
@@ -586,7 +586,7 @@ Decoded X-PAYMENT:
       "validAfter": "0",
       "validBefore": "1731362400",
       "nonce": "0xdef456..."`}<span style={{ color: '#33FF33' }}>,</span>{`
-      `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)"</span>{`        
+      `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)"</span>{`
     }
   }
 }`}
@@ -595,7 +595,7 @@ Decoded X-PAYMENT:
           </li>
           
           <li>
-            <strong>server <span style={{ color: '#33FF33' }}>verifies zkproofs</span> and verifies payment using CDP facilitator</strong>
+            <strong>server <span style={{ color: '#33FF33' }}>verifies zkproofs</span> then verifies payment using CDP facilitator</strong>
             <details style={{ marginTop: "8px" }}>
               <summary style={{ cursor: "pointer", color: "#0052ff" }}>view facilitator call →</summary>
               <pre style={{ fontSize: "11px", background: "white", padding: "8px", borderRadius: "4px", marginTop: "8px", overflow: "auto" }}>
@@ -612,8 +612,8 @@ Content-Type: application/json
 Response:
 {
   "isValid": true,
-  "payer": "0xYourWalletAddress"`}<span style={{ color: '#33FF33' }}>,</span>{` 
-  `}<span style={{ color: '#33FF33' }}>"isVerified": true</span>{` 
+  "payer": "0xYourWalletAddress"`}<span style={{ color: '#33FF33' }}>,</span>{`
+  `}<span style={{ color: '#33FF33' }}>"isVerified": true</span>{`
 }`}
               </pre>
               <p style={{ fontSize: "13px", marginTop: "8px" }}>

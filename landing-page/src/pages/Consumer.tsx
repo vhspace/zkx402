@@ -1,17 +1,14 @@
-import { useState } from "react";
 import { Marketplace } from "@/components/Marketplace";
 import { Header } from "@/components/Header";
+import { useAccount } from "wagmi";
 
 const Consumer = () => {
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const { isConnected } = useAccount();
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        isWalletConnected={isWalletConnected} 
-        onWalletConnect={() => setIsWalletConnected(!isWalletConnected)} 
-      />
-      <Marketplace isWalletConnected={isWalletConnected} />
+      <Header />
+      <Marketplace isWalletConnected={isConnected} />
     </div>
   );
 };

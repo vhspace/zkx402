@@ -1,13 +1,28 @@
 import { Shield, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 
-interface HeaderProps {
-  isWalletConnected: boolean;
-  onWalletConnect: () => void;
-}
+export const Header = () => {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
 
-export const Header = ({ isWalletConnected, onWalletConnect }: HeaderProps) => {
+  const handleWalletAction = () => {
+    if (isConnected) {
+      disconnect();
+    } else {
+      // Connect with the first available connector (injected wallet)
+      const connector = connectors[0];
+      if (connector) {
+        connect({ connector });
+      }
+    }
+  };
+
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
   return (
     <header className="fixed top-0 w-full z-50 border-b border-border/40 backdrop-blur-lg bg-background/80">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -42,12 +57,12 @@ export const Header = ({ isWalletConnected, onWalletConnect }: HeaderProps) => {
         
         <div className="flex items-center gap-4">
           <Button 
-            variant={isWalletConnected ? "secondary" : "default"} 
-            onClick={onWalletConnect} 
+            variant={isConnected ? "secondary" : "default"} 
+            onClick={handleWalletAction} 
             className="gap-2"
           >
             <Wallet className="w-4 h-4" />
-            {isWalletConnected ? "0x7a8d...4f2c" : "Connect Wallet"}
+            {isConnected && address ? formatAddress(address) : "Connect Wallet"}
           </Button>
         </div>
       </div>
