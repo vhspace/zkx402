@@ -14,6 +14,7 @@ interface DataCardProps {
     dataPoints: number;
     timestamp: string;
     tags: string[];
+    imageUrl?: string;
   };
   onClick: () => void;
   Icon: LucideIcon;
@@ -21,7 +22,17 @@ interface DataCardProps {
 
 export const DataCard = ({ data, onClick, Icon }: DataCardProps) => {
   return (
-    <Card className="group cursor-pointer hover:border-primary/50 transition-smooth hover:shadow-glow" onClick={onClick}>
+    <Card className="group cursor-pointer hover:border-primary/50 transition-smooth hover:shadow-glow overflow-hidden" onClick={onClick}>
+      {data.imageUrl && (
+        <div className="relative w-full h-48 overflow-hidden">
+          <img 
+            src={data.imageUrl} 
+            alt={data.title}
+            className="w-full h-full object-cover blur-sm group-hover:blur-none transition-all duration-300 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        </div>
+      )}
       <CardHeader>
         <div className="flex items-start justify-between mb-3">
           <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-gradient-primary transition-smooth">
