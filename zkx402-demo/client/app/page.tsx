@@ -261,7 +261,7 @@ export default function Home() {
       {/* Top Nav */}
       <div className="top-nav">
         <div className="nav-left">
-          <h1>x402 demo</h1>
+          <h1><span style={{ color: '#33FF33' }}>zk</span>x402 demo</h1>
           <p>pay for APIs with crypto</p>
         </div>
         <div className="nav-right">
@@ -501,12 +501,12 @@ export default function Home() {
           className="expand-button"
           onClick={() => setShowExplanation(!showExplanation)}
         >
-          {showExplanation ? '▼ hide details' : '▶ how x402 works'}
+          {showExplanation ? '▼ hide details' : <>▶ how <span style={{ color: '#33FF33' }}>zk</span>x402 works</>}
         </button>
         
         {showExplanation && (
           <div className="expanded-content">
-            <h3>how x402 works:</h3>
+            <h3>how <span style={{ color: '#33FF33' }}>zk</span>x402 works:</h3>
         <ol>
           <li>
             <strong>user clicks "Get Motivational Quote"</strong>
@@ -528,7 +528,7 @@ export default function Home() {
 Content-Type: application/json
 
 {
-  "scheme": "exact",
+  "scheme": "`}<span style={{ color: '#33FF33' }}>variable</span>{`",
   "network": "base-sepolia",
   "maxAmountRequired": "10000",
   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -536,7 +536,9 @@ Content-Type: application/json
   "resource": "http://localhost:3001/motivate",
   "description": "Get a motivational quote",
   "extra": {
-    "gasLimit": "200000"
+    "gasLimit": "200000"`}<span style={{ color: '#33FF33' }}>,</span>{`
+    `}<span style={{ color: '#33FF33' }}>"variableAmountRequired"</span>{`: [{ `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)", "amountRequired": "5000"</span>{` }]
+    `}<span style={{ color: '#C9FFD2' }}>"contentMetadata"</span>{`: [{ `}<span style={{ color: '#C9FFD2' }}>"zkproof": "zkproof(abc)", "description": "passport-number"</span>{` },{ `}<span style={{ color: '#C9FFD2' }}>"zkproof": "zkproof(abc)", "description": "gps-coordinates"</span>{` }]
   }
 }`}
               </pre>
@@ -550,7 +552,8 @@ Content-Type: application/json
               <div style={{ fontSize: "13px", marginTop: "8px", lineHeight: "1.6" }}>
                 <p>Uses <strong>EIP-3009 transferWithAuthorization</strong>:</p>
                 <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
-                  <li>creates USDC transfer authorization (0.01 USDC = 10,000 units)</li>
+                  <li style={{ textDecoration: 'line-through' }}>creates USDC transfer authorization (0.01 USDC = 10,000 units)</li>
+                  <li style={{ color: '#33FF33' }}>creates USDC transfer authorization (0.005 USDC = 5,000 units)</li>
                   <li>sets <code>from</code> (your wallet) and <code>to</code> (receiver)</li>
                   <li>adds <code>validBefore</code> timestamp (expiration)</li>
                   <li>generates unique <code>nonce</code> (prevents replay attacks)</li>
@@ -579,10 +582,11 @@ Decoded X-PAYMENT:
     "authorization": {
       "from": "0xYourWalletAddress",
       "to": "0x036CbD...USDC",
-      "value": "10000",
+      "value": "`}<span style={{ color: '#33FF33' }}>5000</span>{`",
       "validAfter": "0",
       "validBefore": "1731362400",
-      "nonce": "0xdef456..."
+      "nonce": "0xdef456..."`}<span style={{ color: '#33FF33' }}>,</span>{`
+      `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)"</span>{`        
     }
   }
 }`}
@@ -602,7 +606,9 @@ Content-Type: application/json
 {
   "x402Version": 1,
   "paymentPayload": { /* X-PAYMENT data */ },
-  "paymentRequirements": { /* from 402 response */ }
+  "paymentRequirements": { /* from 402 response */ 
+      `}<span style={{ color: '#33FF33' }}>"zkproofs": "zkproof(abc), zkproof(def)"</span>{`        
+  }
 }
 
 Response:
@@ -618,10 +624,11 @@ Response:
           </li>
           
           <li>
-            <strong>Facilitator settles payment on Base Sepolia</strong>
+            <strong>Facilitator <span style={{ color: '#33FF33' }}>verifies zkproofs</span> and settles payment on Base Sepolia</strong>
             <details style={{ marginTop: "8px" }}>
               <summary style={{ cursor: "pointer", color: "#0052ff" }}>view settlement →</summary>
               <div style={{ fontSize: "13px", marginTop: "8px", lineHeight: "1.6" }}>
+                <p style={{ color: '#33FF33' }}>Facilitator verifies eligibility of zkproofs</p>
                 <p>Facilitator calls USDC contract's <code>transferWithAuthorization</code>:</p>
                 <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
                   <li>submits your signed authorization to the blockchain</li>
