@@ -1,4 +1,4 @@
-import { Shield, Calendar, Database, LucideIcon } from "lucide-react";
+import { Shield, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,27 +48,6 @@ export const DataCard = ({ data, onClick, Icon }: DataCardProps) => {
         <h3 className="text-lg font-bold text-foreground line-clamp-2">{data.title}</h3>
         <p className="text-sm text-muted-foreground line-clamp-2">{data.description}</p>
       </CardHeader>
-      
-      <CardContent>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-          <div className="flex items-center gap-1">
-            <Database className="w-3 h-3" />
-            <span>{data.dataPoints} points</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            <span>{data.timestamp}</span>
-          </div>
-        </div>
-        
-        <div className="flex gap-1.5 flex-wrap">
-          {data.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
       
       <CardFooter className="flex justify-between items-center border-t border-border pt-4">
         <div>

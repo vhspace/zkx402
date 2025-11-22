@@ -67,33 +67,6 @@ export const DataDetailDialog = ({ data, isOpen, onClose, isWalletConnected }: D
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="flex gap-2 flex-wrap">
-            {data.tags.map((tag) => (
-              <Badge key={tag} variant="secondary">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Data Points</div>
-              <div className="text-lg font-semibold">{data.dataPoints}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Upload Date</div>
-              <div className="text-lg font-semibold">{data.timestamp}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Type</div>
-              <div className="text-lg font-semibold capitalize">{data.type}</div>
-            </div>
-          </div>
-
-          <Separator />
-
           <div className="bg-secondary/30 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold flex items-center gap-2">
