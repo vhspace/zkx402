@@ -91,7 +91,7 @@ export const ProducerUpload = () => {
   const [presentation, setPresentation] = useState<Presentation | null>(null);
   const [proofLogs, setProofLogs] = useState<string[]>([]);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const [price, setPrice] = useState<string>('0.02');
+  const [price, setPrice] = useState<string>('0.01');
   const [sourceType, setSourceType] = useState<'demo' | 'github' | 'notion'>(
     'demo'
   );
@@ -973,7 +973,7 @@ export const ProducerUpload = () => {
                     <Input
                       id="price-input"
                       type="number"
-                      placeholder="0.02"
+                      placeholder="0.01"
                       step="100"
                       min="0"
                       value={price}
