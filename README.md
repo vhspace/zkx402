@@ -36,7 +36,7 @@ Then more future looking, is making content purchasable by an growing automomous
 - Eligibility proven via zkproofs, no trusted third party needed
   - Human journalists → Self.xyz, Worldcoin, zkPassport, or vLayer org proofs (NY Times, The Economist, etc.)
   - AI agents get the proof of humanity from the human to be eligible for the discounted price
-  - Unverified → pay full price ($0.02 instead of $0.01)
+  - Unverified → pay full price ($0.01 instead of $0.005)
 
 ### Producers (Whistleblowers)
 - ZK-verified metadata & content provenance (vlayer ZK Email / zkTLS)
@@ -58,7 +58,7 @@ This creates the missing economic layer for truth.
 ### Journalist (Human) Flow
 1. Connect embedded wallet (Coinbase Smart Wallet on Base)
 2. Optional: Verify credentials via vLayer (e.g. prove employment at NY Times/The Economist) or Self.xyz
-3. Browse leaks → verified journalists see $0.01 price, others $0.02
+3. Browse leaks → verified journalists see $0.005 price, others $0.01
 4. Pay with one click → receive decrypted content + ZK proof bundle
 
 ### AI Agent Flow (the nuclear demo)
@@ -90,10 +90,10 @@ This creates the missing economic layer for truth.
 
 ## Demo Flow
 1. Whistleblower uploads "Epstein 2025 Flight Logs.pdf" → vLayer ZK Email proof shows sent from epstein@lol.gov → "Verified Insider" badge appears
-2. Verified NY Times journalist connects → sees $0.01 price (vs $0.02 for random wallet)
+2. Verified NY Times journalist connects → sees $0.005 price (vs $0.01 for random wallet)
 3. Pays → gets content + proof bundle
 4. Same journalist delegates discount to AI agent via one-click EAS attestation
-5. Run agent script → autonomously buys every leak under $0.02 in a loop
+5. Run agent script → autonomously buys every leak under $0.01 in a loop
 6. Show transaction history: agent spent $0.37 building the next Pandora Papers overnight
 
 ## Future Work
