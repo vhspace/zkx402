@@ -113,7 +113,8 @@ export const ProducerUpload = () => {
       return trimmed;
     }
 
-    // 2. Full URL with workspace: notion.so/workspace/32hexchars
+    // 2. Full URL with workspace and direct ID: notion.so/workspace/32hexchars
+    // Example: notion.so/ghostxd/9a7733de700a4f1b89d5e4efadbbb62d
     const fullUrlMatch = trimmed.match(
       /notion\.so\/[^/]+\/([a-f0-9]{32})(?:\?|$|#)/i
     );
@@ -121,23 +122,24 @@ export const ProducerUpload = () => {
       return fullUrlMatch[1];
     }
 
-    // 3. URL with title slug: notion.so/title-slug-32hexchars or notion.so/title-slug-32hexchars?params
-    // This handles cases like: notion.so/zkx402-leak-cat-image-2b47fbfd218080feb49be38fb6aa3ac7
+    // 3. URL with workspace and title slug: notion.so/workspace/title-32hexchars
+    // Example: notion.so/ghostxd/zkx402-2b4fd7f25b3280c0a09cec1797658f5d
+    // This pattern specifically handles workspace/title-ID format
+    const workspaceTitleMatch = trimmed.match(
+      /notion\.so\/[^/]+\/[^/]+-([a-f0-9]{32})(?:\?|$|#)/i
+    );
+    if (workspaceTitleMatch && workspaceTitleMatch[1]) {
+      return workspaceTitleMatch[1];
+    }
+
+    // 4. URL with title slug (no workspace or workspace in domain): notion.so/title-32hexchars
+    // Example: notion.so/zkx402-leak-cat-image-2b47fbfd218080feb49be38fb6aa3ac7
     const titleUrlMatch = trimmed.match(/-([a-f0-9]{32})(?:\?|$|#)/i);
     if (titleUrlMatch && titleUrlMatch[1]) {
       return titleUrlMatch[1];
     }
 
-    // 3b. Alternative: URL with title but ID at the end of the path (before query params)
-    // notion.so/title-slug-32hexchars?params
-    const titleUrlMatch2 = trimmed.match(
-      /notion\.so\/[^?]+-([a-f0-9]{32})(?:\?|$|#)/i
-    );
-    if (titleUrlMatch2 && titleUrlMatch2[1]) {
-      return titleUrlMatch2[1];
-    }
-
-    // 4. UUID format with hyphens
+    // 5. UUID format with hyphens: 9a7733de-700a-4f1b-89d5-e4efadbbb62d
     const uuidMatch = trimmed.match(
       /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i
     );
@@ -145,7 +147,7 @@ export const ProducerUpload = () => {
       return uuidMatch[1].replace(/-/g, '');
     }
 
-    // 5. Try to find any 32-char hex string (fallback - matches the last occurrence)
+    // 6. Fallback: Try to find any 32-char hex string (matches the last occurrence)
     // This is useful for URLs where the ID appears anywhere in the string
     const hexMatches = trimmed.matchAll(/([a-f0-9]{32})/gi);
     const matches = Array.from(hexMatches);
@@ -341,12 +343,16 @@ export const ProducerUpload = () => {
               )}-${pageId.substring(20)}`
             : pageId;
 
-        urlToProve = `https://api.notion.com/v1/databases/${formattedPageId}`;
+        // Try pages endpoint first (more common), then fall back to databases
+        // We'll let the API try both if needed
+        urlToProve = `https://api.notion.com/v1/pages/${formattedPageId}`;
         headers.push('Notion-Version: 2022-06-28');
         headers.push('Accept: application/json');
         headers.push(`Authorization: ${authValue}`);
 
-        addLog(`Fetching Notion page: ${formattedPageId}`);
+        addLog(
+          `Fetching Notion resource: ${formattedPageId} (trying pages endpoint)`
+        );
       } else {
         // GitHub or Demo
         urlToProve = originUrl.trim();
