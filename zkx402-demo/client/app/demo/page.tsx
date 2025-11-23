@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useCurrentUser,
   useIsSignedIn,
@@ -29,6 +30,7 @@ interface PaymentResponse {
 }
 
 export default function Home() {
+  const router = useRouter();
   const { currentUser } = useCurrentUser();
   const { isSignedIn } = useIsSignedIn();
   const { signInWithEmail } = useSignInWithEmail();
@@ -207,6 +209,11 @@ export default function Home() {
     }
   };
 
+  // navigate to verify route
+  const handleVerify = () => {
+    router.push('/verify');
+  };
+
   // call the x402-enabled API endpoint
   const handleCallApi = async () => {
     if (!address || !currentUser) return;
@@ -378,6 +385,13 @@ export default function Home() {
           <div className="nav-right">
             {isSignedIn && address ? (
               <>
+                <button
+                  className="nav-button"
+                  onClick={handleVerify}
+                  disabled={loading}
+                >
+                  verify
+                </button>
                 <button
                   className="nav-button"
                   onClick={handleFaucet}
