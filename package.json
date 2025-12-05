@@ -1,21 +1,18 @@
 {
-  "name": "contracts",
+  "name": "zkx402-monorepo",
   "version": "1.0.0",
-  "description": "**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**",
-  "main": "index.js",
-  "directories": {
-    "lib": "lib",
-    "test": "test"
-  },
+  "description": "zkx402 - x402 protocol extension with zero-knowledge proof verification",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "zkx402-demo/client",
+    "zkx402-demo/server"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:server": "npm run dev --workspace=zkx402-demo/server",
+    "dev:client": "npm run dev --workspace=zkx402-demo/client"
   },
-  "keywords": [],
+  "keywords": ["x402", "zkproof", "payment", "verification"],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@selfxyz/contracts": "^1.2.3",
-    "@selfxyz/core": "^0.0.25"
-  }
+  "license": "ISC"
 }

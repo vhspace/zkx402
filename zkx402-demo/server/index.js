@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
-// import { paymentMiddleware } from "x402-express";
-import { paymentMiddleware } from "./middleware.js";
+import { paymentMiddleware } from "x402-zkx402";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";

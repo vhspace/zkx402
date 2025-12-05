@@ -1,0 +1,201 @@
+{
+  "name": "zkx402 Development",
+
+  // ========================================
+  // PINNED VERSIONS - Update these as needed
+  // ========================================
+  // Base Image: ubuntu-24.04 (Noble)
+  // Docker: 27.4.1
+  // Node.js: 20.18.1 (LTS)
+  // Git: 2.47.1
+  // GitHub CLI: 2.63.2
+  // Foundry: latest
+  // ========================================
+
+  // Use pre-built Ubuntu 24.04 devcontainer image (features extend this)
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  // Features: DevContainer features for tools installation
+  "features": {
+    // Common utilities (install first for better compatibility)
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "configureZshAsDefaultShell": true,
+      "upgradePackages": true
+    },
+
+    // Docker-in-Docker support (required for container builds)
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
+
+    // Node.js (for frontend and server development)
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts",
+      "nodeGypDependencies": true,
+      "installYarnUsingApt": true
+    },
+
+    // Git (enhanced)
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": true
+    },
+
+    // GitHub CLI
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    }
+  },
+
+  // Post-create command to install additional tools (runs as vscode user)
+  "postCreateCommand": {
+    "install-system-packages": "sudo apt-get update && sudo apt-get install -y jq tree htop net-tools iputils-ping dnsutils curl && sudo apt-get clean",
+    "install-foundry": "curl -L https://foundry.paradigm.xyz | bash && bash -c 'source ~/.bashrc && foundryup'",
+    "install-npm-dependencies": "npm install"
+  },
+
+  // VS Code customizations
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // General
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.formatOnSave": true,
+        "editor.rulers": [80, 120],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+
+        // JavaScript/TypeScript
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+
+        // JSON
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+
+        // Solidity
+        "[solidity]": {
+          "editor.defaultFormatter": "NomicFoundation.hardhat-solidity",
+          "editor.formatOnSave": true
+        },
+        "solidity.compileUsingRemoteVersion": "latest",
+        "solidity.formatter": "forge",
+
+        // Shell scripts
+        "[shellscript]": {
+          "editor.defaultFormatter": "foxundermoon.shell-format",
+          "files.eol": "\n"
+        }
+      },
+
+      "extensions": [
+        // Solidity & Smart Contract Development
+        "NomicFoundation.hardhat-solidity",
+        "JuanBlanco.solidity",
+
+        // Docker
+        "ms-azuretools.vscode-docker",
+
+        // JavaScript/TypeScript
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+
+        // Git
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "Github.copilot",
+        "Github.copilot-chat",
+
+        // Shell
+        "foxundermoon.shell-format",
+        "timonwong.shellcheck",
+
+        // Markdown
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+
+        // Utilities
+        "editorconfig.editorconfig",
+        "christian-kohler.path-intellisense",
+        "visualstudioexptteam.vscodeintellicode",
+        "gruntfuggly.todo-tree"
+      ]
+    }
+  },
+
+  // Environment variables
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.foundry/bin",
+    "EDITOR": "code --wait"
+  },
+
+  // Mount points
+  "mounts": [
+    // Volume mount for persistent home directory
+    {
+      "source": "zkx402-dev-home-data",
+      "target": "/home/vscode",
+      "type": "volume"
+    },
+    // Docker data persistence
+    {
+      "source": "zkx402-dev-docker-data",
+      "target": "/var/lib/docker",
+      "type": "volume"
+    }
+  ],
+
+  // Run arguments
+  "runArgs": [
+    "--privileged",
+    "--hostname=zkx402-dev",
+    "--name=zkx402-dev",
+    "--init"
+  ],
+
+  // User
+  "remoteUser": "vscode",
+
+  // Forward ports (for Next.js dev server and backend)
+  "forwardPorts": [3000, 3001, 8545],
+
+  // Port attributes
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js Frontend",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "Backend Server",
+      "onAutoForward": "notify"
+    },
+    "8545": {
+      "label": "Local Blockchain",
+      "onAutoForward": "silent"
+    }
+  }
+}
+

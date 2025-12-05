@@ -1,0 +1,40 @@
+{
+  "name": "x402-zkx402",
+  "version": "0.1.0",
+  "description": "Zero-knowledge proof verification middleware for x402 protocol - enables identity-based variable pricing and content provenance verification",
+  "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./middleware": "./src/middleware.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "x402",
+    "zkproof",
+    "middleware",
+    "payment",
+    "verification",
+    "identity",
+    "variable-pricing",
+    "zero-knowledge"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "@coinbase/x402": "latest",
+    "viem": "^2.0.0",
+    "express": "^4.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/zkx402"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/zkx402/issues"
+  },
+  "homepage": "https://github.com/yourusername/zkx402#readme"
+}
+
