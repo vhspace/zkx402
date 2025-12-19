@@ -44,9 +44,26 @@ this project showcases **four Coinbase Developer Platform (CDP) products** worki
 ### pre-reqs
 
 1. **Node.js v18+** installed
-2. **CDP Project** created at https://portal.cdp.coinbase.com/
-3. **CDP API Key** for using CDP Facilitator, Faucet API, and Token Balances API
-4. **wallet address** to receive payments (any Ethereum address)
+2. **Foundry** installed (for local testing)
+3. **CDP Project** created at https://portal.cdp.coinbase.com/
+4. **CDP API Key** for using CDP Facilitator, Faucet API, and Token Balances API
+5. **wallet address** to receive payments (any Ethereum address)
+
+## local testing
+
+For end-to-end testing with a local blockchain, see [TESTING.md](./TESTING.md).
+
+Quick test workflow:
+
+```bash
+npm run install:all
+npm run test:setup
+npm run dev:server
+npm run test:e2e
+npm run test:teardown
+```
+
+## production setup
 
 ### 1. install server dependencies
 

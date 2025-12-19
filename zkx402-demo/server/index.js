@@ -5,8 +5,10 @@ import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
 import { getTokenBalances } from "./balances.js";
+import { createLocalFacilitator } from "../local-chain/local-facilitator.js";
 
-dotenv.config();
+dotenv.config({ path: ".env" });
+dotenv.config({ path: ".env.local", override: true });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,6 +18,9 @@ app.use(express.json());
 
 // wallet address that will receive payments for the API
 const RECEIVER_WALLET = process.env.RECEIVER_WALLET || "0xYourWalletAddress";
+const USE_LOCAL_FACILITATOR = process.env.USE_LOCAL_FACILITATOR === "true";
+const LOCAL_USDC_ADDRESS = process.env.USDC_ADDRESS;
+const RECEIVER_PRIVATE_KEY = process.env.RECEIVER_PRIVATE_KEY;
 
 // enable CORS for local development and production
 const corsOptions = {
@@ -39,6 +44,7 @@ app.use(paymentMiddleware(
       // metadata about the endpoint for better discovery
       config: {
         description: "get a motivational quote to inspire your day",
+        asset: USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS ? LOCAL_USDC_ADDRESS : undefined,
         outputSchema: {
           type: "object",
           properties: {
@@ -49,7 +55,7 @@ app.use(paymentMiddleware(
         // zkx402 additions
         extra: {
           variableAmountRequired: [{ 
-            requestedProofs: "zkproofOf(human), zkproofOf(instituion=NYT)", amountRequired: "5000" 
+            requestedProofs: "zkproofOf(human)", amountRequired: "5000" 
           }],
           contentMetadata: [
             { proof: "zkproof(Edward Snowden)" },
@@ -59,7 +65,13 @@ app.use(paymentMiddleware(
       }
     }
   },
-  facilitator // use CDP's hosted facilitator (requires CDP_API_KEY and CDP_API_KEY_PRIVATE_KEY env vars)
+  USE_LOCAL_FACILITATOR
+    ? createLocalFacilitator({
+        rpcUrl: process.env.RPC_URL || "http://localhost:8545",
+        usdcAddress: LOCAL_USDC_ADDRESS,
+        receiverPrivateKey: RECEIVER_PRIVATE_KEY,
+      })
+    : facilitator
 ));
 
 // the x402-enabled endpoint - this is ALL the code you need!

@@ -1,64 +1,33 @@
 {
   "name": "zkx402 Development",
 
-  // ========================================
-  // PINNED VERSIONS - Update these as needed
-  // ========================================
-  // Base Image: ubuntu-24.04 (Noble)
-  // Docker: 27.4.1
-  // Node.js: 20.18.1 (LTS)
-  // Git: 2.47.1
-  // GitHub CLI: 2.63.2
-  // Foundry: latest
-  // ========================================
-
-  // Use pre-built Ubuntu 24.04 devcontainer image (features extend this)
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
 
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind,consistency=cached",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
-  // Features: DevContainer features for tools installation
   "features": {
-    // Common utilities (install first for better compatibility)
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
       "installOhMyZsh": true,
       "configureZshAsDefaultShell": true,
       "upgradePackages": true
     },
-
-    // Docker-in-Docker support (required for container builds)
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
       "moby": true,
       "dockerDashComposeVersion": "v2"
     },
-
-    // Node.js (for frontend and server development)
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts",
       "nodeGypDependencies": true,
       "installYarnUsingApt": true
     },
-
-    // Git (enhanced)
-    "ghcr.io/devcontainers/features/git:1": {
-      "version": "latest",
-      "ppa": true
-    },
-
-    // GitHub CLI
     "ghcr.io/devcontainers/features/github-cli:1": {
       "version": "latest"
     }
-  },
-
-  // Post-create command to install additional tools (runs as vscode user)
-  "postCreateCommand": {
-    "install-system-packages": "sudo apt-get update && sudo apt-get install -y jq tree htop net-tools iputils-ping dnsutils curl && sudo apt-get clean",
-    "install-foundry": "curl -L https://foundry.paradigm.xyz | bash && bash -c 'source ~/.bashrc && foundryup'",
-    "install-npm-dependencies": "npm install"
   },
 
   // VS Code customizations
@@ -146,21 +115,17 @@
     }
   },
 
-  // Environment variables
   "remoteEnv": {
     "PATH": "${containerEnv:PATH}:/home/vscode/.foundry/bin",
     "EDITOR": "code --wait"
   },
 
-  // Mount points
   "mounts": [
-    // Volume mount for persistent home directory
     {
       "source": "zkx402-dev-home-data",
       "target": "/home/vscode",
       "type": "volume"
     },
-    // Docker data persistence
     {
       "source": "zkx402-dev-docker-data",
       "target": "/var/lib/docker",
@@ -176,7 +141,6 @@
     "--init"
   ],
 
-  // User
   "remoteUser": "vscode",
 
   // Forward ports (for Next.js dev server and backend)
@@ -198,4 +162,3 @@
     }
   }
 }
-

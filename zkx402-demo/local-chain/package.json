@@ -1,0 +1,18 @@
+{
+  "name": "x402-local-testing",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "End-to-end testing for x402 middleware with local chain",
+  "scripts": {
+    "setup": "node setup.js",
+    "test": "node test-e2e.js",
+    "teardown": "node teardown.js",
+    "clean": "node teardown.js && rm -f .anvil.pid"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ethers": "^6.15.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {}
+}

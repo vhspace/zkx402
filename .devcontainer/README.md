@@ -5,11 +5,11 @@ This devcontainer provides a consistent development environment for the zkx402 p
 ## What's Included
 
 ### Core Tools
-- **Node.js 20.18.1 (LTS)** - For frontend and backend development
-- **npm & yarn** - Package managers
+- **Node.js (LTS)** - For frontend and backend development
+- **npm & yarn** - Package managers (via devcontainer features)
 - **Foundry** - Ethereum development toolkit (forge, cast, anvil, chisel)
 - **Docker-in-Docker** - For building and running containers
-- **Git 2.47.1** - Version control
+- **Git** - Version control
 - **GitHub CLI** - GitHub command-line tool
 - **Oh My Zsh** - Enhanced shell experience
 
@@ -23,8 +23,7 @@ This devcontainer provides a consistent development environment for the zkx402 p
 - Shell scripting tools
 
 ### Utilities
-- jq, tree, htop
-- Network tools (ping, dig, netcat)
+- Common utilities via devcontainer features
 
 ## Getting Started
 
@@ -39,11 +38,8 @@ This devcontainer provides a consistent development environment for the zkx402 p
    - Or use Command Palette (Ctrl/Cmd+Shift+P): "Dev Containers: Reopen in Container"
 
 3. **First Time Setup**
-   - The container will automatically:
-     - Install system packages
-     - Install Foundry (forge, cast, anvil, chisel)
-     - Run `npm install` for project dependencies
-   - This may take 5-10 minutes on first run
+   - The container image includes Foundry (forge/cast/anvil) and Node via devcontainer features.
+   - Install repo dependencies when you need them (some setups may prefer `npm install --ignore-scripts --legacy-peer-deps`).
 
 ## Forwarded Ports
 
@@ -140,4 +136,5 @@ sudo <command>
 - [Dev Containers Documentation](https://code.visualstudio.com/docs/devcontainers/containers)
 - [Foundry Book](https://book.getfoundry.sh/)
 - [Next.js Documentation](https://nextjs.org/docs)
+
 

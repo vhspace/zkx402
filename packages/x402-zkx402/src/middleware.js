@@ -30,20 +30,20 @@ try {
   const proofPath = join(__dirname, '..', 'proof.json');
   const proofContent = readFileSync(proofPath, 'utf-8');
   institutionProofData = JSON.parse(proofContent);
-  console.log('✓ Loaded institution proof data from proof.json');
+  console.log('Loaded institution proof data from proof.json');
 } catch (error) {
-  console.warn('⚠ Could not load proof.json:', error.message);
+  console.warn('Could not load proof.json:', error.message);
   // Try alternative path (if running from different directory)
   try {
     const altProofPath = join(process.cwd(), 'proof.json');
     const proofContent = readFileSync(altProofPath, 'utf-8');
     institutionProofData = JSON.parse(proofContent);
     console.log(
-      '✓ Loaded institution proof data from proof.json (alternative path)'
+      'Loaded institution proof data from proof.json (alternative path)'
     );
   } catch (altError) {
     console.warn(
-      '⚠ Could not load proof.json from alternative path:',
+      'Could not load proof.json from alternative path:',
       altError.message
     );
   }
@@ -99,7 +99,13 @@ const VERIFY_API_URL = 'https://zkx402-server.vercel.app/api/verify';
  * ```
  */
 export function paymentMiddleware(payTo, routes, facilitator, paywall) {
-  const { verify, settle, supported } = useFacilitator(facilitator);
+  const useLocalFacilitator =
+    facilitator &&
+    typeof facilitator.verify === 'function' &&
+    typeof facilitator.settle === 'function';
+  const { verify, settle, supported } = useLocalFacilitator
+    ? facilitator
+    : useFacilitator(facilitator);
   const x402Version = 1;
 
   // Pre-compile route patterns to regex and extract verbs
@@ -127,6 +133,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       resource,
       discoverable,
       extra: extraConfig,
+      asset: assetOverride,
     } = config;
 
     // Read user proofs from header for verification and dynamic pricing
@@ -164,14 +171,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
           // Special handling for institution proof - verify via API
           if (requiredProof === 'zkproofof(instituion=nyt)' && hasProof) {
-            console.log(
-              '🎯 INSTITUTION PROOF DETECTED - Using API verification instead of string matching'
-            );
+            console.log('Institution proof detected; verifying via API');
 
             if (!institutionProofData) {
-              console.warn(
-                '⚠ Institution proof data not loaded, skipping API verification'
-              );
+              console.warn('Institution proof data not loaded; skipping API verification');
               return {
                 proof: requiredProof,
                 verified: false,
@@ -180,13 +183,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             }
 
             try {
-              console.log(
-                '🔍 [API CALL] Verifying institution proof via external API:',
-                VERIFY_API_URL
-              );
-              console.log(
-                '📦 [API CALL] Using proof data from proof.json (vlayer format)'
-              );
+              console.log('Verifying institution proof via external API:', VERIFY_API_URL);
+              console.log('Using proof data from proof.json');
 
               // Send the full vlayer proof data from proof.json
               // The production API should handle vlayer format
@@ -198,7 +196,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               };
 
               console.log(
-                '📤 Sending proof data (first 100 chars):',
+                'Sending proof data (first 100 chars):',
                 JSON.stringify(proofForVerification).substring(0, 100) + '...'
               );
 
@@ -211,12 +209,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               });
 
               const responseText = await verifyResponse.text();
+              console.log('Verify API response status:', verifyResponse.status);
               console.log(
-                '📥 Verify API response status:',
-                verifyResponse.status
-              );
-              console.log(
-                '📥 Verify API response (first 200 chars):',
+                'Verify API response (first 200 chars):',
                 responseText.substring(0, 200)
               );
 
@@ -228,7 +223,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                   errorData = { raw: responseText.substring(0, 500) };
                 }
                 console.error(
-                  '❌ Institution proof verification failed:',
+                  'Institution proof verification failed:',
                   verifyResponse.status,
                   errorData
                 );
@@ -244,10 +239,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               try {
                 verifyResult = JSON.parse(responseText);
               } catch (e) {
-                console.error(
-                  '❌ Failed to parse verify API response:',
-                  e.message
-                );
+                console.error('Failed to parse verify API response:', e.message);
                 return {
                   proof: requiredProof,
                   verified: false,
@@ -265,13 +257,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
               console.log(
                 isVerified
-                  ? '✅ Institution proof verified via API'
-                  : '❌ Institution proof verification failed'
+                  ? 'Institution proof verified via API'
+                  : 'Institution proof verification failed'
               );
-              console.log(
-                '📋 Full verify result:',
-                JSON.stringify(verifyResult, null, 2)
-              );
+              console.log('Full verify result:', JSON.stringify(verifyResult, null, 2));
 
               return {
                 proof: requiredProof,
@@ -280,7 +269,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               };
             } catch (error) {
               console.error(
-                '❌ Error verifying institution proof via API:',
+                'Error verifying institution proof via API:',
                 error.message,
                 error.stack
               );
@@ -294,9 +283,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
           // For human proof and others, use simple string matching (hardcoded)
           if (requiredProof === 'zkproofof(human)') {
-            console.log(
-              '✅ Human proof - using hardcoded string matching (no API call)'
-            );
+            console.log('Human proof: using string matching (no API call)');
           }
           return { proof: requiredProof, verified: hasProof };
         })
@@ -349,7 +336,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         // Check if user has all required proofs for this discount
         if (verificationResult.isValid) {
           console.log(
-            `✓ User qualified for discount! Requested: ${discountOption.requestedProofs}, Discounted amount: ${discountedAmount}`
+            `User qualified for discount. Requested: ${discountOption.requestedProofs}, discounted amount: ${discountedAmount}`
           );
 
           // Convert discounted atomic amount to price format
@@ -427,7 +414,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         mimeType: mimeType ?? '',
         payTo: getAddress(payTo),
         maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
-        asset: getAddress(asset.address),
+        asset: getAddress(assetOverride || asset.address),
         // TODO: Rename outputSchema to requestStructure
         outputSchema: {
           input: {
@@ -700,4 +687,5 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     }
   };
 }
+
 

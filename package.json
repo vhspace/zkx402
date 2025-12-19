@@ -8,6 +8,9 @@
     "zkx402-demo/client",
     "zkx402-demo/server"
   ],
+  "dependencies": {
+    "x402": "1.0.1"
+  },
   "scripts": {
     "dev:server": "npm run dev --workspace=zkx402-demo/server",
     "dev:client": "npm run dev --workspace=zkx402-demo/client"
