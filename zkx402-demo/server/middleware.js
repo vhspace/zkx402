@@ -1,23 +1,27 @@
-import { getAddress } from 'viem';
-import { exact } from 'x402/schemes';
+import { getAddress } from "viem";
+import { exact } from "x402/schemes";
 import {
   computeRoutePatterns,
   findMatchingPaymentRequirements,
   findMatchingRoute,
   processPriceToAtomicAmount,
   toJsonSafe,
-} from 'x402/shared';
-import { getPaywallHtml } from 'x402/paywall';
+} from "x402/shared";
+import { getPaywallHtml } from "x402/paywall";
 import {
   moneySchema,
   settleResponseHeader,
   SupportedEVMNetworks,
   SupportedSVMNetworks,
-} from 'x402/types';
-import { useFacilitator } from 'x402/verify';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+} from "x402/types";
+import { useFacilitator } from "x402/verify";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import {
+  createSelfChainProofChecker,
+  isSelfChainProofString,
+} from "./proofs/chain/self.js";
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -27,29 +31,29 @@ const __dirname = dirname(__filename);
 let institutionProofData = null;
 try {
   // proof.json is in the parent directory of server/
-  const proofPath = join(__dirname, '..', 'proof.json');
-  const proofContent = readFileSync(proofPath, 'utf-8');
+  const proofPath = join(__dirname, "..", "proof.json");
+  const proofContent = readFileSync(proofPath, "utf-8");
   institutionProofData = JSON.parse(proofContent);
-  console.log('Loaded institution proof data from proof.json');
+  console.log("Loaded institution proof data from proof.json");
 } catch (error) {
-  console.warn('Could not load proof.json:', error.message);
+  console.warn("Could not load proof.json:", error.message);
   // Try alternative path (if running from different directory)
   try {
-    const altProofPath = join(process.cwd(), 'proof.json');
-    const proofContent = readFileSync(altProofPath, 'utf-8');
+    const altProofPath = join(process.cwd(), "proof.json");
+    const proofContent = readFileSync(altProofPath, "utf-8");
     institutionProofData = JSON.parse(proofContent);
     console.log(
-      'Loaded institution proof data from proof.json (alternative path)'
+      "Loaded institution proof data from proof.json (alternative path)"
     );
   } catch (altError) {
     console.warn(
-      'Could not load proof.json from alternative path:',
+      "Could not load proof.json from alternative path:",
       altError.message
     );
   }
 }
 
-const VERIFY_API_URL = 'https://zkx402-server.vercel.app/api/verify';
+const VERIFY_API_URL = "https://zkx402-server.vercel.app/api/verify";
 
 /**
  * Creates a payment middleware factory for Express
@@ -101,6 +105,7 @@ const VERIFY_API_URL = 'https://zkx402-server.vercel.app/api/verify';
 export function paymentMiddleware(payTo, routes, facilitator, paywall) {
   const { verify, settle, supported } = useFacilitator(facilitator);
   const x402Version = 1;
+  const selfProofChecker = createSelfChainProofChecker();
 
   // Pre-compile route patterns to regex and extract verbs
   const routePatterns = computeRoutePatterns(routes);
@@ -129,15 +134,21 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       extra: extraConfig,
     } = config;
 
+    const walletAddress =
+      req.headers["x-wallet-address"] ||
+      req.query?.wallet ||
+      req.query?.address ||
+      null;
+
     // Read user proofs from header for verification and dynamic pricing
     let userProofs = [];
-    const userProofsHeader = req.headers['x-user-proofs'];
+    const userProofsHeader = req.headers["x-user-proofs"];
     if (userProofsHeader) {
       try {
         userProofs = JSON.parse(userProofsHeader);
-        console.log('Received user proofs:', userProofs);
+        console.log("Received user proofs:", userProofs);
       } catch (error) {
-        console.error('Failed to parse X-User-Proofs header:', error);
+        console.error("Failed to parse X-User-Proofs header:", error);
       }
     }
 
@@ -162,22 +173,39 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         normalizedRequestedProofs.map(async (requiredProof) => {
           const hasProof = normalizedUserProofs.includes(requiredProof);
 
+          if (isSelfChainProofString(requiredProof)) {
+            if (!hasProof) return { proof: requiredProof, verified: false };
+            const result = await selfProofChecker.isWalletVerified(
+              walletAddress
+            );
+            return {
+              proof: requiredProof,
+              verified: result.verified,
+              reason: result.reason,
+            };
+          }
+
           // Special handling for institution proof - verify via API
-          if (requiredProof === 'zkproofof(instituion=nyt)' && hasProof) {
-            console.log('Institution proof detected; verifying via API');
+          if (requiredProof === "zkproofof(instituion=nyt)" && hasProof) {
+            console.log("Institution proof detected; verifying via API");
 
             if (!institutionProofData) {
-              console.warn('Institution proof data not loaded; skipping API verification');
+              console.warn(
+                "Institution proof data not loaded; skipping API verification"
+              );
               return {
                 proof: requiredProof,
                 verified: false,
-                reason: 'proof data not loaded',
+                reason: "proof data not loaded",
               };
             }
 
             try {
-              console.log('Verifying institution proof via external API:', VERIFY_API_URL);
-              console.log('Using proof data from proof.json');
+              console.log(
+                "Verifying institution proof via external API:",
+                VERIFY_API_URL
+              );
+              console.log("Using proof data from proof.json");
 
               // Send the full vlayer proof data from proof.json
               // The production API should handle vlayer format
@@ -189,22 +217,22 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               };
 
               console.log(
-                'Sending proof data (first 100 chars):',
-                JSON.stringify(proofForVerification).substring(0, 100) + '...'
+                "Sending proof data (first 100 chars):",
+                JSON.stringify(proofForVerification).substring(0, 100) + "..."
               );
 
               const verifyResponse = await fetch(VERIFY_API_URL, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                  'Content-Type': 'application/json',
+                  "Content-Type": "application/json",
                 },
                 body: JSON.stringify(proofForVerification),
               });
 
               const responseText = await verifyResponse.text();
-              console.log('Verify API response status:', verifyResponse.status);
+              console.log("Verify API response status:", verifyResponse.status);
               console.log(
-                'Verify API response (first 200 chars):',
+                "Verify API response (first 200 chars):",
                 responseText.substring(0, 200)
               );
 
@@ -216,7 +244,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                   errorData = { raw: responseText.substring(0, 500) };
                 }
                 console.error(
-                  'Institution proof verification failed:',
+                  "Institution proof verification failed:",
                   verifyResponse.status,
                   errorData
                 );
@@ -232,11 +260,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               try {
                 verifyResult = JSON.parse(responseText);
               } catch (e) {
-                console.error('Failed to parse verify API response:', e.message);
+                console.error(
+                  "Failed to parse verify API response:",
+                  e.message
+                );
                 return {
                   proof: requiredProof,
                   verified: false,
-                  reason: 'Invalid JSON response from verify API',
+                  reason: "Invalid JSON response from verify API",
                 };
               }
 
@@ -245,15 +276,18 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               const isVerified =
                 verifyResult.verified === true ||
                 verifyResult.valid === true ||
-                (verifyResult.status === 'success' && !verifyResult.error) ||
+                (verifyResult.status === "success" && !verifyResult.error) ||
                 (verifyResult.success === true && !verifyResult.error);
 
               console.log(
                 isVerified
-                  ? 'Institution proof verified via API'
-                  : 'Institution proof verification failed'
+                  ? "Institution proof verified via API"
+                  : "Institution proof verification failed"
               );
-              console.log('Full verify result:', JSON.stringify(verifyResult, null, 2));
+              console.log(
+                "Full verify result:",
+                JSON.stringify(verifyResult, null, 2)
+              );
 
               return {
                 proof: requiredProof,
@@ -262,7 +296,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               };
             } catch (error) {
               console.error(
-                'Error verifying institution proof via API:',
+                "Error verifying institution proof via API:",
                 error.message,
                 error.stack
               );
@@ -275,8 +309,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           }
 
           // For human proof and others, use simple string matching (hardcoded)
-          if (requiredProof === 'zkproofof(human)') {
-            console.log('Human proof: using string matching (no API call)');
+          if (requiredProof === "zkproofof(human)") {
+            console.log("Human proof: using string matching (no API call)");
           }
           return { proof: requiredProof, verified: hasProof };
         })
@@ -312,7 +346,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       // Check each discount option
       for (const discountOption of variableAmountRequired) {
         const requestedProofs =
-          discountOption.requestedProofs?.split(',').map((p) => p.trim()) || [];
+          discountOption.requestedProofs?.split(",").map((p) => p.trim()) || [];
         const discountedAmount = discountOption.amountRequired;
 
         // Use custom verification function to verify proofs (now async)
@@ -321,7 +355,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           requestedProofs
         );
 
-        console.log('Proof verification result:', {
+        console.log("Proof verification result:", {
           requestedProofs: discountOption.requestedProofs,
           verificationResult: verificationResult,
         });
@@ -357,14 +391,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
 
       if (!verificationMetadata) {
-        console.log('✗ User did not qualify for any discount');
+        console.log("✗ User did not qualify for any discount");
         // Get verification result for the last checked option (if any)
         const lastVerification =
           variableAmountRequired.length > 0
             ? await verifyProofs(
                 userProofs,
                 variableAmountRequired[0].requestedProofs
-                  ?.split(',')
+                  ?.split(",")
                   .map((p) => p.trim()) || []
               )
             : null;
@@ -385,7 +419,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       finalPrice,
       network
     );
-    if ('error' in atomicAmountForAsset) {
+    if ("error" in atomicAmountForAsset) {
       throw new Error(atomicAmountForAsset.error);
     }
     const { maxAmountRequired, asset } = atomicAmountForAsset;
@@ -399,19 +433,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     // evm networks
     if (SupportedEVMNetworks.includes(network)) {
       paymentRequirements.push({
-        scheme: 'exact',
+        scheme: "exact",
         network,
         maxAmountRequired,
         resource: resourceUrl,
-        description: description ?? '',
-        mimeType: mimeType ?? '',
+        description: description ?? "",
+        mimeType: mimeType ?? "",
         payTo: getAddress(payTo),
         maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
         asset: getAddress(asset.address),
         // TODO: Rename outputSchema to requestStructure
         outputSchema: {
           input: {
-            type: 'http',
+            type: "http",
             method: req.method.toUpperCase(),
             discoverable: discoverable ?? true,
             ...inputSchema,
@@ -434,7 +468,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       // find the payment kind that matches the network and scheme
       let feePayer;
       for (const kind of paymentKinds.kinds) {
-        if (kind.network === network && kind.scheme === 'exact') {
+        if (kind.network === network && kind.scheme === "exact") {
           feePayer = kind?.extra?.feePayer;
           break;
         }
@@ -448,19 +482,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
 
       paymentRequirements.push({
-        scheme: 'exact',
+        scheme: "exact",
         network,
         maxAmountRequired,
         resource: resourceUrl,
-        description: description ?? '',
-        mimeType: mimeType ?? '',
+        description: description ?? "",
+        mimeType: mimeType ?? "",
         payTo: payTo,
         maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
         asset: asset.address,
         // TODO: Rename outputSchema to requestStructure
         outputSchema: {
           input: {
-            type: 'http',
+            type: "http",
             method: req.method.toUpperCase(),
             discoverable: discoverable ?? true,
             ...inputSchema,
@@ -475,17 +509,17 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       throw new Error(`Unsupported network: ${network}`);
     }
 
-    const payment = req.header('X-PAYMENT');
-    const userAgent = req.header('User-Agent') || '';
-    const acceptHeader = req.header('Accept') || '';
+    const payment = req.header("X-PAYMENT");
+    const userAgent = req.header("User-Agent") || "";
+    const acceptHeader = req.header("Accept") || "";
     const isWebBrowser =
-      acceptHeader.includes('text/html') && userAgent.includes('Mozilla');
+      acceptHeader.includes("text/html") && userAgent.includes("Mozilla");
 
     if (!payment) {
       // TODO handle paywall html for solana
       if (isWebBrowser) {
         let displayAmount;
-        if (typeof price === 'string' || typeof price === 'number') {
+        if (typeof price === "string" || typeof price === "number") {
           const parsed = moneySchema.safeParse(price);
           if (parsed.success) {
             displayAmount = parsed.data;
@@ -502,7 +536,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             amount: displayAmount,
             paymentRequirements: toJsonSafe(paymentRequirements),
             currentUrl: req.originalUrl,
-            testnet: network === 'base-sepolia',
+            testnet: network === "base-sepolia",
             cdpClientKey: paywall?.cdpClientKey,
             appName: paywall?.appName,
             appLogo: paywall?.appLogo,
@@ -513,7 +547,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
       res.status(402).json({
         x402Version,
-        error: 'X-PAYMENT header is required',
+        error: "X-PAYMENT header is required",
         accepts: toJsonSafe(paymentRequirements),
       });
       return;
@@ -527,7 +561,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       console.error(error);
       res.status(402).json({
         x402Version,
-        error: error || 'Invalid or malformed payment header',
+        error: error || "Invalid or malformed payment header",
         accepts: toJsonSafe(paymentRequirements),
       });
       return;
@@ -540,7 +574,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     if (!selectedPaymentRequirements) {
       res.status(402).json({
         x402Version,
-        error: 'Unable to find matching payment requirements',
+        error: "Unable to find matching payment requirements",
         accepts: toJsonSafe(paymentRequirements),
       });
       return;
@@ -581,7 +615,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     res.writeHead = function (...args) {
       if (!settled) {
-        bufferedCalls.push(['writeHead', args]);
+        bufferedCalls.push(["writeHead", args]);
         return res;
       }
       return originalWriteHead(...args);
@@ -589,7 +623,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     res.write = function (...args) {
       if (!settled) {
-        bufferedCalls.push(['write', args]);
+        bufferedCalls.push(["write", args]);
         return true;
       }
       return originalWrite(...args);
@@ -597,7 +631,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     res.end = function (...args) {
       if (!settled) {
-        bufferedCalls.push(['end', args]);
+        bufferedCalls.push(["end", args]);
         return res;
       }
       return originalEnd(...args);
@@ -605,7 +639,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     res.flushHeaders = function () {
       if (!settled) {
-        bufferedCalls.push(['flushHeaders', []]);
+        bufferedCalls.push(["flushHeaders", []]);
         return;
       }
       return originalFlushHeaders();
@@ -623,10 +657,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       res.flushHeaders = originalFlushHeaders;
       // Replay all buffered calls in order
       for (const [method, args] of bufferedCalls) {
-        if (method === 'writeHead') originalWriteHead(...args);
-        else if (method === 'write') originalWrite(...args);
-        else if (method === 'end') originalEnd(...args);
-        else if (method === 'flushHeaders') originalFlushHeaders();
+        if (method === "writeHead") originalWriteHead(...args);
+        else if (method === "write") originalWrite(...args);
+        else if (method === "end") originalEnd(...args);
+        else if (method === "flushHeaders") originalFlushHeaders();
       }
       bufferedCalls = [];
       return;
@@ -638,7 +672,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         selectedPaymentRequirements
       );
       const responseHeader = settleResponseHeader(settleResponse);
-      res.setHeader('X-PAYMENT-RESPONSE', responseHeader);
+      res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
 
       // if the settle fails, return an error
       if (!settleResponse.success) {
@@ -671,10 +705,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
       // Replay all buffered calls in order
       for (const [method, args] of bufferedCalls) {
-        if (method === 'writeHead') originalWriteHead(...args);
-        else if (method === 'write') originalWrite(...args);
-        else if (method === 'end') originalEnd(...args);
-        else if (method === 'flushHeaders') originalFlushHeaders();
+        if (method === "writeHead") originalWriteHead(...args);
+        else if (method === "write") originalWrite(...args);
+        else if (method === "end") originalEnd(...args);
+        else if (method === "flushHeaders") originalFlushHeaders();
       }
       bufferedCalls = [];
     }

@@ -150,7 +150,10 @@ function installDependencies() {
       });
       log(colors.green, "Dependencies installed");
     } catch (error) {
-      log(colors.yellow, "Warning: Some dependencies may have failed to install");
+      log(
+        colors.yellow,
+        "Warning: Some dependencies may have failed to install"
+      );
     }
   } else {
     log(colors.green, "Dependencies already installed");
@@ -264,7 +267,3 @@ async function main() {
 }
 
 main();
-
-
-
-

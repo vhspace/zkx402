@@ -10,6 +10,20 @@ import type { Request, Response, NextFunction } from 'express';
  */
 export type ZkProof = string;
 
+export interface ProofClaim {
+  type: string;
+  [key: string]: any;
+}
+
+export interface ProofPolicy {
+  version: number;
+  scope: string;
+  claims?: ProofClaim[];
+  allowedProviders?: string[];
+  preferenceOrder?: string[];
+  fallback?: "none" | "soft" | "hard" | string;
+}
+
 /**
  * Configuration for variable amount requirements (discount tiers)
  */
@@ -19,7 +33,7 @@ export interface VariableAmountRequired {
    * Example: "zkproofOf(human), zkproofOf(institution=NYT)"
    */
   requestedProofs: string;
-  
+
   /**
    * Discounted amount in atomic units (e.g., "5000" = 0.005 USDC)
    */
@@ -45,12 +59,18 @@ export interface ZkProofExtraConfig {
    * Array of discount tiers based on zkproof verification
    */
   variableAmountRequired?: VariableAmountRequired[];
-  
+
   /**
    * Metadata about content provenance and authenticity
    */
   contentMetadata?: ContentMetadata[];
-  
+
+  /**
+   * Proof verification policy (canonical claims + provider routing).
+   * If omitted, middleware falls back to legacy string matching for v1 behavior.
+   */
+  proofPolicy?: ProofPolicy;
+
   /**
    * Additional custom configuration
    */
@@ -65,22 +85,22 @@ export interface ProofVerificationDetail {
    * The zkproof that was checked
    */
   proof: ZkProof;
-  
+
   /**
    * Whether the proof was successfully verified
    */
   verified: boolean;
-  
+
   /**
    * Optional reason if verification failed
    */
   reason?: string;
-  
+
   /**
    * Optional API verification result (for institution proofs)
    */
   apiResult?: any;
-  
+
   /**
    * Optional error details if verification failed
    */
@@ -95,37 +115,37 @@ export interface ProofVerificationResult {
    * Whether all required proofs were verified
    */
   isValid: boolean;
-  
+
   /**
    * Whether user has all required proofs
    */
   hasAllProofs: boolean;
-  
+
   /**
    * Array of proofs that failed verification
    */
   missingProofs: ZkProof[];
-  
+
   /**
    * Normalized user proofs (lowercase, trimmed)
    */
   userProofs: ZkProof[];
-  
+
   /**
    * Normalized requested proofs (lowercase, trimmed)
    */
   requestedProofs: ZkProof[];
-  
+
   /**
    * Number of proofs that were verified
    */
   verifiedCount: number;
-  
+
   /**
    * Total number of proofs required
    */
   totalRequired: number;
-  
+
   /**
    * Detailed verification results for each proof
    */
@@ -140,32 +160,32 @@ export interface VerificationMetadata {
    * Whether user qualified for a discount
    */
   qualified: boolean;
-  
+
   /**
    * Whether discount was applied
    */
   discountApplied: boolean;
-  
+
   /**
    * Comma-separated list of requested proofs (if qualified)
    */
   requestedProofs?: string;
-  
+
   /**
    * Discounted amount in atomic units (if qualified)
    */
   discountedAmount?: string;
-  
+
   /**
    * Discounted price in dollar format (if qualified)
    */
   discountedPrice?: string;
-  
+
   /**
    * User's submitted zkproofs
    */
   userProofs?: ZkProof[];
-  
+
   /**
    * Detailed verification result
    */
@@ -190,12 +210,12 @@ export interface ZkProofRouteConfig {
    * Price in dollar format (e.g., "$0.01")
    */
   price: string;
-  
+
   /**
    * Network to use (e.g., "base-sepolia", "base")
    */
   network: string;
-  
+
   /**
    * Additional configuration
    */
@@ -204,42 +224,42 @@ export interface ZkProofRouteConfig {
      * Human-readable description of the endpoint
      */
     description?: string;
-    
+
     /**
      * MIME type of response
      */
     mimeType?: string;
-    
+
     /**
      * Maximum timeout in seconds
      */
     maxTimeoutSeconds?: number;
-    
+
     /**
      * Input schema for endpoint
      */
     inputSchema?: any;
-    
+
     /**
      * Output schema for endpoint
      */
     outputSchema?: any;
-    
+
     /**
      * Custom paywall HTML
      */
     customPaywallHtml?: string;
-    
+
     /**
      * Resource URL
      */
     resource?: string;
-    
+
     /**
      * Whether endpoint is discoverable
      */
     discoverable?: boolean;
-    
+
     /**
      * Extended zkproof configuration
      */
@@ -276,7 +296,7 @@ export interface PaywallConfig {
 
 /**
  * Main payment middleware function with zkproof support
- * 
+ *
  * @param payTo - Ethereum address to receive payments
  * @param routes - Route configurations with zkproof settings
  * @param facilitator - Payment facilitator configuration

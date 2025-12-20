@@ -18,6 +18,11 @@ import { useFacilitator } from 'x402/verify';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { parseLegacyZkProofToClaim } from './proofs/claims.js';
+import { normalizeProofPolicy } from './proofs/policy.js';
+import { getCorrelationId, logAuditEvent, logDebug, policyHash } from './proofs/audit.js';
+import { createSelfChainProvider } from './proofs/providers/self_chain.js';
+import { verifyClaimWithPolicy, VerifyStatus } from './proofs/router.js';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -107,6 +112,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     ? facilitator
     : useFacilitator(facilitator);
   const x402Version = 1;
+  const auditEnabled = process.env.ZKX402_AUDIT_LOG === 'true';
+  const debugEnabled = process.env.ZKX402_DEBUG_LOG === 'true';
+
+  const chainProviders = [createSelfChainProvider()];
 
   // Pre-compile route patterns to regex and extract verbs
   const routePatterns = computeRoutePatterns(routes);
@@ -136,6 +145,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       asset: assetOverride,
     } = config;
 
+    const correlationId = getCorrelationId(req);
+
     // Read user proofs from header for verification and dynamic pricing
     let userProofs = [];
     const userProofsHeader = req.headers['x-user-proofs'];
@@ -147,6 +158,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         console.error('Failed to parse X-User-Proofs header:', error);
       }
     }
+
+    const walletAddress =
+      req.headers['x-wallet-address'] ||
+      req.query?.wallet ||
+      req.query?.address ||
+      null;
 
     // Custom function to verify user proofs against requested proofs
     /**
@@ -164,10 +181,57 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         p.trim().toLowerCase()
       );
 
+      const normalizedPolicy = normalizeProofPolicy(extraConfig?.proofPolicy);
+      const pHash = policyHash(normalizedPolicy);
+
       // Check each requested proof
       const verificationResults = await Promise.all(
         normalizedRequestedProofs.map(async (requiredProof) => {
           const hasProof = normalizedUserProofs.includes(requiredProof);
+
+          // If proofPolicy is present, prefer canonical claim routing (chain-only v1).
+          if (extraConfig?.proofPolicy) {
+            if (!hasProof) return { proof: requiredProof, verified: false };
+
+            const claim = parseLegacyZkProofToClaim(requiredProof);
+            const startedAt = Date.now();
+            const routed = await verifyClaimWithPolicy({
+              claim,
+              policy: normalizedPolicy,
+              providers: chainProviders,
+              context: { walletAddress },
+            });
+
+            const durationMs = Date.now() - startedAt;
+
+            logDebug(
+              'proof_check',
+              { correlationId, requiredProof, claim, routed, durationMs, policyHash: pHash },
+              { enabled: debugEnabled }
+            );
+
+            logAuditEvent(
+              {
+                correlationId,
+                scope: normalizedPolicy.scope,
+                policyHash: pHash,
+                proof: requiredProof,
+                claim,
+                provider: routed.provider || null,
+                status: routed.status,
+                durationMs,
+              },
+              { enabled: auditEnabled }
+            );
+
+            if (routed.status === VerifyStatus.NOT_IMPLEMENTED) {
+              return { proof: requiredProof, verified: false, reason: 'not implemented' };
+            }
+            if (routed.status === VerifyStatus.ERROR) {
+              return { proof: requiredProof, verified: false, reason: routed.reason || 'verification error' };
+            }
+            return { proof: requiredProof, verified: routed.status === VerifyStatus.VERIFIED, provider: routed.provider };
+          }
 
           // Special handling for institution proof - verify via API
           if (requiredProof === 'zkproofof(instituion=nyt)' && hasProof) {
