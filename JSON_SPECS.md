@@ -43,6 +43,34 @@ It also describes how we compute integrity hashes and which scripts to run to va
 - **`preferenceOrder`** (array of strings): ordered preference (v1 uses `["self"]`)
 - **`fallback`** (string): fallback behavior (v1 uses `"none"` to avoid off-chain/API fallback)
 
+### 1.7 Self.xyz API verification (optional provider)
+
+By default, zkx402 prefers **chain-based** verification (reliable, no vendor API dependency in the request hot path). If you explicitly want to verify Self claims via an off-chain API, enable the `self_api` provider in your policy and send a proof payload with the request.
+
+- **Policy provider name**: `self_api`
+- **Environment variables**:
+  - `SELF_API_URL`: URL to POST verification requests to
+  - `SELF_API_KEY` (optional): bearer token sent as `Authorization: Bearer ...`
+  - `SELF_API_TIMEOUT_MS` (optional): request timeout (default 8000ms)
+- **Request header**:
+  - `X-Self-Proof`: JSON string containing the Self proof/session payload (passed through to the verifier as `proof`)
+
+Request body shape sent to `SELF_API_URL`:
+
+```json
+{
+  "vendor": "self.xyz",
+  "scope": "zkx402",
+  "subject": { "walletAddress": "0xabc..." },
+  "claim": { "type": "human" },
+  "proof": { "sessionId": "..." }
+}
+```
+
+Response handling:
+
+- Any JSON response with `verified: true` or `valid: true` (or `success: true` without `error`) is treated as verified.
+
 ### 1.4 Integrity hashing (sha256 + stable stringify)
 
 Integrity is computed as:

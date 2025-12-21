@@ -27,6 +27,7 @@ import {
   policyHash,
 } from "./proofs/audit.js";
 import { createSelfChainProvider } from "./proofs/providers/self_chain.js";
+import { createSelfApiProvider } from "./proofs/providers/self_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 
 // Get __dirname equivalent for ES modules
@@ -119,7 +120,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
   const auditEnabled = process.env.ZKX402_AUDIT_LOG === "true";
   const debugEnabled = process.env.ZKX402_DEBUG_LOG === "true";
 
-  const chainProviders = [createSelfChainProvider()];
+  const proofProviders = [createSelfChainProvider(), createSelfApiProvider()];
   const dbg = (message, data) =>
     logDebug(message, data, { enabled: debugEnabled });
 
@@ -172,6 +173,23 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       req.query?.address ||
       null;
 
+    let selfProof = null;
+    const selfProofHeader =
+      req.headers["x-self-proof"] ||
+      req.headers["x-self-xyz-proof"] ||
+      req.headers["x-selfxyz-proof"] ||
+      null;
+    if (selfProofHeader) {
+      try {
+        selfProof = JSON.parse(String(selfProofHeader));
+      } catch (error) {
+        dbg("x_self_proof_parse_failed", {
+          correlationId,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
     // Custom function to verify user proofs against requested proofs
     /**
      * Verifies if user has all required proofs for a discount option
@@ -205,8 +223,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             const routed = await verifyClaimWithPolicy({
               claim,
               policy: normalizedPolicy,
-              providers: chainProviders,
-              context: { walletAddress },
+              providers: proofProviders,
+              context: { walletAddress, selfProof, correlationId },
             });
 
             const durationMs = Date.now() - startedAt;

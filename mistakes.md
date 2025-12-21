@@ -14,6 +14,18 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 ## 2025-12-21
 
+### E2E runner failure: assumed Foundry/Anvil installed outside devcontainer
+
+- **Mistake**: Ran the local-chain E2E runner in an environment that wasn’t the devcontainer image, assuming `anvil` would exist on PATH. The runner then failed with `spawn anvil ENOENT`.
+- **Fix**: Install Foundry (`foundryup`) in the environment before running E2E, or run inside the devcontainer which already installs Foundry.
+- **Where**: `apps/demo/local-chain/run-e2e-test.js` (requires `anvil`, `forge`, `cast`).
+
+### Assumed `node_modules` existed when inspecting `@selfxyz/qrcode`
+
+- **Mistake**: Tried to inspect `@selfxyz/qrcode` directly under `/workspace/node_modules/...` even though dependencies weren’t installed in this environment yet, so the path didn’t exist.
+- **Fix**: Switched to using the repo’s checked-in sources and only rely on installed `node_modules` when we explicitly install deps. For the Self API verifier, we made the server-side integration payload-driven (`x-self-proof`) and API-endpoint-configured (`SELF_API_URL`) rather than SDK-internals-dependent.
+- **Where**: Investigation step while implementing Self.xyz API provider (`packages/x402-zkx402/src/proofs/providers/self_api.js`).
+
 ### `forge create` flags/args ordering
 
 - **Mistake**: Used `forge create ... --constructor-args ... --rpc-url ... --private-key ...` in an order that caused Foundry to not recognize the private key and fail with “Error accessing local wallet”.
