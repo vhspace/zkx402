@@ -287,9 +287,9 @@ async function main() {
     }
 
     log(colors.blue, "Running unit tests (x402-zkx402)...");
-    execSync("node --test /workspaces/zkx402/packages/x402-zkx402/test/*.test.js", {
-      stdio: "inherit",
-    });
+    const repoRoot = path.resolve(__dirname, "..", "..");
+    const unitTestCwd = path.join(repoRoot, "packages", "x402-zkx402");
+    execSync("npm test", { cwd: unitTestCwd, stdio: "inherit" });
     log(colors.green, "Unit tests passed.");
 
     const isRunning = await checkAnvilRunning();

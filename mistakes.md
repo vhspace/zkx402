@@ -48,4 +48,10 @@ This file tracks mistakes found during implementation and what we changed to pre
   - `zkx402-demo/.gitignore`
   - `zkx402-demo/local-chain/package-lock.json`
 
+### CI/E2E runner failure: hardcoded `/workspaces/zkx402` path
 
+- **Mistake**: `zkx402-demo/local-chain/run-e2e-test.js` hardcoded the repo path when running unit tests:
+  - `node --test /workspaces/zkx402/packages/x402-zkx402/test/*.test.js`
+  This fails in GitHub Actions (checkout path is not `/workspaces/zkx402`) and produces “Could not find '/workspaces/zkx402/…'”.
+- **Fix**: Compute repo root from `__dirname` and pass the test directory to `node --test` (no absolute path, no glob).
+- **Where**: `zkx402-demo/local-chain/run-e2e-test.js`
