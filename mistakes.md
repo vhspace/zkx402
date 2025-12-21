@@ -20,6 +20,12 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Use `gh api` to merge (or supported `gh pr merge` flags) and check draft state first.
 - **Where**: PR merge workflow for `cursor/zx402-self-xyz-proofs-d010`.
 
+### GitHub permission: cannot create PRs with current `gh` integration token
+
+- **Mistake**: Assumed the authenticated GitHub CLI session could create pull requests. `gh pr create` (and REST `POST /pulls`) failed with `Resource not accessible by integration` (HTTP 403).
+- **Fix**: Push the branch and have the repo automation / a maintainer create the PR, or adjust the GitHub App/token permissions to allow PR creation.
+- **Where**: Attempted PR creation for proof-cost commit on `cursor/zx402-self-xyz-proofs-d010`.
+
 ### x402 matching limitation: cannot advertise multiple accepts for same scheme+network
 
 - **Mistake**: Assumed we could publish multiple payment requirements (different proof plans) in `accepts[]` and let the client pick by amount. In `x402@1.0.1`, `findMatchingPaymentRequirements(...)` only matches by **scheme + network**, so multiple requirements for the same pair are ambiguous.
