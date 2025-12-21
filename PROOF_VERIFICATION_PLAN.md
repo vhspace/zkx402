@@ -253,6 +253,10 @@ When we’re ready:
 
 We now support an **optional** `self_api` provider in `packages/x402-zkx402` that can verify canonical Self claims by POSTing a request to `SELF_API_URL`. This is **off by default**; enable it by adding `"self_api"` to `allowedProviders` / `preferenceOrder` in your `proofPolicy` and include an `X-Self-Proof` JSON payload in requests.
 
+#### Cost model note (important for vendor APIs)
+
+Some verification strategies can incur a **direct per-request cost** (vendor billing) or an **indirect cost** (infra/latency/rate limits). We treat this as a first-class pricing input via a separate `proofCosts` schema (`zkx402.proofCostEnvelope.v1`) rather than hardcoding assumptions about whether Self (or future providers like vlayer) are free.
+
 - Decide which rich claims are enforceable and how:
   - which are “rules” (enforced)
   - which are “disclosures” (optional reveal, not enforced)

@@ -24,6 +24,32 @@ export interface ProofPolicy {
   fallback?: "none" | "soft" | "hard" | string;
 }
 
+export interface ProofCostEntry {
+  provider: string;
+  /**
+   * Canonical claim key. Example: "human", "age_gte:21".
+   */
+  claimKey: string;
+  /**
+   * Cost in USD micros (stringified integer). Example: "2500" == $0.0025.
+   *
+   * In v1 we assume USDC (6 decimals) so USD micros map 1:1 to USDC atomic units.
+   */
+  costUsdMicros: string;
+  description?: string;
+}
+
+export interface ProofCosts {
+  version: number;
+  scope: string;
+  currency?: "usd_micros" | string;
+  /**
+   * Commission markup in basis points (bps). Example: 250 == 2.5%.
+   */
+  defaultCommissionBps?: number;
+  entries: ProofCostEntry[];
+}
+
 /**
  * Configuration for variable amount requirements (discount tiers)
  */
@@ -70,6 +96,11 @@ export interface ZkProofExtraConfig {
    * If omitted, middleware falls back to legacy string matching for v1 behavior.
    */
   proofPolicy?: ProofPolicy;
+
+  /**
+   * Proof verification cost schedule (separate from proofPolicy).
+   */
+  proofCosts?: ProofCosts;
 
   /**
    * Additional custom configuration

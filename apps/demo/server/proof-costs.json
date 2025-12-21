@@ -1,0 +1,40 @@
+{
+  "schema": "zkx402.proofCostEnvelope.v1",
+  "costs": {
+    "version": 1,
+    "scope": "zkx402",
+    "currency": "usd_micros",
+    "defaultCommissionBps": 250,
+    "entries": [
+      {
+        "provider": "self",
+        "claimKey": "human",
+        "costUsdMicros": "0",
+        "description": "On-chain read (RPC) for isVerified(address)"
+      },
+      {
+        "provider": "self_api",
+        "claimKey": "human",
+        "costUsdMicros": "0",
+        "description": "Vendor API call (set non-zero if billed per request)"
+      },
+      {
+        "provider": "self_api",
+        "claimKey": "age_gte:21",
+        "costUsdMicros": "0",
+        "description": "Vendor API call for rich claim (set non-zero if billed per request)"
+      },
+      {
+        "provider": "self_api",
+        "claimKey": "ofac_clear",
+        "costUsdMicros": "0",
+        "description": "Vendor API call for OFAC check (set non-zero if billed per request)"
+      }
+    ]
+  },
+  "integrity": {
+    "hashAlg": "sha256",
+    "hash": "deb5385faaae9ac02fe4fb10d37df1f12ae3da6010a816606b93fc2946fcce57"
+  }
+}
+

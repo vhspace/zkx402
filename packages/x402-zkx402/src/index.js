@@ -46,4 +46,12 @@ export {
   policyIntegrityHashSha256,
 } from "./proofs/envelope.js";
 
+// Reusable helpers for proof-cost distribution/validation
+export {
+  PROOF_COST_ENVELOPE_SCHEMA_V1,
+  loadProofCostFile,
+  parseProofCostJson,
+  proofCostIntegrityHashSha256,
+} from "./proofs/costs_envelope.js";
+
 

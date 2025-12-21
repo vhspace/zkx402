@@ -47,6 +47,7 @@ export function createSelfChainProvider(options = {}) {
   return {
     name: "self",
     kind: "chain",
+    supportsClaims: ["human"],
     verifyHuman,
     meta: { rpcUrl: rpcUrl || null, receiverAddress: receiverAddress || null },
   };

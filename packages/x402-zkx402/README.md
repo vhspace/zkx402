@@ -150,6 +150,7 @@ app.get("/api/data", (req, res) => {
   //   requestedProofs: "zkproofOf(human)",
   //   discountedAmount: "5000",
   //   discountedPrice: "$0.005000",
+  //   verificationFeeAtomic: "0",
   //   userProofs: ["zkproofof(human)"],
   //   verificationResult: {
   //     isValid: true,
@@ -160,6 +161,18 @@ app.get("/api/data", (req, res) => {
   // }
 });
 ```
+
+## Proof verification costs (vendor APIs + commission)
+
+Some proof providers can incur a **per-request cost** (e.g., vendor API billing) or you may want to add a **commission** on verification. In v1, this is configured separately from `proofPolicy` via `extra.proofCosts`.
+
+- **Costs are stored in USD micros** (`"2500"` == $0.0025) to avoid floats.
+- **v1 assumption**: your priced asset is USDC (6 decimals), so USD micros map 1:1 to USDC atomic units.
+- **Secrets** (API keys) must stay in env vars (never in JSON).
+
+Client-selectable provider (soft checks):
+
+- Send `X-ZK-Proof-Plan: {"provider":"self_api"}` (or per-claim key) to constrain provider routing when multiple providers are allowed.
 
 ## Use Cases
 

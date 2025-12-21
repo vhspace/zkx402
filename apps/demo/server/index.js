@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { loadProofPolicyFile, paymentMiddleware } from "x402-zkx402";
+import { loadProofPolicyFile, loadProofCostFile, paymentMiddleware } from "x402-zkx402";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
@@ -15,6 +15,7 @@ dotenv.config({ path: ".env.local", override: true });
 const app = express();
 const PORT = process.env.PORT || 3001;
 const ENABLE_PROOF_POLICY = process.env.ENABLE_PROOF_POLICY === "true";
+const ENABLE_PROOF_COSTS = process.env.ENABLE_PROOF_COSTS === "true";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,6 +33,20 @@ function loadProofPolicy() {
 }
 
 const PROOF_POLICY = ENABLE_PROOF_POLICY ? loadProofPolicy() : null;
+
+function loadProofCosts() {
+  try {
+    const p = process.env.PROOF_COSTS_PATH
+      ? process.env.PROOF_COSTS_PATH
+      : join(__dirname, "proof-costs.json");
+    const parsed = loadProofCostFile(p);
+    return parsed.ok ? parsed.costs : null;
+  } catch {
+    return null;
+  }
+}
+
+const PROOF_COSTS = ENABLE_PROOF_COSTS ? loadProofCosts() : null;
 
 // parse JSON bodies
 app.use(express.json());
@@ -92,6 +107,7 @@ app.use(
               { proof: "zkproof(human)" },
             ],
             ...(PROOF_POLICY ? { proofPolicy: PROOF_POLICY } : {}),
+            ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),
           },
         },
       },

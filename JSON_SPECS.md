@@ -54,6 +54,23 @@ By default, zkx402 prefers **chain-based** verification (reliable, no vendor API
   - `SELF_API_TIMEOUT_MS` (optional): request timeout (default 8000ms)
 - **Request header**:
   - `X-Self-Proof`: JSON string containing the Self proof/session payload (passed through to the verifier as `proof`)
+  - `X-ZK-Proof-Plan` (optional): JSON string that constrains which provider to use (useful when a claim is “soft” and multiple providers are allowed)
+
+`X-ZK-Proof-Plan` shapes (v1):
+
+```json
+{ "provider": "self" }
+```
+
+or per-claim-key:
+
+```json
+{ "providers": { "human": "self_api" } }
+```
+
+Security note:
+
+- If `X-PAYMENT` is **not** present, the middleware will **avoid vendor API calls** and treat `X-User-Proofs` as an *intent signal* (quote mode). Actual enforcement still occurs when the client submits payment + proofs.
 
 Request body shape sent to `SELF_API_URL`:
 
@@ -70,6 +87,52 @@ Request body shape sent to `SELF_API_URL`:
 Response handling:
 
 - Any JSON response with `verified: true` or `valid: true` (or `success: true` without `error`) is treated as verified.
+
+## 1.8 Proof Cost JSON (separate schema; v1)
+
+Proof verification can have a **real cost** (vendor API billing, infra, rate-limits). To keep pricing flexible (and compatible with future real-time quotes), we store proof verification costs in a **separate JSON schema** from `proofPolicy`.
+
+### 1.8.1 File location (demo server)
+
+- **Default path**: `apps/demo/server/proof-costs.json`
+- **Override**: set `PROOF_COSTS_PATH`
+- **Enable**: set `ENABLE_PROOF_COSTS=true`
+
+### 1.8.2 Envelope format
+
+```json
+{
+  "schema": "zkx402.proofCostEnvelope.v1",
+  "costs": {
+    "version": 1,
+    "scope": "zkx402",
+    "currency": "usd_micros",
+    "defaultCommissionBps": 250,
+    "entries": [
+      { "provider": "self", "claimKey": "human", "costUsdMicros": "0" },
+      { "provider": "self_api", "claimKey": "human", "costUsdMicros": "2500" }
+    ]
+  },
+  "integrity": { "hashAlg": "sha256", "hash": "<sha256(stableStringify(costs))>" }
+}
+```
+
+### 1.8.3 Units / web3 safety
+
+- **`usd_micros`** is used to avoid floats:
+  - `"1000000"` == **$1.00**
+  - `"2500"` == **$0.0025**
+- **v1 assumption**: endpoints are priced in **USDC (6 decimals)** so USD micros map 1:1 to USDC atomic units for fee calculation.
+- If you price endpoints in a different asset, you’ll need an oracle/FX layer (not implemented yet).
+
+### 1.8.4 Secrets (where to put them)
+
+Do **not** put secrets in `proof-costs.json` or `proof-policy.json`. Use env vars:
+
+- `SELF_API_URL` (public-ish, but keep in env for deploy flexibility)
+- `SELF_API_KEY` (**secret**)
+- `VLAYERS_API_KEY` (**future; secret**)
+
 
 ### 1.4 Integrity hashing (sha256 + stable stringify)
 

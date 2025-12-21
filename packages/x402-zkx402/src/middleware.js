@@ -19,6 +19,7 @@ import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { parseLegacyZkProofToClaim } from "./proofs/claims.js";
+import { claimKey } from "./proofs/claims.js";
 import { normalizeProofPolicy } from "./proofs/policy.js";
 import {
   getCorrelationId,
@@ -29,6 +30,7 @@ import {
 import { createSelfChainProvider } from "./proofs/providers/self_chain.js";
 import { createSelfApiProvider } from "./proofs/providers/self_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
+import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -154,6 +156,11 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     const correlationId = getCorrelationId(req);
 
+    // Presence of X-PAYMENT gates whether we should do potentially costly checks.
+    // NOTE: x402 itself supports a 402 negotiation step; when no payment is present we prefer
+    // to avoid vendor API calls and return a price quote instead (see proof verification below).
+    const payment = req.header("X-PAYMENT");
+
     // Read user proofs from header for verification and dynamic pricing
     let userProofs = [];
     const userProofsHeader = req.headers["x-user-proofs"];
@@ -190,6 +197,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
     }
 
+    let proofPlan = null;
+    const proofPlanHeader = req.headers["x-zk-proof-plan"] || null;
+    if (proofPlanHeader) {
+      try {
+        proofPlan = JSON.parse(String(proofPlanHeader));
+      } catch (error) {
+        dbg("x_zk_proof_plan_parse_failed", {
+          correlationId,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
     // Custom function to verify user proofs against requested proofs
     /**
      * Verifies if user has all required proofs for a discount option
@@ -208,6 +228,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
       const normalizedPolicy = normalizeProofPolicy(extraConfig?.proofPolicy);
       const pHash = policyHash(normalizedPolicy);
+      const costs = extraConfig?.proofCosts || null;
+      const cHash = proofCostsHash(costs);
 
       // Check each requested proof
       const verificationResults = await Promise.all(
@@ -219,15 +241,55 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             if (!hasProof) return { proof: requiredProof, verified: false };
 
             const claim = parseLegacyZkProofToClaim(requiredProof);
-            const startedAt = Date.now();
-            const routed = await verifyClaimWithPolicy({
-              claim,
-              policy: normalizedPolicy,
-              providers: proofProviders,
-              context: { walletAddress, selfProof, correlationId },
-            });
+            const ck = claimKey(claim);
 
-            const durationMs = Date.now() - startedAt;
+            // Client can optionally constrain which provider to use (soft checks).
+            // Shape:
+            // - { provider: "self" } => applies to all claims
+            // - { providers: { "human": "self_api" } } => per-claim key
+            const planProvider =
+              typeof proofPlan?.provider === "string" ? proofPlan.provider : null;
+            const planProviders =
+              proofPlan?.providers && typeof proofPlan.providers === "object"
+                ? proofPlan.providers
+                : null;
+            const selectedProvider =
+              (planProviders && typeof planProviders[ck] === "string"
+                ? planProviders[ck]
+                : null) || planProvider;
+
+            const routedPolicy = selectedProvider
+              ? {
+                  ...normalizedPolicy,
+                  allowedProviders: [selectedProvider],
+                  preferenceOrder: [selectedProvider],
+                }
+              : normalizedPolicy;
+
+            // Quote mode (no payment): avoid vendor API calls, but still allow the client
+            // to discover the *price* (including verification fees/commission). We treat
+            // `X-User-Proofs` as an intent signal; actual verification is enforced once
+            // the request includes a matching payment.
+            let routed = null;
+            let durationMs = 0;
+            const quoteOnly = !payment;
+            const providerObj = selectedProvider
+              ? proofProviders.find((p) => p.name === selectedProvider)
+              : null;
+            const isApiProvider = providerObj?.kind === "api";
+
+            if (quoteOnly && isApiProvider) {
+              routed = { status: VerifyStatus.VERIFIED, provider: selectedProvider, quoted: true };
+            } else {
+              const startedAt = Date.now();
+              routed = await verifyClaimWithPolicy({
+                claim,
+                policy: routedPolicy,
+                providers: proofProviders,
+                context: { walletAddress, selfProof, correlationId },
+              });
+              durationMs = Date.now() - startedAt;
+            }
 
             logDebug(
               "proof_check",
@@ -247,6 +309,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 correlationId,
                 scope: normalizedPolicy.scope,
                 policyHash: pHash,
+                proofCostsHash: cHash,
                 proof: requiredProof,
                 claim,
                 provider: routed.provider || null,
@@ -270,10 +333,22 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 reason: routed.reason || "verification error",
               };
             }
+
+            let verificationCost = null;
+            if (costs && routed.provider) {
+              verificationCost = computeVerificationCostUsdMicros({
+                claims: [claim],
+                provider: routed.provider,
+                costs,
+              });
+            }
+
             return {
               proof: requiredProof,
               verified: routed.status === VerifyStatus.VERIFIED,
               provider: routed.provider,
+              verificationCost,
+              quoted: Boolean(routed.quoted),
             };
           }
 
@@ -428,10 +503,26 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             requestedProofs: discountOption.requestedProofs,
           });
 
+          // Compute verification fee (USD micros). In v1 we assume USDC (6 decimals),
+          // so USD micros map 1:1 to USDC atomic units.
+          let verificationFeeAtomic = 0n;
+          try {
+            const details = verificationResult?.verificationDetails || [];
+            for (const d of details) {
+              const totalUsdMicros =
+                d?.verificationCost?.totalUsdMicros ?? null;
+              if (totalUsdMicros != null) {
+                verificationFeeAtomic += BigInt(String(totalUsdMicros));
+              }
+            }
+          } catch (_) {
+            verificationFeeAtomic = 0n;
+          }
+
           // Convert discounted atomic amount to price format
           // amountRequired is in atomic units (e.g., "5000" = 0.005 USDC for 6 decimals)
           // We need to convert it back to dollar format for processPriceToAtomicAmount
-          const discountedAmountNum = BigInt(discountedAmount);
+          const discountedAmountNum = BigInt(discountedAmount) + verificationFeeAtomic;
           const usdcDecimals = 6n;
           const dollarAmount =
             Number(discountedAmountNum) / Number(10n ** usdcDecimals);
@@ -445,6 +536,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             requestedProofs: discountOption.requestedProofs,
             discountedAmount: discountedAmount,
             discountedPrice: finalPrice,
+            verificationFeeAtomic: verificationFeeAtomic.toString(),
             userProofs: userProofs,
             verificationResult: verificationResult,
           };
@@ -517,6 +609,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         extra: {
           ...asset.eip712,
           ...extraConfig,
+          // Proof cost metadata (never include secret API keys here).
+          ...(extraConfig?.proofCosts
+            ? {
+                proofCostsHash: proofCostsHash(extraConfig.proofCosts),
+                proofCostsCurrency: extraConfig.proofCosts.currency || "usd_micros",
+                proofCostsDefaultCommissionBps:
+                  extraConfig.proofCosts.defaultCommissionBps ?? 0,
+              }
+            : {}),
+          ...(proofPlan ? { proofPlan } : {}),
+          ...(verificationMetadata?.verificationFeeAtomic
+            ? { proofVerificationFeeAtomic: verificationMetadata.verificationFeeAtomic }
+            : {}),
         },
         // TODO: add zk requests here
       });
@@ -571,7 +676,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       throw new Error(`Unsupported network: ${network}`);
     }
 
-    const payment = req.header("X-PAYMENT");
     const userAgent = req.header("User-Agent") || "";
     const acceptHeader = req.header("Accept") || "";
     const isWebBrowser =
