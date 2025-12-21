@@ -1,82 +1,162 @@
 import express from "express";
 import cors from "cors";
-// import { paymentMiddleware } from "x402-express";
-import { paymentMiddleware } from "./middleware.js";
+import { paymentMiddleware } from "x402-zkx402";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
 import { getTokenBalances } from "./balances.js";
+import { createLocalFacilitator } from "../local-chain/local-facilitator.js";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import crypto from "node:crypto";
 
-dotenv.config();
+dotenv.config({ path: ".env" });
+dotenv.config({ path: ".env.local", override: true });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const ENABLE_PROOF_POLICY = process.env.ENABLE_PROOF_POLICY === "true";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys
+    .map((k) => JSON.stringify(k) + ":" + stableStringify(value[k]))
+    .join(",")}}`;
+}
+
+function sha256Hex(input) {
+  return crypto.createHash("sha256").update(input).digest("hex");
+}
+
+function loadProofPolicy() {
+  try {
+    const p = process.env.PROOF_POLICY_PATH
+      ? process.env.PROOF_POLICY_PATH
+      : join(__dirname, "proof-policy.json");
+    const raw = JSON.parse(readFileSync(p, "utf-8"));
+
+    // Web3-friendly envelope (integrity + optional signature/encryption later)
+    if (
+      raw &&
+      typeof raw === "object" &&
+      raw.schema === "zkx402.proofPolicyEnvelope.v1"
+    ) {
+      if (!raw.policy || typeof raw.policy !== "object") return null;
+      if (
+        raw.integrity?.hashAlg === "sha256" &&
+        typeof raw.integrity?.hash === "string"
+      ) {
+        const computed = sha256Hex(stableStringify(raw.policy));
+        if (computed !== raw.integrity.hash) return null;
+      }
+      return raw.policy;
+    }
+
+    // Plain policy object (legacy)
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+const PROOF_POLICY = ENABLE_PROOF_POLICY ? loadProofPolicy() : null;
 
 // parse JSON bodies
 app.use(express.json());
 
 // wallet address that will receive payments for the API
 const RECEIVER_WALLET = process.env.RECEIVER_WALLET || "0xYourWalletAddress";
+const USE_LOCAL_FACILITATOR = process.env.USE_LOCAL_FACILITATOR === "true";
+const LOCAL_USDC_ADDRESS = process.env.USDC_ADDRESS;
+const RECEIVER_PRIVATE_KEY = process.env.RECEIVER_PRIVATE_KEY;
 
 // enable CORS for local development and production
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000', 'http://localhost:3001'],
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : ["http://localhost:3000", "http://localhost:3001"],
   credentials: true,
 };
 app.use(cors(corsOptions));
 
 // apply x402 payment middleware
-app.use(paymentMiddleware(
-  RECEIVER_WALLET,
-  {
-    // configure the x402-enabled endpoint
-    "GET /motivate": {
-      // price in USDC (0.01 USDC)
-      price: "$0.01",
-      // using Base Sepolia testnet
-      network: "base-sepolia",
-      // metadata about the endpoint for better discovery
-      config: {
-        description: "get a motivational quote to inspire your day",
-        outputSchema: {
-          type: "object",
-          properties: {
-            quote: { type: "string", description: "an inspirational quote" },
-            timestamp: { type: "string", description: "when the quote was generated" }
-          }
+app.use(
+  paymentMiddleware(
+    RECEIVER_WALLET,
+    {
+      // configure the x402-enabled endpoint
+      "GET /motivate": {
+        // price in USDC (0.01 USDC)
+        price: "$0.01",
+        // using Base Sepolia testnet
+        network: "base-sepolia",
+        // metadata about the endpoint for better discovery
+        config: {
+          description: "get a motivational quote to inspire your day",
+          asset:
+            USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS
+              ? LOCAL_USDC_ADDRESS
+              : undefined,
+          outputSchema: {
+            type: "object",
+            properties: {
+              quote: { type: "string", description: "an inspirational quote" },
+              timestamp: {
+                type: "string",
+                description: "when the quote was generated",
+              },
+            },
+          },
+          // zkx402 additions
+          extra: {
+            variableAmountRequired: [
+              {
+                requestedProofs: "zkproofOf(human)",
+                amountRequired: "5000",
+              },
+            ],
+            contentMetadata: [
+              { proof: "zkproof(Edward Snowden)" },
+              { proof: "zkproof(human)" },
+            ],
+            ...(PROOF_POLICY ? { proofPolicy: PROOF_POLICY } : {}),
+          },
         },
-        // zkx402 additions
-        extra: {
-          variableAmountRequired: [{ 
-            requestedProofs: "zkproofOf(human), zkproofOf(instituion=NYT)", amountRequired: "5000" 
-          }],
-          contentMetadata: [
-            { proof: "zkproof(Edward Snowden)" },
-            { proof: "zkproof(human)" }
-          ]
-        }
-      }
-    }
-  },
-  facilitator // use CDP's hosted facilitator (requires CDP_API_KEY and CDP_API_KEY_PRIVATE_KEY env vars)
-));
+      },
+    },
+    USE_LOCAL_FACILITATOR
+      ? createLocalFacilitator({
+          rpcUrl: process.env.RPC_URL || "http://localhost:8545",
+          usdcAddress: LOCAL_USDC_ADDRESS,
+          receiverPrivateKey: RECEIVER_PRIVATE_KEY,
+        })
+      : facilitator
+  )
+);
 
 // the x402-enabled endpoint - this is ALL the code you need!
 app.get("/motivate", (req, res) => {
   // Access verification metadata set by middleware
   const verification = req.verificationMetadata;
-  
+
   res.json({
-    quote: "Innovation happens when ideas collide, and blockchain is the perfect collision of technology and finance. --Vitalik Buterin",
+    quote:
+      "Innovation happens when ideas collide, and blockchain is the perfect collision of technology and finance. --Vitalik Buterin",
     timestamp: new Date().toISOString(),
     paid: true,
-    verification: verification ? {
-      qualified: verification.qualified,
-      discountApplied: verification.discountApplied,
-      discountedPrice: verification.discountedPrice,
-    } : null,
+    verification: verification
+      ? {
+          qualified: verification.qualified,
+          discountApplied: verification.discountApplied,
+          discountedPrice: verification.discountedPrice,
+        }
+      : null,
   });
 });
 
@@ -89,13 +169,13 @@ app.get("/", (req, res) => {
       "GET /health": "Health check",
       "GET /balance/:address": "Get USDC balance",
       "POST /faucet": "Request test USDC",
-      "GET /motivate": "Get motivational quote (requires 0.01 USDC payment)"
+      "GET /motivate": "Get motivational quote (requires 0.01 USDC payment)",
     },
     payment: {
       price: "0.01 USDC",
-      network: "base-sepolia"
+      network: "base-sepolia",
     },
-    github: "https://github.com/jnix2007/x402-demo"
+    github: "https://github.com/jnix2007/x402-demo",
   });
 });
 
@@ -108,7 +188,7 @@ app.get("/health", (req, res) => {
 app.get("/balance/:address", async (req, res) => {
   try {
     const { address } = req.params;
-    
+
     if (!address) {
       return res.status(400).json({ error: "address required" });
     }
@@ -117,21 +197,28 @@ app.get("/balance/:address", async (req, res) => {
     const privateKey = process.env.CDP_API_KEY_SECRET;
 
     if (!apiKeyId || !privateKey) {
-      return res.status(500).json({ error: "server not configured with CDP API credentials" });
+      return res
+        .status(500)
+        .json({ error: "server not configured with CDP API credentials" });
     }
 
-    const usdcBalance = await getTokenBalances(address, "base-sepolia", apiKeyId, privateKey);
-    
-    res.json({ 
+    const usdcBalance = await getTokenBalances(
+      address,
+      "base-sepolia",
+      apiKeyId,
+      privateKey
+    );
+
+    res.json({
       balance: usdcBalance,
       address: address,
       network: "base-sepolia",
-      token: "USDC"
+      token: "USDC",
     });
   } catch (error) {
     console.error("Balance error:", error);
-    res.status(500).json({ 
-      error: error.message || "failed to fetch balance"
+    res.status(500).json({
+      error: error.message || "failed to fetch balance",
     });
   }
 });
@@ -140,7 +227,7 @@ app.get("/balance/:address", async (req, res) => {
 app.post("/faucet", async (req, res) => {
   try {
     const { address } = req.body;
-    
+
     if (!address) {
       return res.status(400).json({ error: "address required" });
     }
@@ -149,23 +236,25 @@ app.post("/faucet", async (req, res) => {
     const privateKey = process.env.CDP_API_KEY_SECRET;
 
     if (!apiKeyId || !privateKey) {
-      return res.status(500).json({ error: "server not configured with CDP API credentials" });
+      return res
+        .status(500)
+        .json({ error: "server not configured with CDP API credentials" });
     }
 
     console.log(`requesting faucet for address: ${address}`);
     const txHash = await requestFaucet(address, apiKeyId, privateKey);
-    
+
     console.log(`Faucet successful! Transaction: ${txHash}`);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       transactionHash: txHash,
-      message: "USDC will arrive shortly"
+      message: "USDC will arrive shortly",
     });
   } catch (error) {
     console.error("Faucet error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message || "Faucet request failed",
-      details: "may be hitting rate limits; try again in a few min"
+      details: "may be hitting rate limits; try again in a few min",
     });
   }
 });
@@ -174,9 +263,15 @@ app.listen(PORT, () => {
   console.log(`x402 demo server running on http://localhost:${PORT}`);
   console.log(`\nEndpoints:`);
   console.log(`   • GET  /health           - health check (public)`);
-  console.log(`   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`);
-  console.log(`   • POST /faucet           - request test USDC via CDP Faucet API (public)`);
-  console.log(`   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`);
+  console.log(
+    `   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`
+  );
+  console.log(
+    `   • POST /faucet           - request test USDC via CDP Faucet API (public)`
+  );
+  console.log(
+    `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`
+  );
   console.log(`\nCDP products in use:`);
   console.log(`   • CDP x402 Facilitator - payment verification & settlement`);
   console.log(`   • CDP Faucet API       - test USDC distribution`);
@@ -184,4 +279,3 @@ app.listen(PORT, () => {
   console.log(`\nreceiving payments at: ${RECEIVER_WALLET}`);
   console.log(`Price: 0.01 USDC on Base Sepolia`);
 });
-

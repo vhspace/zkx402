@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "Complete x402 payment protocol demonstration",
   "scripts": {
-    "install:all": "cd server && npm install && cd ../client && npm install",
+    "install:all": "cd server && npm install && cd ../client && npm install && cd ../local-chain && npm install",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
-    "dev": "echo 'Run these in separate terminals:' && echo '  npm run dev:server' && echo '  npm run dev:client'"
+    "dev": "echo 'Run these in separate terminals:' && echo '  npm run dev:server' && echo '  npm run dev:client'",
+    "test:setup": "cd local-chain && npm run setup",
+    "test:e2e": "cd local-chain && npm test",
+    "test:teardown": "cd local-chain && npm run teardown",
+    "test:clean": "cd local-chain && npm run clean"
   },
   "keywords": [
     "x402",

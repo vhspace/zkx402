@@ -1,0 +1,15 @@
+{
+  "schema": "zkx402.proofPolicyEnvelope.v1",
+  "policy": {
+    "version": 1,
+    "scope": "zkx402",
+    "claims": [{ "type": "human" }],
+    "allowedProviders": ["self"],
+    "preferenceOrder": ["self"],
+    "fallback": "none"
+  },
+  "integrity": {
+    "hashAlg": "sha256",
+    "hash": "504a6e7908b9c6606d4a5f0c14d46a7289d4342c81701bb95c833671db09f43b"
+  }
+}

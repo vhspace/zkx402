@@ -18,10 +18,16 @@ import { useFacilitator } from "x402/verify";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { parseLegacyZkProofToClaim } from "./proofs/claims.js";
+import { normalizeProofPolicy } from "./proofs/policy.js";
 import {
-  createSelfChainProofChecker,
-  isSelfChainProofString,
-} from "./proofs/chain/self.js";
+  getCorrelationId,
+  logAuditEvent,
+  logDebug,
+  policyHash,
+} from "./proofs/audit.js";
+import { createSelfChainProvider } from "./proofs/providers/self_chain.js";
+import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -30,27 +36,25 @@ const __dirname = dirname(__filename);
 // Load proof.json for institution proof verification
 let institutionProofData = null;
 try {
-  // proof.json is in the parent directory of server/
-  const proofPath = join(__dirname, "..", "proof.json");
-  const proofContent = readFileSync(proofPath, "utf-8");
-  institutionProofData = JSON.parse(proofContent);
-  console.log("Loaded institution proof data from proof.json");
+  const candidatePaths = [
+    // packaged location (if consumer copies proof.json next to the package)
+    join(__dirname, "..", "proof.json"),
+    // typical monorepo/demo layouts
+    join(process.cwd(), "proof.json"),
+    join(process.cwd(), "zkx402-demo", "proof.json"),
+  ];
+  for (const p of candidatePaths) {
+    try {
+      const proofContent = readFileSync(p, "utf-8");
+      institutionProofData = JSON.parse(proofContent);
+      console.log(`Loaded institution proof data from ${p}`);
+      break;
+    } catch (_) {
+      // try next
+    }
+  }
 } catch (error) {
   console.warn("Could not load proof.json:", error.message);
-  // Try alternative path (if running from different directory)
-  try {
-    const altProofPath = join(process.cwd(), "proof.json");
-    const proofContent = readFileSync(altProofPath, "utf-8");
-    institutionProofData = JSON.parse(proofContent);
-    console.log(
-      "Loaded institution proof data from proof.json (alternative path)"
-    );
-  } catch (altError) {
-    console.warn(
-      "Could not load proof.json from alternative path:",
-      altError.message
-    );
-  }
 }
 
 const VERIFY_API_URL = "https://zkx402-server.vercel.app/api/verify";
@@ -103,9 +107,18 @@ const VERIFY_API_URL = "https://zkx402-server.vercel.app/api/verify";
  * ```
  */
 export function paymentMiddleware(payTo, routes, facilitator, paywall) {
-  const { verify, settle, supported } = useFacilitator(facilitator);
+  const useLocalFacilitator =
+    facilitator &&
+    typeof facilitator.verify === "function" &&
+    typeof facilitator.settle === "function";
+  const { verify, settle, supported } = useLocalFacilitator
+    ? facilitator
+    : useFacilitator(facilitator);
   const x402Version = 1;
-  const selfProofChecker = createSelfChainProofChecker();
+  const auditEnabled = process.env.ZKX402_AUDIT_LOG === "true";
+  const debugEnabled = process.env.ZKX402_DEBUG_LOG === "true";
+
+  const chainProviders = [createSelfChainProvider()];
 
   // Pre-compile route patterns to regex and extract verbs
   const routePatterns = computeRoutePatterns(routes);
@@ -132,13 +145,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       resource,
       discoverable,
       extra: extraConfig,
+      asset: assetOverride,
     } = config;
 
-    const walletAddress =
-      req.headers["x-wallet-address"] ||
-      req.query?.wallet ||
-      req.query?.address ||
-      null;
+    const correlationId = getCorrelationId(req);
 
     // Read user proofs from header for verification and dynamic pricing
     let userProofs = [];
@@ -151,6 +161,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         console.error("Failed to parse X-User-Proofs header:", error);
       }
     }
+
+    const walletAddress =
+      req.headers["x-wallet-address"] ||
+      req.query?.wallet ||
+      req.query?.address ||
+      null;
 
     // Custom function to verify user proofs against requested proofs
     /**
@@ -168,20 +184,74 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         p.trim().toLowerCase()
       );
 
+      const normalizedPolicy = normalizeProofPolicy(extraConfig?.proofPolicy);
+      const pHash = policyHash(normalizedPolicy);
+
       // Check each requested proof
       const verificationResults = await Promise.all(
         normalizedRequestedProofs.map(async (requiredProof) => {
           const hasProof = normalizedUserProofs.includes(requiredProof);
 
-          if (isSelfChainProofString(requiredProof)) {
+          // If proofPolicy is present, prefer canonical claim routing (chain-only v1).
+          if (extraConfig?.proofPolicy) {
             if (!hasProof) return { proof: requiredProof, verified: false };
-            const result = await selfProofChecker.isWalletVerified(
-              walletAddress
+
+            const claim = parseLegacyZkProofToClaim(requiredProof);
+            const startedAt = Date.now();
+            const routed = await verifyClaimWithPolicy({
+              claim,
+              policy: normalizedPolicy,
+              providers: chainProviders,
+              context: { walletAddress },
+            });
+
+            const durationMs = Date.now() - startedAt;
+
+            logDebug(
+              "proof_check",
+              {
+                correlationId,
+                requiredProof,
+                claim,
+                routed,
+                durationMs,
+                policyHash: pHash,
+              },
+              { enabled: debugEnabled }
             );
+
+            logAuditEvent(
+              {
+                correlationId,
+                scope: normalizedPolicy.scope,
+                policyHash: pHash,
+                proof: requiredProof,
+                claim,
+                provider: routed.provider || null,
+                status: routed.status,
+                durationMs,
+              },
+              { enabled: auditEnabled }
+            );
+
+            if (routed.status === VerifyStatus.NOT_IMPLEMENTED) {
+              return {
+                proof: requiredProof,
+                verified: false,
+                reason: "not implemented",
+              };
+            }
+            if (routed.status === VerifyStatus.ERROR) {
+              return {
+                proof: requiredProof,
+                verified: false,
+                reason: routed.reason || "verification error",
+              };
+            }
             return {
               proof: requiredProof,
-              verified: result.verified,
-              reason: result.reason,
+              verified: routed.status === VerifyStatus.VERIFIED,
+              provider: routed.provider,
             };
           }
 
@@ -441,7 +511,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         mimeType: mimeType ?? "",
         payTo: getAddress(payTo),
         maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
-        asset: getAddress(asset.address),
+        asset: getAddress(assetOverride || asset.address),
         // TODO: Rename outputSchema to requestStructure
         outputSchema: {
           input: {
