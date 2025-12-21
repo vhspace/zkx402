@@ -8,13 +8,13 @@ It also describes how we compute integrity hashes and which scripts to run to va
 
 ### 1.1 File location (demo server)
 
-- **Default path**: `zkx402-demo/server/proof-policy.json`
+- **Default path**: `apps/demo/server/proof-policy.json`
 - **Override**: set `PROOF_POLICY_PATH` to a custom file path
 - **Enable**: set `ENABLE_PROOF_POLICY=true` (otherwise `proofPolicy` is not attached to the route config)
 
 ### 1.2 Envelope format (recommended)
 
-`zkx402-demo/server/proof-policy.json` should be an **envelope**:
+`apps/demo/server/proof-policy.json` should be an **envelope**:
 
 ```json
 {
@@ -87,7 +87,7 @@ Do **not** put secrets (API keys) into policy JSON; keep secrets in env vars.
 
 ### 2.1 File location (repo)
 
-- `zkx402-demo/proof.json`
+- `apps/demo/proof.json`
 
 This file is a captured proof payload used by the legacy “institution=NYT” verifier path.
 
@@ -97,7 +97,7 @@ The middleware attempts to load `proof.json` from these candidate paths:
 
 - `packages/x402-zkx402/proof.json` (if a consumer places it next to the package)
 - `<cwd>/proof.json`
-- `<cwd>/zkx402-demo/proof.json` (this repo’s layout)
+- `<cwd>/apps/demo/proof.json` (this repo’s layout)
 
 ## 3) Scripts to run (how to validate)
 
@@ -106,7 +106,7 @@ The middleware attempts to load `proof.json` from these candidate paths:
 Runs unit tests + local chain E2E:
 
 ```bash
-cd zkx402-demo/local-chain
+cd apps/demo/local-chain
 node run-e2e-test.js
 ```
 

@@ -1,6 +1,6 @@
 # Proof Verification Plan (Canonical Claims + Vendor Routing)
 
-This document records the current design decisions for proof checking in `zkx402-demo/server/middleware.js` and the direction we’ll take to modularize proof verification.
+This document records the current design decisions for proof checking in `apps/demo/server/middleware.js` and the direction we’ll take to modularize proof verification.
 
 It is intentionally a planning record (not final polished docs).
 
@@ -195,7 +195,7 @@ Initial version can log to stdout in structured JSON; later versions can send to
 
 ### Phase 1: Refactor into Modules (No Behavior Change Except Stubs)
 
-- Create a `proofs/` directory under `zkx402-demo/server/`:
+- Create a `proofs/` directory under `apps/demo/server/`:
   - `proofs/claims/*` (canonical claim parsing/model)
   - `proofs/chain/*` (chain checkers; start with Self)
   - `proofs/router/*` (provider selection and execution)

@@ -1,16 +1,16 @@
 E2E TESTING (LOCAL) - zkx402 / x402 middleware
 
 Quick run (one command):
-- cd zkx402-demo/local-chain
+- cd apps/demo/local-chain
 - node run-e2e-test.js
 
 What the runner does:
 - Starts Anvil on :8545 (if not already running)
 - Deploys MockUSDC (EIP-3009 transferWithAuthorization enabled)
 - Mints 10,000 USDC to the test payer
-- Writes server env file: zkx402-demo/server/.env.local
-- Starts server: zkx402-demo/server/index.js
-- Runs client test: zkx402-demo/local-chain/test-e2e.js
+- Writes server env file: apps/demo/server/.env.local
+- Starts server: apps/demo/server/index.js
+- Runs client test: apps/demo/local-chain/test-e2e.js
 
 If port 3001 is already in use:
 - lsof -ti:3001 | xargs -r kill -9
@@ -19,11 +19,11 @@ If Anvil is already running and you want a clean chain:
 - pkill -f anvil
 
 Key files:
-- zkx402-demo/local-chain/run-e2e-test.js     (orchestrates full E2E)
-- zkx402-demo/local-chain/test-e2e.js         (client flow)
-- zkx402-demo/server/index.js                 (server; loads .env.local and uses local facilitator)
-- zkx402-demo/local-chain/local-facilitator.js (local verify + settle via transferWithAuthorization)
-- zkx402-demo/contracts/src/MockUSDC.sol      (Mock USDC with EIP-3009 transferWithAuthorization)
+- apps/demo/local-chain/run-e2e-test.js     (orchestrates full E2E)
+- apps/demo/local-chain/test-e2e.js         (client flow)
+- apps/demo/server/index.js                 (server; loads .env.local and uses local facilitator)
+- apps/demo/local-chain/local-facilitator.js (local verify + settle via transferWithAuthorization)
+- apps/demo/contracts/src/MockUSDC.sol      (Mock USDC with EIP-3009 transferWithAuthorization)
 
 Important details:
 - The X-PAYMENT header must match the `x402` npm package schema:

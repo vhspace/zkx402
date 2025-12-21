@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -29,9 +31,9 @@ jobs:
         run: npm test
 
       - name: Install local-chain deps
-        working-directory: zkx402-demo/local-chain
+        working-directory: apps/demo/local-chain
         run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: E2E (local chain)
-        working-directory: zkx402-demo/local-chain
+        working-directory: apps/demo/local-chain
         run: node run-e2e-test.js

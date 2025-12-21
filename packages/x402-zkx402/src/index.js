@@ -1,14 +1,14 @@
 /**
  * x402-zkx402: Zero-knowledge proof verification middleware for x402 protocol
- * 
+ *
  * This package extends the x402 payment protocol with zkproof verification,
  * enabling identity-based variable pricing and content provenance verification.
- * 
+ *
  * @example
  * ```javascript
  * import { paymentMiddleware } from 'x402-zkx402';
  * import { facilitator } from '@coinbase/x402';
- * 
+ *
  * app.use(paymentMiddleware(
  *   '0xYourWallet',
  *   {
@@ -37,5 +37,13 @@
  */
 
 export { paymentMiddleware } from './middleware.js';
+
+// Reusable helpers (production-oriented) for policy distribution/validation
+export {
+  PROOF_POLICY_ENVELOPE_SCHEMA_V1,
+  loadProofPolicyFile,
+  parseProofPolicyJson,
+  policyIntegrityHashSha256,
+} from "./proofs/envelope.js";
 
 
