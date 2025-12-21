@@ -160,7 +160,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       try {
         userProofs = JSON.parse(userProofsHeader);
       } catch (error) {
-        dbg("x_user_proofs_parse_failed", { error: error?.message || String(error) });
+        dbg("x_user_proofs_parse_failed", {
+          error: error?.message || String(error),
+        });
       }
     }
 
@@ -289,7 +291,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               });
 
               const responseText = await verifyResponse.text();
-              dbg("institution_proof_verify_response", { status: verifyResponse.status });
+              dbg("institution_proof_verify_response", {
+                status: verifyResponse.status,
+              });
 
               if (!verifyResponse.ok) {
                 let errorData;
@@ -298,7 +302,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 } catch (e) {
                   errorData = { raw: responseText.substring(0, 500) };
                 }
-                dbg("institution_proof_verify_failed", { status: verifyResponse.status });
+                dbg("institution_proof_verify_failed", {
+                  status: verifyResponse.status,
+                });
                 return {
                   proof: requiredProof,
                   verified: false,
@@ -335,7 +341,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 apiResult: verifyResult,
               };
             } catch (error) {
-              dbg("institution_proof_verify_error", { error: error?.message || String(error) });
+              dbg("institution_proof_verify_error", {
+                error: error?.message || String(error),
+              });
               return {
                 proof: requiredProof,
                 verified: false,
@@ -398,7 +406,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
         // Check if user has all required proofs for this discount
         if (verificationResult.isValid) {
-          dbg("legacy_discount_applied", { requestedProofs: discountOption.requestedProofs });
+          dbg("legacy_discount_applied", {
+            requestedProofs: discountOption.requestedProofs,
+          });
 
           // Convert discounted atomic amount to price format
           // amountRequired is in atomic units (e.g., "5000" = 0.005 USDC for 6 decimals)
