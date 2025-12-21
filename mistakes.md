@@ -2,6 +2,16 @@
 
 This file tracks mistakes found during implementation and what we changed to prevent repeats.
 
+## Pre-merge checklist (to prevent repeats)
+
+- **CI-fresh simulation**: Run the same steps CI runs from a clean state (no assumptions about existing `node_modules`, running servers, or open ports).
+- **No hardcoded paths**: Avoid absolute paths like `/workspaces/...`; compute paths from `__dirname` or run commands in the correct `cwd`.
+- **CLI contract check**: Before baking a CLI invocation into scripts, confirm argument forms and ordering (`--help` / minimal repro).
+- **Lockfile policy**:
+  - If CI uses `npm ci`, ensure the relevant `package-lock.json` is committed and not ignored.
+  - If lockfiles are intentionally not committed, CI must use `npm install` instead of `npm ci`.
+- **Runtime deps declared at import site**: If a package imports a module at runtime, it must declare it in its own `dependencies` (not rely on workspace root hoisting).
+
 ## 2025-12-21
 
 ### `forge create` flags/args ordering
