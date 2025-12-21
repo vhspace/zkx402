@@ -14,7 +14,6 @@ import {
   SupportedSVMNetworks,
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
-import { parseLegacyZkProofToClaim } from "./proofs/claims.js";
 import { claimKey } from "./proofs/claims.js";
 import { normalizeProofPolicy } from "./proofs/policy.js";
 import {
@@ -28,7 +27,6 @@ import { createSelfApiProvider } from "./proofs/providers/self_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
 
-// NOTE: This middleware intentionally avoids any legacy "institution proof" flows.
 // Proof-gated pricing should be driven by `proofPolicy` + provider routing.
 
 function safeBigInt(v) {
@@ -158,13 +156,15 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     const payment = req.header("X-PAYMENT");
 
     // Read user proofs from header for verification and dynamic pricing
-    let userProofs = [];
-    const userProofsHeader = req.headers["x-user-proofs"];
-    if (userProofsHeader) {
+    let presentedClaims = [];
+    const presentedClaimsHeader = req.headers["x-proof-claims"];
+    if (presentedClaimsHeader) {
       try {
-        userProofs = JSON.parse(userProofsHeader);
+        const parsed = JSON.parse(String(presentedClaimsHeader));
+        presentedClaims = Array.isArray(parsed) ? parsed : [];
       } catch (error) {
-        dbg("x_user_proofs_parse_failed", {
+        dbg("x_proof_claims_parse_failed", {
+          correlationId,
           error: error?.message || String(error),
         });
       }
@@ -206,169 +206,169 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
     }
 
-    // Custom function to verify user proofs against requested proofs
+    function claimKeySet(claims) {
+      const s = new Set();
+      for (const c of Array.isArray(claims) ? claims : []) {
+        s.add(claimKey(c));
+      }
+      return s;
+    }
+
+    // Custom function to verify presented claims against required claims (for a discount tier)
     /**
-     * Verifies if user has all required proofs for a discount option
-     * @param {string[]} userProofs - Array of proofs the user claims to have
-     * @param {string[]} requestedProofs - Array of proofs required for the discount
+     * Verifies if user qualifies for a discount tier.
+     *
+     * @param {Array} presentedClaims - Array of canonical claim objects the user intends to use.
+     * @param {Array} requiredClaims - Array of canonical claim objects required by this tier.
      * @returns {Promise<Object>} Verification result with isValid flag and details
      */
-    async function verifyProofs(userProofs, requestedProofs) {
-      // Normalize proofs (trim whitespace, handle case sensitivity)
-      const normalizedUserProofs = userProofs.map((p) =>
-        p.trim().toLowerCase()
-      );
-      const normalizedRequestedProofs = requestedProofs.map((p) =>
-        p.trim().toLowerCase()
-      );
+    async function verifyClaimsForTier(presentedClaims, requiredClaims) {
+      const presented = Array.isArray(presentedClaims) ? presentedClaims : [];
+      const required = Array.isArray(requiredClaims) ? requiredClaims : [];
+      const presentedKeys = claimKeySet(presented);
 
       const normalizedPolicy = normalizeProofPolicy(extraConfig?.proofPolicy);
       const pHash = policyHash(normalizedPolicy);
       const costs = extraConfig?.proofCosts || null;
       const cHash = proofCostsHash(costs);
 
-      // Check each requested proof
+      // Check each required claim
       const verificationResults = await Promise.all(
-        normalizedRequestedProofs.map(async (requiredProof) => {
-          const hasProof = normalizedUserProofs.includes(requiredProof);
+        required.map(async (claim) => {
+          const ck = claimKey(claim);
+          const presentedByClient = presentedKeys.has(ck);
 
-          // If proofPolicy is present, prefer canonical claim routing (chain-only v1).
-          if (extraConfig?.proofPolicy) {
-            if (!hasProof) return { proof: requiredProof, verified: false };
+          if (!presentedByClient) {
+            return { claimKey: ck, claim, verified: false, reason: "not_presented" };
+          }
 
-            const claim = parseLegacyZkProofToClaim(requiredProof);
-            const ck = claimKey(claim);
-
-            // Client can optionally constrain which provider to use (soft checks).
-            // Shape:
-            // - { provider: "self" } => applies to all claims
-            // - { providers: { "human": "self_api" } } => per-claim key
-            const planProvider =
-              typeof proofPlan?.provider === "string" ? proofPlan.provider : null;
-            const planProviders =
-              proofPlan?.providers && typeof proofPlan.providers === "object"
-                ? proofPlan.providers
-                : null;
-            const selectedProvider =
-              (planProviders && typeof planProviders[ck] === "string"
-                ? planProviders[ck]
-                : null) || planProvider;
-
-            const routedPolicy = selectedProvider
-              ? {
-                  ...normalizedPolicy,
-                  allowedProviders: [selectedProvider],
-                  preferenceOrder: [selectedProvider],
-                }
-              : normalizedPolicy;
-
-            // Quote mode (no payment): avoid vendor API calls, but still allow the client
-            // to discover the *price* (including verification fees/commission). We treat
-            // `X-User-Proofs` as an intent signal; actual verification is enforced once
-            // the request includes a matching payment.
-            let routed = null;
-            let durationMs = 0;
-            const quoteOnly = !payment;
-            const providerObj = selectedProvider
-              ? proofProviders.find((p) => p.name === selectedProvider)
+          // Client can optionally constrain which provider to use (soft checks).
+          // Shape:
+          // - { provider: "self" } => applies to all claims
+          // - { providers: { "human": "self_api" } } => per-claim key
+          const planProvider =
+            typeof proofPlan?.provider === "string" ? proofPlan.provider : null;
+          const planProviders =
+            proofPlan?.providers && typeof proofPlan.providers === "object"
+              ? proofPlan.providers
               : null;
-            const isApiProvider = providerObj?.kind === "api";
+          const selectedProvider =
+            (planProviders && typeof planProviders[ck] === "string"
+              ? planProviders[ck]
+              : null) || planProvider;
 
-            if (quoteOnly && isApiProvider) {
-              routed = { status: VerifyStatus.VERIFIED, provider: selectedProvider, quoted: true };
-            } else {
-              const startedAt = Date.now();
-              routed = await verifyClaimWithPolicy({
-                claim,
-                policy: routedPolicy,
-                providers: proofProviders,
-                context: { walletAddress, selfProof, correlationId },
-              });
-              durationMs = Date.now() - startedAt;
-            }
+          const routedPolicy = selectedProvider
+            ? {
+                ...normalizedPolicy,
+                allowedProviders: [selectedProvider],
+                preferenceOrder: [selectedProvider],
+              }
+            : normalizedPolicy;
 
-            logDebug(
-              "proof_check",
-              {
-                correlationId,
-                requiredProof,
-                claim,
-                routed,
-                durationMs,
-                policyHash: pHash,
-              },
-              { enabled: debugEnabled }
-            );
+          // Quote mode (no payment): avoid vendor API calls, but still allow the client
+          // to discover the *price* (including verification fees/commission).
+          let routed = null;
+          let durationMs = 0;
+          const quoteOnly = !payment;
+          const providerObj = selectedProvider
+            ? proofProviders.find((p) => p.name === selectedProvider)
+            : null;
+          const isApiProvider = providerObj?.kind === "api";
 
-            logAuditEvent(
-              {
-                correlationId,
-                scope: normalizedPolicy.scope,
-                policyHash: pHash,
-                proofCostsHash: cHash,
-                proof: requiredProof,
-                claim,
-                provider: routed.provider || null,
-                status: routed.status,
-                durationMs,
-              },
-              { enabled: auditEnabled }
-            );
+          if (quoteOnly && isApiProvider) {
+            routed = { status: VerifyStatus.VERIFIED, provider: selectedProvider, quoted: true };
+          } else {
+            const startedAt = Date.now();
+            routed = await verifyClaimWithPolicy({
+              claim,
+              policy: routedPolicy,
+              providers: proofProviders,
+              context: { walletAddress, selfProof, correlationId },
+            });
+            durationMs = Date.now() - startedAt;
+          }
 
-            if (routed.status === VerifyStatus.NOT_IMPLEMENTED) {
-              return {
-                proof: requiredProof,
-                verified: false,
-                reason: "not implemented",
-              };
-            }
-            if (routed.status === VerifyStatus.ERROR) {
-              return {
-                proof: requiredProof,
-                verified: false,
-                reason: routed.reason || "verification error",
-              };
-            }
+          logDebug(
+            "proof_check",
+            {
+              correlationId,
+              claimKey: ck,
+              claim,
+              routed,
+              durationMs,
+              policyHash: pHash,
+            },
+            { enabled: debugEnabled }
+          );
 
-            let verificationCost = null;
-            if (costs && routed.provider) {
-              verificationCost = computeVerificationCostUsdMicros({
-                claims: [claim],
-                provider: routed.provider,
-                costs,
-              });
-            }
+          logAuditEvent(
+            {
+              correlationId,
+              scope: normalizedPolicy.scope,
+              policyHash: pHash,
+              proofCostsHash: cHash,
+              claimKey: ck,
+              claim,
+              provider: routed.provider || null,
+              status: routed.status,
+              durationMs,
+            },
+            { enabled: auditEnabled }
+          );
 
+          if (routed.status === VerifyStatus.NOT_IMPLEMENTED) {
             return {
-              proof: requiredProof,
-              verified: routed.status === VerifyStatus.VERIFIED,
-              provider: routed.provider,
-              verificationCost,
-              quoted: Boolean(routed.quoted),
+              claimKey: ck,
+              claim,
+              verified: false,
+              reason: "not_implemented",
+            };
+          }
+          if (routed.status === VerifyStatus.ERROR) {
+            return {
+              claimKey: ck,
+              claim,
+              verified: false,
+              reason: routed.reason || "verification_error",
             };
           }
 
-          // Legacy/insecure mode: simple presence check only (no external calls).
-          return { proof: requiredProof, verified: hasProof };
+          let verificationCost = null;
+          if (costs && routed.provider) {
+            verificationCost = computeVerificationCostUsdMicros({
+              claims: [claim],
+              provider: routed.provider,
+              costs,
+            });
+          }
+
+          return {
+            claimKey: ck,
+            claim,
+            verified: routed.status === VerifyStatus.VERIFIED,
+            provider: routed.provider,
+            verificationCost,
+            quoted: Boolean(routed.quoted),
+          };
         })
       );
 
-      // Check if all proofs are verified
+      // Check if all claims are verified
       const allVerified = verificationResults.every(
         (result) => result.verified
       );
-      const missingProofs = verificationResults
+      const missingClaims = verificationResults
         .filter((result) => !result.verified)
-        .map((result) => result.proof);
+        .map((result) => result.claimKey);
 
       return {
         isValid: allVerified,
         hasAllProofs: allVerified,
-        missingProofs: missingProofs,
-        userProofs: normalizedUserProofs,
-        requestedProofs: normalizedRequestedProofs,
-        verifiedCount: normalizedRequestedProofs.length - missingProofs.length,
-        totalRequired: normalizedRequestedProofs.length,
+        missingClaimKeys: missingClaims,
+        presentedClaimKeys: Array.from(presentedKeys),
+        requiredClaimKeys: required.map((c) => claimKey(c)),
+        verifiedCount: required.length - missingClaims.length,
+        totalRequired: required.length,
         verificationDetails: verificationResults,
       };
     }
@@ -381,29 +381,26 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     const baseMaxAmountRequired = baseAtomicAmountForAsset.maxAmountRequired;
     const baseAsset = baseAtomicAmountForAsset.asset;
 
-    // Verify proofs against variableAmountRequired and adjust amount if qualified.
-    // SECURITY: discounts without `proofPolicy` are insecure; require explicit opt-in.
-    const allowInsecureProofs =
-      extraConfig?.allowInsecureProofs === true ||
-      process.env.ZKX402_ALLOW_INSECURE_PROOFS === "true";
+    // Verify claims against variableAmountRequired and adjust amount if qualified.
+    // SECURITY: discounts require `proofPolicy`.
 
     let finalMaxAmountRequired = baseMaxAmountRequired;
     let verificationMetadata = null;
 
-    if (userProofs.length > 0 && extraConfig?.variableAmountRequired) {
+    if (presentedClaims.length > 0 && extraConfig?.variableAmountRequired) {
       const variableAmountRequired = extraConfig.variableAmountRequired;
 
-      if (!extraConfig?.proofPolicy && !allowInsecureProofs) {
+      if (!extraConfig?.proofPolicy) {
         verificationMetadata = {
           qualified: false,
           discountApplied: false,
-          userProofs,
+          presentedClaims,
           verificationResult: {
             isValid: false,
             hasAllProofs: false,
-            missingProofs: [],
-            userProofs: userProofs.map((p) => String(p).trim().toLowerCase()),
-            requestedProofs: [],
+            missingClaimKeys: [],
+            presentedClaimKeys: Array.from(claimKeySet(presentedClaims)),
+            requiredClaimKeys: [],
             verifiedCount: 0,
             totalRequired: 0,
             verificationDetails: [],
@@ -413,8 +410,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       } else {
       // Check each discount option
       for (const discountOption of variableAmountRequired) {
-        const requestedProofs =
-          discountOption.requestedProofs?.split(",").map((p) => p.trim()) || [];
+        const requiredClaims = Array.isArray(discountOption.requiredClaims)
+          ? discountOption.requiredClaims
+          : [];
         const discountedAmountAtomic = safeBigInt(discountOption.amountRequired);
         if (discountedAmountAtomic === null) {
           dbg("discount_amount_invalid", {
@@ -424,21 +422,21 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           continue;
         }
 
-        // Use custom verification function to verify proofs (now async)
-        const verificationResult = await verifyProofs(
-          userProofs,
-          requestedProofs
+        // Use custom verification function to verify claims (now async)
+        const verificationResult = await verifyClaimsForTier(
+          presentedClaims,
+          requiredClaims
         );
 
-        dbg("legacy_proof_verification_result", {
-          requestedProofs: discountOption.requestedProofs,
+        dbg("claim_verification_result", {
+          requiredClaimKeys: verificationResult?.requiredClaimKeys,
           isValid: verificationResult?.isValid,
         });
 
         // Check if user has all required proofs for this discount
         if (verificationResult.isValid) {
-          dbg("legacy_discount_applied", {
-            requestedProofs: discountOption.requestedProofs,
+          dbg("discount_applied", {
+            requiredClaimKeys: verificationResult?.requiredClaimKeys,
           });
 
           // Compute verification fee (USD micros). In v1 we assume USDC (6 decimals),
@@ -463,14 +461,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           verificationMetadata = {
             qualified: true,
             discountApplied: true,
-            requestedProofs: discountOption.requestedProofs,
+            requiredClaims,
             discountedAmount: discountedAmountAtomic.toString(),
             discountedPrice: formatUsdLikePriceFromAtomic(
               discountedTotalAtomic,
               baseAsset?.decimals ?? 6
             ),
             verificationFeeAtomic: verificationFeeAtomic.toString(),
-            userProofs: userProofs,
+            presentedClaims,
             verificationResult: verificationResult,
           };
           break; // Use first matching discount
@@ -478,23 +476,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
 
       if (!verificationMetadata) {
-        dbg("legacy_discount_not_qualified", {});
-        // Get verification result for the last checked option (if any)
-        const lastVerification =
-          variableAmountRequired.length > 0
-            ? await verifyProofs(
-                userProofs,
-                variableAmountRequired[0].requestedProofs
-                  ?.split(",")
-                  .map((p) => p.trim()) || []
-              )
-            : null;
-
+        dbg("discount_not_qualified", { correlationId });
         verificationMetadata = {
           qualified: false,
           discountApplied: false,
-          userProofs: userProofs,
-          verificationResult: lastVerification,
+          presentedClaims,
+          verificationResult: null,
         };
       }
       }

@@ -51,10 +51,10 @@ app.use(paymentMiddleware(
             preferenceOrder: ["self"],
             fallback: "none"
           },
-          // Users with zkproof get 50% discount
+          // Users who satisfy the required claims get 50% discount
           variableAmountRequired: [
             {
-              requestedProofs: "zkproofOf(human)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "5000"  // 0.005 USDC
             }
           ]
@@ -82,13 +82,13 @@ app.listen(3001);
 
 ### Variable Amount Required (Discounts)
 
-Offer different prices based on verified zkproofs:
+Offer different prices based on verified claims:
 
 ```javascript
 extra: {
   variableAmountRequired: [
     {
-      requestedProofs: "zkproofOf(human)",
+      requiredClaims: [{ type: "human" }],
       amountRequired: "5000"  // 0.005 USDC
     }
   ]
@@ -98,13 +98,12 @@ extra: {
 **How it works:**
 1. Middleware checks each discount tier in order
 2. First matching tier is applied
-3. If no proofs match, full price is charged
+3. If no claim set matches, full price is charged
 4. Discounts are only applied when the server is configured to verify claims (`proofPolicy`)
 
 Security note:
 
 - If you omit `proofPolicy`, discounts are **disabled by default** (to avoid insecure “self-asserted proofs”).
-- You can explicitly opt into legacy/demo behavior via `extra.allowInsecureProofs=true` (not recommended).
 
 ### Content Metadata
 
@@ -122,29 +121,29 @@ extra: {
 
 ### Supported Proof Types
 
-This middleware accepts legacy proof strings in `X-User-Proofs` and maps them to canonical claims:
+This middleware uses **canonical claims** end-to-end:
 
-| Legacy proof string | Canonical claim | Provider support |
+| Claim | Example | Provider support |
 |---|---|---|
-| `zkproofOf(human)` | `{ type: "human" }` | `self` (chain) or `self_api` (API) |
-| `zkproofOf(age>=21)` | `{ type: "age_gte", age: 21 }` | `self_api` only |
-| `zkproofOf(excludedCountries=[US,RU])` | `{ type: "excluded_countries_not_contains", countries: ["US","RU"] }` | `self_api` only |
-| `zkproofOf(ofac)` | `{ type: "ofac_clear" }` | `self_api` only |
+| human | `{ type: "human" }` | `self` (chain) or `self_api` (API) |
+| age_gte | `{ type: "age_gte", age: 21 }` | `self_api` only |
+| excluded_countries_not_contains | `{ type: "excluded_countries_not_contains", countries: ["US","RU"] }` | `self_api` only |
+| ofac_clear | `{ type: "ofac_clear" }` | `self_api` only |
 
 ## Client Usage
 
 Include zkproofs in request headers:
 
 ```javascript
-// Client makes request with proofs
+// Client makes request with claim intent (for discount quotes)
 const response = await fetch('http://localhost:3001/api/data', {
   headers: {
     // required for chain-based checks (e.g., `self` provider)
     'X-Wallet-Address': '0xabc...',
-    'X-User-Proofs': JSON.stringify([
-      'zkproofOf(human)',
-      'zkproofOf(age>=21)'
-    ])
+    'X-Proof-Claims': JSON.stringify([
+      { type: 'human' },
+      { type: 'age_gte', age: 21 }
+    ]),
   }
 });
 
@@ -164,11 +163,11 @@ app.get("/api/data", (req, res) => {
   // {
   //   qualified: true,
   //   discountApplied: true,
-  //   requestedProofs: "zkproofOf(human)",
+  //   requiredClaims: [{ type: "human" }],
   //   discountedAmount: "5000",
   //   discountedPrice: "$0.005000",
   //   verificationFeeAtomic: "0",
-  //   userProofs: ["zkproofof(human)"],
+  //   presentedClaims: [{ type: "human" }],
   //   verificationResult: {
   //     isValid: true,
   //     verifiedCount: 1,
@@ -203,7 +202,7 @@ Whistleblowers sell sensitive content at premium prices, but offer discounts to 
     extra: {
       variableAmountRequired: [
         {
-          requestedProofs: "zkproofOf(human)",
+          requiredClaims: [{ type: "human" }],
           amountRequired: "500000"  // $0.50 for verified humans
         }
       ]
@@ -218,7 +217,7 @@ Only allow verified humans to access API:
 ```javascript
 variableAmountRequired: [
   {
-    requestedProofs: "zkproofOf(human)",
+    requiredClaims: [{ type: "human" }],
     amountRequired: "1000"  // Must have proof to pay any amount
   }
 ]
@@ -232,9 +231,9 @@ Offer discounts to verified organization members:
 ```javascript
 variableAmountRequired: [
   {
-    // NOTE: custom claim strings like "organization=..." are NOT_IMPLEMENTED in v1.
-    // To support them, extend `parseLegacyZkProofToClaim()` + add a provider method.
-    requestedProofs: "zkproofOf(human)",
+    // NOTE: custom claims are not implemented by default.
+    // To support them, extend `ClaimType` + add a provider method + update the router.
+    requiredClaims: [{ type: "human" }],
     amountRequired: "0"  // Example only
   }
 ]
@@ -244,13 +243,13 @@ variableAmountRequired: [
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Client sends request with X-User-Proofs header        │
+│  Client sends request with X-Proof-Claims header       │
 └────────────────┬────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │  x402-zkx402 Middleware                                 │
-│  1. Extract zkproofs from header                        │
+│  1. Extract claim intent from header                    │
 │  2. Verify claims via `proofPolicy` + provider routing  │
 │  3. Check variableAmountRequired tiers                  │
 │  4. Adjust price if qualified                           │

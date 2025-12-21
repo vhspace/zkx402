@@ -1,6 +1,6 @@
 # JSON Specs (Policy + Proof Data)
 
-This document defines the JSON formats used by the zkx402 demo for proof policy configuration and (legacy) institution proof verification input.
+This document defines the JSON formats used by the zkx402 demo for proof policy configuration.
 
 It also describes how we compute integrity hashes and which scripts to run to validate the whole flow end-to-end.
 
@@ -70,7 +70,7 @@ or per-claim-key:
 
 Security note:
 
-- If `X-PAYMENT` is **not** present, the middleware will **avoid vendor API calls** and treat `X-User-Proofs` as an *intent signal* (quote mode). Actual enforcement still occurs when the client submits payment + proofs.
+- If `X-PAYMENT` is **not** present, the middleware will **avoid vendor API calls** and treat `X-Proof-Claims` as an *intent signal* (quote mode). Actual enforcement still occurs when the client submits payment + claims.
 
 Request body shape sent to `SELF_API_URL`:
 
@@ -174,7 +174,7 @@ Proof policy is typically **not secret**. If we ever need encrypted-at-rest conf
 
 Do **not** put secrets (API keys) into policy JSON; keep secrets in env vars.
 
-## 2) Removed: institution proof JSON (legacy)
+## 2) Removed: institution proof JSON (deprecated)
 
 Earlier iterations of this repo experimented with a hardcoded “institution proof” flow that loaded `proof.json` and called an external verifier.
 

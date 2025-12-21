@@ -292,41 +292,8 @@ export default function Home() {
         throw new Error(`Required proof not found: ${requiredProof}`);
       }
 
-      // self-verify if i am eligible for a discount
-      // Hard code the proofs that I have
-      const myProofs = ['zkproofOf(human)'];
-
-      console.log('My proofs:', myProofs);
-
-      // Check if I qualify for discounts specified in variableAmountRequired
-      if (variableAmountRequired && Array.isArray(variableAmountRequired)) {
-        for (const discountOption of variableAmountRequired) {
-          const requestedProofs =
-            discountOption.requestedProofs
-              ?.split(',')
-              .map((p: string) => p.trim()) || [];
-          const amountRequired = discountOption.amountRequired;
-
-          console.log(
-            `Checking discount option: ${discountOption.requestedProofs} -> ${amountRequired}`
-          );
-
-          // Check if all requested proofs are in my proofs
-          const hasAllProofs = requestedProofs.every((requiredProof: string) =>
-            myProofs.some((myProof: string) => myProof === requiredProof)
-          );
-
-          if (hasAllProofs) {
-            console.log(
-              `✓ Qualified for discount! Amount required: ${amountRequired}`
-            );
-            // Store the discount information for later use
-            // You can use this to adjust the payment amount
-          } else {
-            console.log(`✗ Not qualified for this discount option`);
-          }
-        }
-      }
+      // Claim intent (for discounts)
+      const myClaims = [{ type: 'human' }];
 
       console.log(
         'using CDP x402 hook to make paid request to',
@@ -339,7 +306,7 @@ export default function Home() {
         method: 'GET',
         headers: {
           ...(address ? { 'X-Wallet-Address': address } : {}),
-          'X-User-Proofs': JSON.stringify(myProofs),
+          'X-Proof-Claims': JSON.stringify(myClaims),
         },
       });
 
@@ -839,7 +806,7 @@ Content-Type: application/json
                       </span>
                       {`: [{ `}
                       <span style={{ color: '#33FF33' }}>
-                        "requestedProofs": "zkproofOf(human)", "amountRequired": "5000"
+                        "requiredClaims": [{ "type": "human" }], "amountRequired": "5000"
                       </span>
                       {` }]
     `}

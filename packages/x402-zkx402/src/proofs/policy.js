@@ -7,7 +7,7 @@
 export const DEFAULT_PROOF_POLICY = Object.freeze({
   version: 1,
   scope: "zkx402",
-  // canonical claims (preferred), but we also support legacy requestedProofs strings.
+  // canonical claims
   claims: [{ type: "human" }],
   // provider selection (chain-only v1)
   allowedProviders: ["self"],

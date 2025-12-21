@@ -98,7 +98,7 @@ app.use(
           extra: {
             variableAmountRequired: [
               {
-                requestedProofs: "zkproofOf(human)",
+                requiredClaims: [{ type: "human" }],
                 amountRequired: "5000",
               },
             ],

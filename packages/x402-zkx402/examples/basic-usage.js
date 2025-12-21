@@ -35,7 +35,7 @@ app.use(paymentMiddleware(
           // Users with "human" proof get 50% discount
           variableAmountRequired: [
             {
-              requestedProofs: "zkproofOf(human)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "5000" // 0.005 USDC
             }
           ]
@@ -61,12 +61,12 @@ app.use(paymentMiddleware(
           },
           variableAmountRequired: [
             {
-              requestedProofs: "zkproofOf(human)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "10000" // 0.01 USDC (90% off)
             },
             {
               // Same proof, smaller discount (tiers are checked in order)
-              requestedProofs: "zkproofOf(human)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "50000" // 0.05 USDC (50% off)
             }
           ],
@@ -121,10 +121,11 @@ app.listen(PORT, () => {
 /**
  * Client-side usage:
  * 
- * // Include zkproofs in request headers
+ * // Include canonical claims in request headers (for discount intent)
  * const response = await fetch('http://localhost:3001/api/quote', {
  *   headers: {
- *     'X-User-Proofs': JSON.stringify(['zkproofOf(human)'])
+ *     'X-Wallet-Address': '0xabc...',
+ *     'X-Proof-Claims': JSON.stringify([{ type: 'human' }])
  *   }
  * });
  * 

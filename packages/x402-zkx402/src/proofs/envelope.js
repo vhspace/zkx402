@@ -31,7 +31,7 @@ export function parseProofPolicyJson(raw) {
     return { ok: true, policy };
   }
 
-  // Plain policy form (legacy / simpler configs)
+  // Plain policy form (non-envelope configs)
   return { ok: true, policy: raw };
 }
 

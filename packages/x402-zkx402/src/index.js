@@ -28,7 +28,7 @@
  *           },
  *           variableAmountRequired: [
  *             {
- *               requestedProofs: "zkproofOf(human)",
+ *               requiredClaims: [{ type: "human" }],
  *               amountRequired: "5000" // 0.005 USDC (50% discount)
  *             }
  *           ],

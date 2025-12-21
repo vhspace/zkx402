@@ -5,7 +5,7 @@ import { ClaimType } from "../src/proofs/claims.js";
 
 test("router: unknown claim returns NOT_IMPLEMENTED", async () => {
   const res = await verifyClaimWithPolicy({
-    claim: { type: "legacy:institution=nyt" },
+    claim: { type: "not_a_real_claim" },
     policy: {},
     providers: [],
     context: {},
