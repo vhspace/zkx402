@@ -1,15 +1,13 @@
 import express from "express";
 import cors from "cors";
-import { paymentMiddleware } from "x402-zkx402";
+import { loadProofPolicyFile, paymentMiddleware } from "x402-zkx402";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
 import { getTokenBalances } from "./balances.js";
 import { createLocalFacilitator } from "../local-chain/local-facilitator.js";
-import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import crypto from "node:crypto";
 
 dotenv.config({ path: ".env" });
 dotenv.config({ path: ".env.local", override: true });
@@ -21,45 +19,13 @@ const ENABLE_PROOF_POLICY = process.env.ENABLE_PROOF_POLICY === "true";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-function stableStringify(value) {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  const keys = Object.keys(value).sort();
-  return `{${keys
-    .map((k) => JSON.stringify(k) + ":" + stableStringify(value[k]))
-    .join(",")}}`;
-}
-
-function sha256Hex(input) {
-  return crypto.createHash("sha256").update(input).digest("hex");
-}
-
 function loadProofPolicy() {
   try {
     const p = process.env.PROOF_POLICY_PATH
       ? process.env.PROOF_POLICY_PATH
       : join(__dirname, "proof-policy.json");
-    const raw = JSON.parse(readFileSync(p, "utf-8"));
-
-    // Web3-friendly envelope (integrity + optional signature/encryption later)
-    if (
-      raw &&
-      typeof raw === "object" &&
-      raw.schema === "zkx402.proofPolicyEnvelope.v1"
-    ) {
-      if (!raw.policy || typeof raw.policy !== "object") return null;
-      if (
-        raw.integrity?.hashAlg === "sha256" &&
-        typeof raw.integrity?.hash === "string"
-      ) {
-        const computed = sha256Hex(stableStringify(raw.policy));
-        if (computed !== raw.integrity.hash) return null;
-      }
-      return raw.policy;
-    }
-
-    // Plain policy object (legacy)
-    return raw;
+    const parsed = loadProofPolicyFile(p);
+    return parsed.ok ? parsed.policy : null;
   } catch {
     return null;
   }

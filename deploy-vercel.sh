@@ -21,7 +21,7 @@ echo ""
 # Deploy Backend
 echo "📦 Step 1: Deploy Backend API"
 echo "=============================="
-cd zkx402-demo/server
+cd apps/demo/server
 
 echo ""
 echo "Make sure you have set the following environment variables in Vercel:"
@@ -71,7 +71,7 @@ echo ""
 echo "📝 Post-Deployment Checklist:"
 echo ""
 echo "1. Update backend ALLOWED_ORIGINS environment variable:"
-echo "   cd zkx402-demo/server"
+echo "   cd apps/demo/server"
 echo "   vercel env add ALLOWED_ORIGINS production"
 echo "   Enter value: $FRONTEND_URL"
 echo ""

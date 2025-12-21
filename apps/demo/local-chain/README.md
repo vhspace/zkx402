@@ -157,16 +157,16 @@ The server will use the local chain configuration and MockUSDC.
 
 ```bash
 # Terminal 1: Setup and keep Anvil running
-cd zkx402-demo/local-chain
+cd apps/demo/local-chain
 npm install
 npm run setup
 
 # Terminal 2: Start the server
-cd zkx402-demo/server
+cd apps/demo/server
 npm run dev
 
 # Terminal 3: Run tests
-cd zkx402-demo/local-chain
+cd apps/demo/local-chain
 npm test
 
 # When done

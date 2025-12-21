@@ -10,7 +10,7 @@ This repo has two practical verification/testing loops:
 From the repo root:
 
 ```bash
-cd zkx402-demo/local-chain
+cd apps/demo/local-chain
 node run-e2e-test.js
 ```
 

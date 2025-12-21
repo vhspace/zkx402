@@ -5,15 +5,15 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "zkx402-demo/client",
-    "zkx402-demo/server"
+    "apps/demo/client",
+    "apps/demo/server"
   ],
   "dependencies": {
     "x402": "1.0.1"
   },
   "scripts": {
-    "dev:server": "npm run dev --workspace=zkx402-demo/server",
-    "dev:client": "npm run dev --workspace=zkx402-demo/client"
+    "dev:server": "npm run dev --workspace=apps/demo/server",
+    "dev:client": "npm run dev --workspace=apps/demo/client"
   },
   "keywords": ["x402", "zkproof", "payment", "verification"],
   "author": "",

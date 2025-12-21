@@ -11,7 +11,7 @@ echo ""
 # Backend Environment Variables
 echo "📦 Setting Backend (Server) Environment Variables"
 echo "=================================================="
-cd zkx402-demo/server
+cd apps/demo/server
 
 echo "Setting CDP_API_KEY_ID..."
 echo "4b7d76ac-d74f-4219-bfbd-f04ac9e34396" | vercel env add CDP_API_KEY_ID production

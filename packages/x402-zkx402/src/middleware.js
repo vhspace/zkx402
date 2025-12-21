@@ -41,20 +41,21 @@ try {
     join(__dirname, "..", "proof.json"),
     // typical monorepo/demo layouts
     join(process.cwd(), "proof.json"),
+    join(process.cwd(), "apps", "demo", "proof.json"),
+    // legacy path (backward compat)
     join(process.cwd(), "zkx402-demo", "proof.json"),
   ];
   for (const p of candidatePaths) {
     try {
       const proofContent = readFileSync(p, "utf-8");
       institutionProofData = JSON.parse(proofContent);
-      console.log(`Loaded institution proof data from ${p}`);
       break;
     } catch (_) {
       // try next
     }
   }
 } catch (error) {
-  console.warn("Could not load proof.json:", error.message);
+  // best-effort; legacy institution checks are optional
 }
 
 const VERIFY_API_URL = "https://zkx402-server.vercel.app/api/verify";
@@ -119,6 +120,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
   const debugEnabled = process.env.ZKX402_DEBUG_LOG === "true";
 
   const chainProviders = [createSelfChainProvider()];
+  const dbg = (message, data) =>
+    logDebug(message, data, { enabled: debugEnabled });
 
   // Pre-compile route patterns to regex and extract verbs
   const routePatterns = computeRoutePatterns(routes);
@@ -156,9 +159,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     if (userProofsHeader) {
       try {
         userProofs = JSON.parse(userProofsHeader);
-        console.log("Received user proofs:", userProofs);
       } catch (error) {
-        console.error("Failed to parse X-User-Proofs header:", error);
+        dbg("x_user_proofs_parse_failed", {
+          error: error?.message || String(error),
+        });
       }
     }
 
@@ -257,12 +261,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
           // Special handling for institution proof - verify via API
           if (requiredProof === "zkproofof(instituion=nyt)" && hasProof) {
-            console.log("Institution proof detected; verifying via API");
+            dbg("institution_proof_verify_start", { provider: "legacy_api" });
 
             if (!institutionProofData) {
-              console.warn(
-                "Institution proof data not loaded; skipping API verification"
-              );
+              dbg("institution_proof_missing_payload", {});
               return {
                 proof: requiredProof,
                 verified: false,
@@ -271,12 +273,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             }
 
             try {
-              console.log(
-                "Verifying institution proof via external API:",
-                VERIFY_API_URL
-              );
-              console.log("Using proof data from proof.json");
-
               // Send the full vlayer proof data from proof.json
               // The production API should handle vlayer format
               const proofForVerification = {
@@ -285,11 +281,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 version: institutionProofData.version,
                 meta: institutionProofData.meta,
               };
-
-              console.log(
-                "Sending proof data (first 100 chars):",
-                JSON.stringify(proofForVerification).substring(0, 100) + "..."
-              );
 
               const verifyResponse = await fetch(VERIFY_API_URL, {
                 method: "POST",
@@ -300,11 +291,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               });
 
               const responseText = await verifyResponse.text();
-              console.log("Verify API response status:", verifyResponse.status);
-              console.log(
-                "Verify API response (first 200 chars):",
-                responseText.substring(0, 200)
-              );
+              dbg("institution_proof_verify_response", {
+                status: verifyResponse.status,
+              });
 
               if (!verifyResponse.ok) {
                 let errorData;
@@ -313,11 +302,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 } catch (e) {
                   errorData = { raw: responseText.substring(0, 500) };
                 }
-                console.error(
-                  "Institution proof verification failed:",
-                  verifyResponse.status,
-                  errorData
-                );
+                dbg("institution_proof_verify_failed", {
+                  status: verifyResponse.status,
+                });
                 return {
                   proof: requiredProof,
                   verified: false,
@@ -330,10 +317,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               try {
                 verifyResult = JSON.parse(responseText);
               } catch (e) {
-                console.error(
-                  "Failed to parse verify API response:",
-                  e.message
-                );
+                dbg("institution_proof_verify_bad_json", {});
                 return {
                   proof: requiredProof,
                   verified: false,
@@ -349,15 +333,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 (verifyResult.status === "success" && !verifyResult.error) ||
                 (verifyResult.success === true && !verifyResult.error);
 
-              console.log(
-                isVerified
-                  ? "Institution proof verified via API"
-                  : "Institution proof verification failed"
-              );
-              console.log(
-                "Full verify result:",
-                JSON.stringify(verifyResult, null, 2)
-              );
+              dbg("institution_proof_verify_done", { verified: isVerified });
 
               return {
                 proof: requiredProof,
@@ -365,11 +341,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 apiResult: verifyResult,
               };
             } catch (error) {
-              console.error(
-                "Error verifying institution proof via API:",
-                error.message,
-                error.stack
-              );
+              dbg("institution_proof_verify_error", {
+                error: error?.message || String(error),
+              });
               return {
                 proof: requiredProof,
                 verified: false,
@@ -380,7 +354,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
           // For human proof and others, use simple string matching (hardcoded)
           if (requiredProof === "zkproofof(human)") {
-            console.log("Human proof: using string matching (no API call)");
+            dbg("human_proof_legacy_string_match", {});
           }
           return { proof: requiredProof, verified: hasProof };
         })
@@ -425,16 +399,16 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           requestedProofs
         );
 
-        console.log("Proof verification result:", {
+        dbg("legacy_proof_verification_result", {
           requestedProofs: discountOption.requestedProofs,
-          verificationResult: verificationResult,
+          isValid: verificationResult?.isValid,
         });
 
         // Check if user has all required proofs for this discount
         if (verificationResult.isValid) {
-          console.log(
-            `User qualified for discount. Requested: ${discountOption.requestedProofs}, discounted amount: ${discountedAmount}`
-          );
+          dbg("legacy_discount_applied", {
+            requestedProofs: discountOption.requestedProofs,
+          });
 
           // Convert discounted atomic amount to price format
           // amountRequired is in atomic units (e.g., "5000" = 0.005 USDC for 6 decimals)
@@ -461,7 +435,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
 
       if (!verificationMetadata) {
-        console.log("✗ User did not qualify for any discount");
+        dbg("legacy_discount_not_qualified", {});
         // Get verification result for the last checked option (if any)
         const lastVerification =
           variableAmountRequired.length > 0
