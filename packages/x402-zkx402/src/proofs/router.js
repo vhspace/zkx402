@@ -7,11 +7,26 @@ export const VerifyStatus = {
   ERROR: "error",
 };
 
+function methodForClaim(claim) {
+  switch (claim?.type) {
+    case ClaimType.HUMAN:
+      return "verifyHuman";
+    case ClaimType.AGE_GTE:
+      return "verifyAgeGte";
+    case ClaimType.EXCLUDED_COUNTRIES_NOT_CONTAINS:
+      return "verifyExcludedCountriesNotContains";
+    case ClaimType.OFAC_CLEAR:
+      return "verifyOfacClear";
+    default:
+      return null;
+  }
+}
+
 /**
- * Chain-only router.
+ * Proof router.
  *
- * - Only supports ClaimType.HUMAN via chain providers
- * - All other claims -> NOT_IMPLEMENTED
+ * - Supports a small set of canonical claim types (see `ClaimType`)
+ * - Routes each claim to the first provider (in policy order) that can verify it
  */
 export async function verifyClaimWithPolicy({
   claim,
@@ -23,7 +38,8 @@ export async function verifyClaimWithPolicy({
     return { status: VerifyStatus.ERROR, reason: "Missing claim" };
   }
 
-  if (claim.type !== ClaimType.HUMAN) {
+  const methodName = methodForClaim(claim);
+  if (!methodName) {
     return {
       status: VerifyStatus.NOT_IMPLEMENTED,
       reason: `Claim not implemented in chain-only mode: ${claim.type}`,
@@ -55,8 +71,9 @@ export async function verifyClaimWithPolicy({
   }
 
   for (const provider of finalProviders) {
-    if (typeof provider.verifyHuman !== "function") continue;
-    const result = await provider.verifyHuman(context);
+    const fn = provider?.[methodName];
+    if (typeof fn !== "function") continue;
+    const result = await fn({ ...(context || {}), claim, policy });
     if (!result?.ok) {
       // continue trying other providers in chain-only mode
       continue;

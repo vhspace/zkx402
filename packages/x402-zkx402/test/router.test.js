@@ -3,14 +3,36 @@ import assert from "node:assert/strict";
 import { verifyClaimWithPolicy, VerifyStatus } from "../src/proofs/router.js";
 import { ClaimType } from "../src/proofs/claims.js";
 
-test("router: non-human claim returns NOT_IMPLEMENTED", async () => {
+test("router: unknown claim returns NOT_IMPLEMENTED", async () => {
   const res = await verifyClaimWithPolicy({
-    claim: { type: ClaimType.AGE_GTE, age: 21 },
+    claim: { type: "legacy:institution=nyt" },
     policy: {},
     providers: [],
     context: {},
   });
   assert.equal(res.status, VerifyStatus.NOT_IMPLEMENTED);
+});
+
+test("router: supports AGE_GTE when provider implements it", async () => {
+  const providers = [
+    {
+      name: "self_api",
+      verifyAgeGte: async ({ claim }) => {
+        assert.equal(claim.type, ClaimType.AGE_GTE);
+        assert.equal(claim.age, 21);
+        return { ok: true, verified: true };
+      },
+    },
+  ];
+
+  const res = await verifyClaimWithPolicy({
+    claim: { type: ClaimType.AGE_GTE, age: 21 },
+    policy: { allowedProviders: ["self_api"], preferenceOrder: ["self_api"] },
+    providers,
+    context: { walletAddress: "0x0000000000000000000000000000000000000001" },
+  });
+  assert.equal(res.status, VerifyStatus.VERIFIED);
+  assert.equal(res.provider, "self_api");
 });
 
 test("router: human claim, no providers after filtering -> ERROR", async () => {

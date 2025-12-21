@@ -249,6 +249,10 @@ When we’re ready:
   - self-hosted verifier (preferred over vendor SaaS)
   - vendor API verifier (optional fallback)
 
+#### Update (implemented): optional `self_api` provider
+
+We now support an **optional** `self_api` provider in `packages/x402-zkx402` that can verify canonical Self claims by POSTing a request to `SELF_API_URL`. This is **off by default**; enable it by adding `"self_api"` to `allowedProviders` / `preferenceOrder` in your `proofPolicy` and include an `X-Self-Proof` JSON payload in requests.
+
 - Decide which rich claims are enforceable and how:
   - which are “rules” (enforced)
   - which are “disclosures” (optional reveal, not enforced)
