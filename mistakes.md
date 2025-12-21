@@ -40,4 +40,12 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Updated CI to do a single **root workspace install** (`npm install` at repo root) before running unit tests and the local E2E runner. This matches how the monorepo resolves/hoists dependencies and avoids missing runtime modules.
 - **Where**: `.github/workflows/ci.yml`
 
+### CI/GitHub Actions failure: `npm ci` without a committed lockfile
+
+- **Mistake**: `zkx402-demo/.gitignore` ignored `package-lock.json`, so `zkx402-demo/local-chain/package-lock.json` was never committed. CI runs `npm ci` in `zkx402-demo/local-chain`, which then fails with `EUSAGE` because no lockfile exists in the checkout.
+- **Fix**: Stop ignoring `package-lock.json` under `zkx402-demo/` and commit `zkx402-demo/local-chain/package-lock.json`.
+- **Where**:
+  - `zkx402-demo/.gitignore`
+  - `zkx402-demo/local-chain/package-lock.json`
+
 
