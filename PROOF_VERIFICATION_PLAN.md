@@ -1,6 +1,6 @@
 # Proof Verification Plan (Canonical Claims + Vendor Routing)
 
-This document records the current design decisions for proof checking in `apps/demo/server/middleware.js` and the direction we’ll take to modularize proof verification.
+This document records the current design decisions for proof checking in `packages/x402-zkx402/src/middleware.js` and the direction we’ll take to modularize proof verification.
 
 It is intentionally a planning record (not final polished docs).
 
@@ -212,7 +212,7 @@ Initial version can log to stdout in structured JSON; later versions can send to
 
 The initial implementation is done inside the `x402-zkx402` package (runtime path for the demo server):
 
-- `packages/x402-zkx402/src/proofs/claims.js`: legacy `zkproofOf(...)` -> canonical claim parsing (v1 supports `human`; others map to NOT_IMPLEMENTED).
+- `packages/x402-zkx402/src/proofs/claims.js`: canonical claim model + `claimKey(...)`.
 - `packages/x402-zkx402/src/proofs/policy.js`: `proofPolicy` normalization + stable stringify (audit/debug hash stub).
 - `packages/x402-zkx402/src/proofs/providers/self_chain.js`: Self chain provider (reads `isVerified(address)`).
 - `packages/x402-zkx402/src/proofs/router.js`: chain-only router; only `human` is enforceable in v1.
@@ -220,8 +220,8 @@ The initial implementation is done inside the `x402-zkx402` package (runtime pat
 
 Wiring:
 
-- `packages/x402-zkx402/src/middleware.js` uses canonical routing **only when** `extra.proofPolicy` is provided for the route.
-- If `extra.proofPolicy` is omitted, behavior falls back to the legacy string-based proof checks (to preserve backwards compatibility).
+- `packages/x402-zkx402/src/middleware.js` uses canonical routing when `extra.proofPolicy` is provided for the route.
+- If `extra.proofPolicy` is omitted, discounts are disabled by default (pricing should not rely on self-asserted client input).
 
 Env flags:
 

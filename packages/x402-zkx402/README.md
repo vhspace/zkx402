@@ -2,22 +2,26 @@
 
 > Zero-knowledge proof verification middleware for the x402 protocol
 
-`x402-zkx402` extends the [x402 payment protocol](https://x402.org) with zero-knowledge proof verification, enabling **identity-based variable pricing** and **content provenance verification**. This allows APIs to offer discounted rates to verified users (journalists, verified humans, organization members) while maintaining privacy through zkproofs.
+`x402-zkx402` extends the [x402 payment protocol](https://x402.org) with **proof-aware pricing**.
+
+Routes can quote/charge different prices based on **canonical proof claims** (starting with chain-first “human”), while keeping verification modular (chain checks first, optional API checks when explicitly enabled).
 
 ## Features
 
 - ✅ **zkProof-Gated Discounts** - Offer different prices based on verified credentials
-- ✅ **Content Provenance** - Prove content authenticity with zkproofs (vlayer integration)
-- ✅ **Privacy-Preserving** - Verify identity without revealing sensitive information
+- ✅ **Web3-first units** - Pricing math uses atomic units + USD micros (no floats)
+- ✅ **Policy-driven routing** - Vendor-neutral claims with provider allowlists + preference order
 - ✅ **Drop-in Replacement** - Works with existing x402 infrastructure
-- ✅ **Multiple Proof Types** - Support for human verification, institution proofs, and more
+- ✅ **Multiple claim types (opt-in)** - Human (chain), plus richer claims via API provider when configured
 - ✅ **Cross-chain Compatible** - Works with Base, Celo, and other EVM chains
 
 ## Installation
 
 ```bash
-npm install x402-zkx402 @coinbase/x402 viem express
+npm install x402-zkx402 express viem
 ```
+
+If you're using the hosted CDP facilitator, also install `@coinbase/x402`.
 
 ## Quick Start
 
@@ -38,10 +42,19 @@ app.use(paymentMiddleware(
       config: {
         description: "Access to verified data",
         extra: {
-          // Users with zkproof get 50% discount
+          // REQUIRED for secure proof-gated pricing
+          proofPolicy: {
+            version: 1,
+            scope: "zkx402",
+            claims: [{ type: "human" }],
+            allowedProviders: ["self"],
+            preferenceOrder: ["self"],
+            fallback: "none"
+          },
+          // Users who satisfy the required claims get 50% discount
           variableAmountRequired: [
             {
-              requestedProofs: "zkproofOf(human)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "5000"  // 0.005 USDC
             }
           ]
@@ -69,20 +82,14 @@ app.listen(3001);
 
 ### Variable Amount Required (Discounts)
 
-Offer different prices based on verified zkproofs:
+Offer different prices based on verified claims:
 
 ```javascript
 extra: {
   variableAmountRequired: [
     {
-      // Multiple proofs required (all must verify)
-      requestedProofs: "zkproofOf(human), zkproofOf(institution=NYT)",
+      requiredClaims: [{ type: "human" }],
       amountRequired: "5000"  // 0.005 USDC
-    },
-    {
-      // Fallback discount (checks sequentially)
-      requestedProofs: "zkproofOf(human)",
-      amountRequired: "7500"  // 0.0075 USDC
     }
   ]
 }
@@ -91,43 +98,52 @@ extra: {
 **How it works:**
 1. Middleware checks each discount tier in order
 2. First matching tier is applied
-3. If no proofs match, full price is charged
-4. Proofs are verified via API or simple string matching
+3. If no claim set matches, full price is charged
+4. Discounts are only applied when the server is configured to verify claims (`proofPolicy`)
+
+Security note:
+
+- If you omit `proofPolicy`, discounts are **disabled by default** (to avoid insecure “self-asserted proofs”).
 
 ### Content Metadata
 
-Attach zkproofs about content provenance:
+Attach zkproof-like strings as metadata (not enforced by this middleware):
 
 ```javascript
 extra: {
   contentMetadata: [
     { proof: "zkproof(verified-journalist)" },
     { proof: "zkproof(timestamp-2024-12)" },
-    { proof: "zkproof(institution=NYT)" }
+    { proof: "zkproof(source=NYT)" }
   ]
 }
 ```
 
 ### Supported Proof Types
 
-| Proof Type | Example | Verification Method |
-|------------|---------|---------------------|
-| Human | `zkproofOf(human)` | String matching or API |
-| Institution | `zkproofOf(institution=NYT)` | API verification (vlayer) |
-| Custom | `zkproof(your-proof-type)` | String matching |
+This middleware uses **canonical claims** end-to-end:
+
+| Claim | Example | Provider support |
+|---|---|---|
+| human | `{ type: "human" }` | `self` (chain) or `self_api` (API) |
+| age_gte | `{ type: "age_gte", age: 21 }` | `self_api` only |
+| excluded_countries_not_contains | `{ type: "excluded_countries_not_contains", countries: ["US","RU"] }` | `self_api` only |
+| ofac_clear | `{ type: "ofac_clear" }` | `self_api` only |
 
 ## Client Usage
 
 Include zkproofs in request headers:
 
 ```javascript
-// Client makes request with proofs
+// Client makes request with claim intent (for discount quotes)
 const response = await fetch('http://localhost:3001/api/data', {
   headers: {
-    'X-User-Proofs': JSON.stringify([
-      'zkproofOf(human)',
-      'zkproofOf(institution=NYT)'
-    ])
+    // required for chain-based checks (e.g., `self` provider)
+    'X-Wallet-Address': '0xabc...',
+    'X-Proof-Claims': JSON.stringify([
+      { type: 'human' },
+      { type: 'age_gte', age: 21 }
+    ]),
   }
 });
 
@@ -147,11 +163,11 @@ app.get("/api/data", (req, res) => {
   // {
   //   qualified: true,
   //   discountApplied: true,
-  //   requestedProofs: "zkproofOf(human)",
+  //   requiredClaims: [{ type: "human" }],
   //   discountedAmount: "5000",
   //   discountedPrice: "$0.005000",
   //   verificationFeeAtomic: "0",
-  //   userProofs: ["zkproofof(human)"],
+  //   presentedClaims: [{ type: "human" }],
   //   verificationResult: {
   //     isValid: true,
   //     verifiedCount: 1,
@@ -186,8 +202,8 @@ Whistleblowers sell sensitive content at premium prices, but offer discounts to 
     extra: {
       variableAmountRequired: [
         {
-          requestedProofs: "zkproofOf(institution=NYT)",
-          amountRequired: "500000"  // $0.50 for verified journalists
+          requiredClaims: [{ type: "human" }],
+          amountRequired: "500000"  // $0.50 for verified humans
         }
       ]
     }
@@ -201,7 +217,7 @@ Only allow verified humans to access API:
 ```javascript
 variableAmountRequired: [
   {
-    requestedProofs: "zkproofOf(human)",
+    requiredClaims: [{ type: "human" }],
     amountRequired: "1000"  // Must have proof to pay any amount
   }
 ]
@@ -215,8 +231,10 @@ Offer discounts to verified organization members:
 ```javascript
 variableAmountRequired: [
   {
-    requestedProofs: "zkproofOf(organization=acme-corp)",
-    amountRequired: "0"  // Free for organization members
+    // NOTE: custom claims are not implemented by default.
+    // To support them, extend `ClaimType` + add a provider method + update the router.
+    requiredClaims: [{ type: "human" }],
+    amountRequired: "0"  // Example only
   }
 ]
 ```
@@ -225,14 +243,14 @@ variableAmountRequired: [
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Client sends request with X-User-Proofs header        │
+│  Client sends request with X-Proof-Claims header       │
 └────────────────┬────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │  x402-zkx402 Middleware                                 │
-│  1. Extract zkproofs from header                        │
-│  2. Verify proofs (API or string matching)              │
+│  1. Extract claim intent from header                    │
+│  2. Verify claims via `proofPolicy` + provider routing  │
 │  3. Check variableAmountRequired tiers                  │
 │  4. Adjust price if qualified                           │
 │  5. Attach verification metadata to request             │
@@ -300,7 +318,6 @@ See the `/examples` directory for:
 ## Related Projects
 
 - [x402 Protocol](https://x402.org) - HTTP 402 payment standard
-- [vlayer](https://vlayer.xyz) - ZK email/TLS proofs for content provenance
 - [Self.xyz](https://self.xyz) - ZK passport verification
 - [Hyperlane](https://hyperlane.xyz) - Cross-chain messaging for verification
 

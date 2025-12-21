@@ -13,16 +13,49 @@ export const DEFAULT_PROOF_COSTS = Object.freeze({
   entries: [],
 });
 
+function clampInt(n, { min, max, fallback }) {
+  if (!Number.isFinite(n)) return fallback;
+  const i = Math.trunc(n);
+  if (i < min) return min;
+  if (i > max) return max;
+  return i;
+}
+
+function normalizeCostEntry(e) {
+  if (!e || typeof e !== "object") return null;
+  const provider = typeof e.provider === "string" ? e.provider.trim() : "";
+  const claimKey = typeof e.claimKey === "string" ? e.claimKey.trim() : "";
+  if (!provider || !claimKey) return null;
+
+  // accept numbers, bigint, or strings; store as a stringified non-negative integer
+  const cost = toBigIntOrZero(e.costUsdMicros);
+  return {
+    provider,
+    claimKey,
+    costUsdMicros: cost.toString(),
+    description: typeof e.description === "string" ? e.description : undefined,
+  };
+}
+
 export function normalizeProofCosts(costs) {
   if (!costs || typeof costs !== "object") return { ...DEFAULT_PROOF_COSTS };
+  const bps = clampInt(Number(costs.defaultCommissionBps), {
+    min: 0,
+    max: 10000,
+    fallback: DEFAULT_PROOF_COSTS.defaultCommissionBps,
+  });
+  const entries = Array.isArray(costs.entries) ? costs.entries : [];
+  const normalizedEntries = [];
+  for (const e of entries) {
+    const ne = normalizeCostEntry(e);
+    if (ne) normalizedEntries.push(ne);
+  }
   return {
     version: Number(costs.version ?? DEFAULT_PROOF_COSTS.version),
     scope: String(costs.scope ?? DEFAULT_PROOF_COSTS.scope),
     currency: String(costs.currency ?? DEFAULT_PROOF_COSTS.currency),
-    defaultCommissionBps: Number(
-      costs.defaultCommissionBps ?? DEFAULT_PROOF_COSTS.defaultCommissionBps
-    ),
-    entries: Array.isArray(costs.entries) ? costs.entries : [],
+    defaultCommissionBps: bps,
+    entries: normalizedEntries,
   };
 }
 
@@ -68,20 +101,26 @@ export function computeVerificationCostUsdMicros({
   commissionBpsOverride,
 }) {
   const normalized = normalizeProofCosts(costs);
-  const bps =
+  const bps = clampInt(
     typeof commissionBpsOverride === "number"
       ? commissionBpsOverride
-      : normalized.defaultCommissionBps;
+      : normalized.defaultCommissionBps,
+    { min: 0, max: 10000, fallback: normalized.defaultCommissionBps }
+  );
+
+  // Index entries for fast lookups; last-write-wins if duplicates exist.
+  const costByProviderClaimKey = new Map();
+  for (const e of normalized.entries) {
+    costByProviderClaimKey.set(`${e.provider}:${e.claimKey}`, e.costUsdMicros);
+  }
 
   const breakdown = [];
   let total = 0n;
 
   for (const c of Array.isArray(claims) ? claims : []) {
     const k = claimKey(c);
-    const entry = normalized.entries.find(
-      (e) => e && e.provider === provider && String(e.claimKey) === k
-    );
-    const base = toBigIntOrZero(entry?.costUsdMicros);
+    const key = `${provider}:${k}`;
+    const base = toBigIntOrZero(costByProviderClaimKey.get(key));
     const commission = applyCommissionBps(base, bps);
     const lineTotal = base + commission;
     total += lineTotal;
@@ -95,6 +134,12 @@ export function computeVerificationCostUsdMicros({
     });
   }
 
-  return { ok: true, provider, currency: normalized.currency, totalUsdMicros: total.toString(), breakdown };
+  return {
+    ok: true,
+    provider,
+    currency: normalized.currency,
+    totalUsdMicros: total.toString(),
+    breakdown,
+  };
 }
 

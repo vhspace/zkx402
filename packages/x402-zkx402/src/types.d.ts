@@ -4,12 +4,6 @@
 
 import type { Request, Response, NextFunction } from 'express';
 
-/**
- * Zero-knowledge proof string format
- * Examples: "zkproofOf(human)", "zkproofOf(institution=NYT)"
- */
-export type ZkProof = string;
-
 export interface ProofClaim {
   type: string;
   [key: string]: any;
@@ -55,10 +49,9 @@ export interface ProofCosts {
  */
 export interface VariableAmountRequired {
   /**
-   * Comma-separated list of required zkproofs
-   * Example: "zkproofOf(human), zkproofOf(institution=NYT)"
+   * Canonical claim objects required for this tier.
    */
-  requestedProofs: string;
+  requiredClaims: ProofClaim[];
 
   /**
    * Discounted amount in atomic units (e.g., "5000" = 0.005 USDC)
@@ -71,10 +64,10 @@ export interface VariableAmountRequired {
  */
 export interface ContentMetadata {
   /**
-   * Zero-knowledge proof about content origin or authorship
-   * Example: "zkproof(Edward Snowden)", "zkproof(verified-journalist)"
+   * Metadata string about content origin/authorship/provenance.
+   * (Not enforced by this middleware.)
    */
-  proof: ZkProof;
+  proof: string;
 }
 
 /**
@@ -93,7 +86,9 @@ export interface ZkProofExtraConfig {
 
   /**
    * Proof verification policy (canonical claims + provider routing).
-   * If omitted, middleware falls back to legacy string matching for v1 behavior.
+   *
+   * **Required for secure proof-gated pricing**. If omitted, the middleware will
+   * not apply discounts.
    */
   proofPolicy?: ProofPolicy;
 
@@ -113,9 +108,14 @@ export interface ZkProofExtraConfig {
  */
 export interface ProofVerificationDetail {
   /**
-   * The zkproof that was checked
+   * Canonical claim key (e.g. "human", "age_gte:21")
    */
-  proof: ZkProof;
+  claimKey: string;
+
+  /**
+   * The canonical claim that was checked
+   */
+  claim?: ProofClaim;
 
   /**
    * Whether the proof was successfully verified
@@ -153,19 +153,19 @@ export interface ProofVerificationResult {
   hasAllProofs: boolean;
 
   /**
-   * Array of proofs that failed verification
+   * Array of claim keys that failed verification
    */
-  missingProofs: ZkProof[];
+  missingClaimKeys: string[];
 
   /**
-   * Normalized user proofs (lowercase, trimmed)
+   * Claim keys the client indicated they want to use for discounts
    */
-  userProofs: ZkProof[];
+  presentedClaimKeys: string[];
 
   /**
-   * Normalized requested proofs (lowercase, trimmed)
+   * Claim keys required for this tier
    */
-  requestedProofs: ZkProof[];
+  requiredClaimKeys: string[];
 
   /**
    * Number of proofs that were verified
@@ -181,6 +181,11 @@ export interface ProofVerificationResult {
    * Detailed verification results for each proof
    */
   verificationDetails: ProofVerificationDetail[];
+
+  /**
+   * Optional machine-readable reason when verification is skipped/disabled.
+   */
+  reason?: string;
 }
 
 /**
@@ -197,10 +202,7 @@ export interface VerificationMetadata {
    */
   discountApplied: boolean;
 
-  /**
-   * Comma-separated list of requested proofs (if qualified)
-   */
-  requestedProofs?: string;
+  requiredClaims?: ProofClaim[];
 
   /**
    * Discounted amount in atomic units (if qualified)
@@ -212,10 +214,7 @@ export interface VerificationMetadata {
    */
   discountedPrice?: string;
 
-  /**
-   * User's submitted zkproofs
-   */
-  userProofs?: ZkProof[];
+  presentedClaims?: ProofClaim[];
 
   /**
    * Detailed verification result

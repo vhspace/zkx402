@@ -18,9 +18,17 @@
  *       config: {
  *         description: "Access to verified data",
  *         extra: {
+ *           proofPolicy: {
+ *             version: 1,
+ *             scope: "zkx402",
+ *             claims: [{ type: "human" }],
+ *             allowedProviders: ["self"],
+ *             preferenceOrder: ["self"],
+ *             fallback: "none",
+ *           },
  *           variableAmountRequired: [
  *             {
- *               requestedProofs: "zkproofOf(human)",
+ *               requiredClaims: [{ type: "human" }],
  *               amountRequired: "5000" // 0.005 USDC (50% discount)
  *             }
  *           ],

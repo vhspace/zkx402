@@ -141,7 +141,7 @@ Require BOTH x402 payment AND human verification:
 
 ```javascript
 import { requireVerification } from "./verification.js";
-import { paymentMiddleware } from "x402-express";
+import { paymentMiddleware } from "x402-zkx402";
 
 // Apply both middlewares
 app.use(paymentMiddleware(RECEIVER_WALLET, {

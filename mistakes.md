@@ -14,6 +14,12 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 ## 2025-12-21
 
+### Assumed an MCP filesystem server existed in this environment
+
+- **Mistake**: Tried to read workspace files via an MCP server name (`filesystem`) that wasn’t configured, which caused avoidable tool errors.
+- **Fix**: Use the standard file read/search tools for workspace files unless we’ve confirmed an MCP resource server is available via discovery.
+- **Where**: Initial review pass while gathering `claims.js`/tests for the pricing refactor.
+
 ### Bad CLI flag when merging PRs with `gh`
 
 - **Mistake**: Tried `gh pr merge ... --yes` (flag doesn’t exist for `gh pr merge`; it uses non-interactive merge via other flags / API).

@@ -23,10 +23,19 @@ app.use(paymentMiddleware(
       config: {
         description: "Get a motivational quote",
         extra: {
+          // REQUIRED for secure proof-gated pricing
+          proofPolicy: {
+            version: 1,
+            scope: "zkx402",
+            claims: [{ type: "human" }],
+            allowedProviders: ["self"],
+            preferenceOrder: ["self"],
+            fallback: "none",
+          },
           // Users with "human" proof get 50% discount
           variableAmountRequired: [
             {
-              requestedProofs: "zkproofOf(human)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "5000" // 0.005 USDC
             }
           ]
@@ -34,22 +43,30 @@ app.use(paymentMiddleware(
       }
     },
 
-    // Example 2: Premium content with multiple proof requirements
+    // Example 2: Premium content with proof-gated discount tiers
     "GET /api/premium": {
       price: "$0.10",
       network: "base-sepolia",
       config: {
         description: "Premium verified content",
         extra: {
-          // Verified journalists get significant discount
+          // Verified humans get significant discount
+          proofPolicy: {
+            version: 1,
+            scope: "zkx402",
+            claims: [{ type: "human" }],
+            allowedProviders: ["self"],
+            preferenceOrder: ["self"],
+            fallback: "none",
+          },
           variableAmountRequired: [
             {
-              requestedProofs: "zkproofOf(human), zkproofOf(institution=NYT)",
+              requiredClaims: [{ type: "human" }],
               amountRequired: "10000" // 0.01 USDC (90% off)
             },
             {
-              // Just human verification gets smaller discount
-              requestedProofs: "zkproofOf(human)",
+              // Same proof, smaller discount (tiers are checked in order)
+              requiredClaims: [{ type: "human" }],
               amountRequired: "50000" // 0.05 USDC (50% off)
             }
           ],
@@ -104,10 +121,11 @@ app.listen(PORT, () => {
 /**
  * Client-side usage:
  * 
- * // Include zkproofs in request headers
+ * // Include canonical claims in request headers (for discount intent)
  * const response = await fetch('http://localhost:3001/api/quote', {
  *   headers: {
- *     'X-User-Proofs': JSON.stringify(['zkproofOf(human)'])
+ *     'X-Wallet-Address': '0xabc...',
+ *     'X-Proof-Claims': JSON.stringify([{ type: 'human' }])
  *   }
  * });
  * 

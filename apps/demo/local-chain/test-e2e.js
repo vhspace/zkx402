@@ -216,7 +216,7 @@ async function main() {
   const proofsHeaders = {
     Accept: "application/json",
     "X-Wallet-Address": config.payerAddress,
-    "X-User-Proofs": JSON.stringify(["zkproofOf(human)"]),
+    "X-Proof-Claims": JSON.stringify([{ type: "human" }]),
   };
 
   const proofsResponse = await fetch(`${config.serverUrl}/motivate`, {
