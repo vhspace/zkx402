@@ -38,4 +38,12 @@
 
 export { paymentMiddleware } from './middleware.js';
 
+// Reusable helpers (production-oriented) for policy distribution/validation
+export {
+  PROOF_POLICY_ENVELOPE_SCHEMA_V1,
+  loadProofPolicyFile,
+  parseProofPolicyJson,
+  policyIntegrityHashSha256,
+} from "./proofs/envelope.js";
+
 
