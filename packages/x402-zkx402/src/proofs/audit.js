@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { stableStringify } from "./policy.js";
 
 export function getCorrelationId(req) {
@@ -31,5 +31,3 @@ export function logDebug(message, data, { enabled } = {}) {
   // eslint-disable-next-line no-console
   console.log(JSON.stringify({ type: "zkx402_debug", message, data }));
 }
-
-

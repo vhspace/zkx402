@@ -134,6 +134,28 @@ We will compute a policy hash (e.g., keccak256 over a canonical JSON encoding) a
 
 Optional later: sign policy objects with an “app policy key” and log signature + hash.
 
+#### 3.3.1) JSON envelope (integrity-first; optional signing/encryption)
+
+For “web3-friendly” distribution, the policy can be stored as a **portable JSON envelope**:
+
+- **Versioned** via `schema` + `policy.version`
+- **Hashable** via deterministic encoding (stable stringify)
+- **Integrity-checked** via `integrity.hash`
+
+Example (v1):
+
+```json
+{
+  "schema": "zkx402.proofPolicyEnvelope.v1",
+  "policy": { "version": 1, "scope": "zkx402", "claims": [{ "type": "human" }], "allowedProviders": ["self"], "preferenceOrder": ["self"], "fallback": "none" },
+  "integrity": { "hashAlg": "sha256", "hash": "<sha256(stableStringify(policy))>" }
+}
+```
+
+**Signing (optional later)**: add an `integrity.signature` (e.g., EIP-191 over the hash) and verify using an app public key.
+
+**Encryption**: not required for web3-friendliness (policy is not a secret). If we ever need encrypted-at-rest config, do it at the envelope layer (and keep secrets like API keys in env vars).
+
 ### 4) Not Implemented Behavior for Rich Claims
 
 Rich claims will return a structured “not implemented” outcome so we can:
@@ -167,6 +189,7 @@ Initial version can log to stdout in structured JSON; later versions can send to
 - Age/country/OFAC are verification rules checked during proof generation/verification (not derivable from a boolean chain receipt alone). See `https://docs.self.xyz/frontend-integration/disclosure-configs`.
 - In this repo, the client QR flow configures Self verification rules at QR generation time (e.g. `minimumAge: 21`), which can cause verification to fail before anything is bridged on-chain.
 - Our current on-chain receiver integration (`ProofOfHumanReceiver.isVerified(address)`) is a boolean receipt; rich checks will remain “not implemented” until we add a verifier path.
+- For local router-path testing, we deploy a tiny `MockHumanRegistry` (same `isVerified(address)` shape) on Anvil and point `BASE_PROOF_OF_HUMAN_RECEIVER` at it.
 
 ## Implementation Outline (Incremental)
 
@@ -204,6 +227,7 @@ Env flags:
 
 - `ZKX402_AUDIT_LOG=true` enables JSON stdout audit events.
 - `ZKX402_DEBUG_LOG=true` enables JSON stdout debug events.
+- `ENABLE_PROOF_POLICY=true` (demo server) enables adding `extra.proofPolicy` for `/motivate`.
 
 Required request fields for chain providers:
 

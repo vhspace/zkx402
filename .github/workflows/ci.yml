@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-and-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install x402-zkx402 deps (for tests)
+        working-directory: packages/x402-zkx402
+        run: npm install --ignore-scripts --legacy-peer-deps
+
+      - name: Unit tests (x402-zkx402)
+        working-directory: packages/x402-zkx402
+        run: npm test
+
+      - name: Install demo server deps
+        working-directory: zkx402-demo/server
+        run: npm ci --ignore-scripts --legacy-peer-deps
+
+      - name: Install local-chain deps
+        working-directory: zkx402-demo/local-chain
+        run: npm ci --ignore-scripts --legacy-peer-deps
+
+      - name: E2E (local chain)
+        working-directory: zkx402-demo/local-chain
+        run: node run-e2e-test.js

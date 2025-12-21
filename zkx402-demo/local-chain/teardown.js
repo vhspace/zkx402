@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,12 @@ function log(color, ...args) {
 }
 
 async function main() {
+  try {
+    execSync("lsof -ti:3001 | xargs -r kill -9", { stdio: "ignore" });
+  } catch (_) {
+    // best-effort
+  }
+
   log(colors.blue, "\nStopping Anvil...\n");
 
   const pidFile = path.join(__dirname, ".anvil.pid");

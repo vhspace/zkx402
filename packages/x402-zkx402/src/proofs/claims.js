@@ -13,7 +13,9 @@ export function claimKey(claim) {
     case ClaimType.AGE_GTE:
       return `age_gte:${claim.age ?? "?"}`;
     case ClaimType.EXCLUDED_COUNTRIES_NOT_CONTAINS:
-      return `excluded_countries_not_contains:${(claim.countries || []).join(",")}`;
+      return `excluded_countries_not_contains:${(claim.countries || []).join(
+        ","
+      )}`;
     case ClaimType.OFAC_CLEAR:
       return "ofac_clear";
     default:
@@ -48,7 +50,10 @@ export function parseLegacyZkProofToClaim(proofString) {
     return { type: ClaimType.AGE_GTE, age: Number(ageMatch[1]) };
   }
 
-  if (inner.startsWith("excludedcountries=") || inner.startsWith("excluded_countries=")) {
+  if (
+    inner.startsWith("excludedcountries=") ||
+    inner.startsWith("excluded_countries=")
+  ) {
     const list = inner.split("=", 2)[1] || "";
     const countries = list
       .replace(/^\[|\]$/g, "")
@@ -65,5 +70,3 @@ export function parseLegacyZkProofToClaim(proofString) {
   // unknown legacy proof -> treat as unknown claim (not implemented)
   return { type: inner ? `legacy:${inner}` : "legacy:unknown", raw };
 }
-
-

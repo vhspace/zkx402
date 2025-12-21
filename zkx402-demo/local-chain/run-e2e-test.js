@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import net from "net";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,7 @@ const DEPLOYER_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const PAYER_ADDRESS = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 const RPC_URL = "http://localhost:8545";
 const CHAIN_ID = 31337;
+const SERVER_PORT = 3001;
 
 async function checkAnvilRunning() {
   try {
@@ -97,6 +99,24 @@ async function deployMockUSDC() {
   }
 }
 
+async function deployMockHumanRegistry() {
+  log(colors.blue, "Deploying MockHumanRegistry...");
+
+  const contractsDir = path.join(__dirname, "..", "contracts");
+
+  const output = execSync(
+    `forge create src/MockHumanRegistry.sol:MockHumanRegistry --rpc-url ${RPC_URL} --private-key ${DEPLOYER_PRIVATE_KEY} --broadcast --constructor-args ${PAYER_ADDRESS}`,
+    { cwd: contractsDir, encoding: "utf-8" }
+  );
+
+  const match = output.match(/Deployed to: (0x[a-fA-F0-9]{40})/);
+  if (!match) throw new Error("Could not find deployed MockHumanRegistry address");
+
+  const address = match[1];
+  log(colors.green, `MockHumanRegistry deployed at: ${address}`);
+  return address;
+}
+
 async function fundAccounts(usdcAddress) {
   log(colors.blue, "Funding test accounts...");
 
@@ -118,7 +138,7 @@ async function fundAccounts(usdcAddress) {
   }
 }
 
-function createEnvFile(usdcAddress) {
+function createEnvFile(usdcAddress, mockHumanRegistryAddress) {
   log(colors.blue, "Creating .env.local...");
 
   const envContent = `CHAIN_ID=${CHAIN_ID}
@@ -128,9 +148,12 @@ RECEIVER_WALLET=${DEPLOYER_ADDRESS}
 RECEIVER_PRIVATE_KEY=${DEPLOYER_PRIVATE_KEY}
 PAYER_ADDRESS=${PAYER_ADDRESS}
 PAYER_PRIVATE_KEY=${PAYER_PRIVATE_KEY}
-PORT=3001
+PORT=${SERVER_PORT}
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 USE_LOCAL_FACILITATOR=true
+ENABLE_PROOF_POLICY=true
+SELF_RPC_URL=${RPC_URL}
+BASE_PROOF_OF_HUMAN_RECEIVER=${mockHumanRegistryAddress}
 `;
 
   const envPath = path.join(__dirname, "..", "server", ".env.local");
@@ -158,6 +181,17 @@ function installDependencies() {
   } else {
     log(colors.green, "Dependencies already installed");
   }
+}
+
+function isPortOpen(port) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ port, host: "127.0.0.1" });
+    socket.once("connect", () => {
+      socket.end();
+      resolve(true);
+    });
+    socket.once("error", () => resolve(false));
+  });
 }
 
 function startServer() {
@@ -194,15 +228,24 @@ function startServer() {
         log(colors.green, "Server started");
         resolve(server);
       }
+      if (!resolved && output.includes("EADDRINUSE")) {
+        resolved = true;
+        reject(new Error(`Port ${SERVER_PORT} already in use. Stop the existing server and re-run.`));
+      }
     });
 
     server.on("error", reject);
+    server.on("exit", (code) => {
+      if (!resolved) {
+        resolved = true;
+        reject(new Error(`Server exited before startup (code ${code ?? "unknown"})`));
+      }
+    });
 
     setTimeout(() => {
       if (!resolved) {
-        log(colors.yellow, "Server may have started (timeout)");
         resolved = true;
-        resolve(server);
+        reject(new Error("Server did not start within timeout"));
       }
     }, 5000);
   });
@@ -234,19 +277,34 @@ async function main() {
 
   let anvilProcess;
   let serverProcess;
+  let startedAnvil = false;
 
   try {
+    try {
+      execSync("node teardown.js", { cwd: __dirname, stdio: "ignore" });
+    } catch (_) {
+      // best-effort cleanup
+    }
+
+    log(colors.blue, "Running unit tests (x402-zkx402)...");
+    execSync("node --test /workspaces/zkx402/packages/x402-zkx402/test/*.test.js", {
+      stdio: "inherit",
+    });
+    log(colors.green, "Unit tests passed.");
+
     const isRunning = await checkAnvilRunning();
     if (!isRunning) {
       anvilProcess = await startAnvil();
+      startedAnvil = true;
       await new Promise((resolve) => setTimeout(resolve, 2000));
     } else {
       log(colors.yellow, "Anvil already running");
     }
 
     const usdcAddress = await deployMockUSDC();
+    const mockHumanRegistryAddress = await deployMockHumanRegistry();
     await fundAccounts(usdcAddress);
-    createEnvFile(usdcAddress);
+    createEnvFile(usdcAddress, mockHumanRegistryAddress);
     installDependencies();
 
     serverProcess = await startServer();
@@ -262,6 +320,13 @@ async function main() {
   } finally {
     if (serverProcess) {
       serverProcess.kill();
+    }
+    if (startedAnvil) {
+      try {
+        execSync("node teardown.js", { cwd: __dirname, stdio: "ignore" });
+      } catch (_) {
+        // best-effort
+      }
     }
   }
 }

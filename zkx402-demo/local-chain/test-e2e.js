@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import fetch from "node-fetch";
 import fs from "fs";
 import dotenv from "dotenv";
+import assert from "node:assert/strict";
 
 dotenv.config({ path: "../server/.env.local" });
 
@@ -207,16 +208,21 @@ async function main() {
     `  Receiver gained:  ${ethers.formatUnits(receiverDiff, 6)} USDC`
   );
 
+  assert.equal(payerDiff, BigInt(maxAmountRequired));
+  assert.equal(receiverDiff, BigInt(maxAmountRequired));
+
   log(colors.blue, "\nStep 7: Test with zkproofs (dynamic pricing)");
+
+  const proofsHeaders = {
+    Accept: "application/json",
+    "X-Wallet-Address": config.payerAddress,
+    "X-User-Proofs": JSON.stringify(["zkproofOf(human)"]),
+  };
 
   const proofsResponse = await fetch(`${config.serverUrl}/motivate`, {
     method: "GET",
     headers: {
-      Accept: "application/json",
-      "X-User-Proofs": JSON.stringify([
-        "zkproofOf(human)",
-        "zkproofOf(instituion=NYT)",
-      ]),
+      ...proofsHeaders,
     },
   });
 
@@ -238,6 +244,80 @@ async function main() {
     const discounted = BigInt(proofsRequirement.maxAmountRequired);
     const discount = ((original - discounted) * 100n) / original;
     log(colors.green, `  Discount applied: ${discount}%`);
+
+    log(colors.blue, "\nStep 8: Pay discounted price (proofPolicy/router path)");
+
+    const payerBalanceBeforeDiscount = await usdcContract.balanceOf(config.payerAddress);
+    const receiverBalanceBeforeDiscount = await usdcContract.balanceOf(
+      config.receiverAddress
+    );
+
+    const discountedAuthorization = {
+      from: config.payerAddress,
+      to: proofsRequirement.payTo,
+      value: proofsRequirement.maxAmountRequired,
+      validAfter,
+      validBefore,
+      nonce: ethers.hexlify(ethers.randomBytes(32)),
+    };
+
+    const discountedSignature = await payerWallet.signTypedData(
+      domain,
+      types,
+      discountedAuthorization
+    );
+
+    const discountedPaymentHeader = Buffer.from(
+      JSON.stringify({
+        x402Version: 1,
+        scheme: "exact",
+        network: proofsRequirement.network,
+        payload: {
+          signature: discountedSignature,
+          authorization: {
+            from: discountedAuthorization.from,
+            to: discountedAuthorization.to,
+            value: String(discountedAuthorization.value),
+            validAfter: String(discountedAuthorization.validAfter),
+            validBefore: String(discountedAuthorization.validBefore),
+            nonce: discountedAuthorization.nonce,
+          },
+        },
+      })
+    ).toString("base64");
+
+    const discountedPaidResponse = await fetch(`${config.serverUrl}/motivate`, {
+      method: "GET",
+      headers: {
+        ...proofsHeaders,
+        "X-PAYMENT": discountedPaymentHeader,
+      },
+    });
+
+    assert.equal(discountedPaidResponse.status, 200);
+    const discountedPaidData = await discountedPaidResponse.json();
+    assert.equal(discountedPaidData.paid, true);
+    assert.equal(discountedPaidData.verification?.qualified, true);
+    assert.equal(discountedPaidData.verification?.discountApplied, true);
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const payerBalanceAfterDiscount = await usdcContract.balanceOf(config.payerAddress);
+    const receiverBalanceAfterDiscount = await usdcContract.balanceOf(
+      config.receiverAddress
+    );
+
+    const payerDiffDiscount = payerBalanceBeforeDiscount - payerBalanceAfterDiscount;
+    const receiverDiffDiscount =
+      receiverBalanceAfterDiscount - receiverBalanceBeforeDiscount;
+
+    assert.equal(payerDiffDiscount, BigInt(proofsRequirement.maxAmountRequired));
+    assert.equal(receiverDiffDiscount, BigInt(proofsRequirement.maxAmountRequired));
+
+    log(
+      colors.green,
+      `  Discounted payment spent: ${ethers.formatUnits(payerDiffDiscount, 6)} USDC`
+    );
   }
 
   log(colors.blue, "\nTest Summary");

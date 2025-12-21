@@ -30,8 +30,12 @@ export async function verifyClaimWithPolicy({
     };
   }
 
-  const preference = Array.isArray(policy?.preferenceOrder) ? policy.preferenceOrder : [];
-  const allowed = Array.isArray(policy?.allowedProviders) ? policy.allowedProviders : [];
+  const preference = Array.isArray(policy?.preferenceOrder)
+    ? policy.preferenceOrder
+    : [];
+  const allowed = Array.isArray(policy?.allowedProviders)
+    ? policy.allowedProviders
+    : [];
 
   const orderedProviders = preference.length
     ? preference
@@ -44,7 +48,10 @@ export async function verifyClaimWithPolicy({
     : orderedProviders;
 
   if (!finalProviders.length) {
-    return { status: VerifyStatus.ERROR, reason: "No providers available after policy filtering" };
+    return {
+      status: VerifyStatus.ERROR,
+      reason: "No providers available after policy filtering",
+    };
   }
 
   for (const provider of finalProviders) {
@@ -59,7 +66,8 @@ export async function verifyClaimWithPolicy({
       : { status: VerifyStatus.NOT_VERIFIED, provider: provider.name };
   }
 
-  return { status: VerifyStatus.ERROR, reason: "All providers failed or were not configured" };
+  return {
+    status: VerifyStatus.ERROR,
+    reason: "All providers failed or were not configured",
+  };
 }
-
-
