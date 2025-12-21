@@ -14,6 +14,18 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 ## 2025-12-21
 
+### Bad CLI flag when merging PRs with `gh`
+
+- **Mistake**: Tried `gh pr merge ... --yes` (flag doesn’t exist for `gh pr merge`; it uses non-interactive merge via other flags / API).
+- **Fix**: Use `gh api` to merge (or supported `gh pr merge` flags) and check draft state first.
+- **Where**: PR merge workflow for `cursor/zx402-self-xyz-proofs-d010`.
+
+### x402 matching limitation: cannot advertise multiple accepts for same scheme+network
+
+- **Mistake**: Assumed we could publish multiple payment requirements (different proof plans) in `accepts[]` and let the client pick by amount. In `x402@1.0.1`, `findMatchingPaymentRequirements(...)` only matches by **scheme + network**, so multiple requirements for the same pair are ambiguous.
+- **Fix**: Treat proof-plan selection as an explicit input (request header / policy) and expose cost metadata in `extra`, rather than relying on multiple `accepts` entries for the same scheme+network.
+- **Where**: Proof-cost + soft-provider-selection design in `packages/x402-zkx402`.
+
 ### E2E runner failure: assumed Foundry/Anvil installed outside devcontainer
 
 - **Mistake**: Ran the local-chain E2E runner in an environment that wasn’t the devcontainer image, assuming `anvil` would exist on PATH. The runner then failed with `spawn anvil ENOENT`.

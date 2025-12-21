@@ -110,6 +110,7 @@ export function createSelfApiProvider(options = {}) {
   return {
     name: "self_api",
     kind: "api",
+    supportsClaims: ["human", "age_gte", "excluded_countries_not_contains", "ofac_clear"],
     verifyHuman: (ctx) => verifyViaApi(ctx),
     verifyAgeGte: (ctx) => verifyViaApi(ctx),
     verifyExcludedCountriesNotContains: (ctx) => verifyViaApi(ctx),

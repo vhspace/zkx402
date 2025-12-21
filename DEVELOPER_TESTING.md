@@ -21,6 +21,11 @@ What it covers:
 - local settlement via `transferWithAuthorization`
 - **proofPolicy/router path** (chain-only “human”): deploys a local `MockHumanRegistry` and checks `isVerified(address)` via `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER`
 
+Optional (cost model):
+
+- The demo server can also load a proof cost schedule from `apps/demo/server/proof-costs.json` when `ENABLE_PROOF_COSTS=true`.
+- This is used to price vendor/API-based verification (and commissions) without hardcoding assumptions about whether a provider is free.
+
 Troubleshooting:
 
 - If port 3001 is stuck: `lsof -ti:3001 | xargs -r kill -9`
