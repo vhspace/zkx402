@@ -18,6 +18,14 @@
  *       config: {
  *         description: "Access to verified data",
  *         extra: {
+ *           proofPolicy: {
+ *             version: 1,
+ *             scope: "zkx402",
+ *             claims: [{ type: "human" }],
+ *             allowedProviders: ["self"],
+ *             preferenceOrder: ["self"],
+ *             fallback: "none",
+ *           },
  *           variableAmountRequired: [
  *             {
  *               requestedProofs: "zkproofOf(human)",

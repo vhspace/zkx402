@@ -1,6 +1,6 @@
 # Proof Verification Plan (Canonical Claims + Vendor Routing)
 
-This document records the current design decisions for proof checking in `apps/demo/server/middleware.js` and the direction we’ll take to modularize proof verification.
+This document records the current design decisions for proof checking in `packages/x402-zkx402/src/middleware.js` and the direction we’ll take to modularize proof verification.
 
 It is intentionally a planning record (not final polished docs).
 

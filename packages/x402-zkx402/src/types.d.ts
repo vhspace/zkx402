@@ -6,7 +6,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 /**
  * Zero-knowledge proof string format
- * Examples: "zkproofOf(human)", "zkproofOf(institution=NYT)"
+ * Examples: "zkproofOf(human)", "zkproofOf(age>=21)"
  */
 export type ZkProof = string;
 
@@ -56,7 +56,7 @@ export interface ProofCosts {
 export interface VariableAmountRequired {
   /**
    * Comma-separated list of required zkproofs
-   * Example: "zkproofOf(human), zkproofOf(institution=NYT)"
+   * Example: "zkproofOf(human), zkproofOf(age>=21)"
    */
   requestedProofs: string;
 
@@ -93,7 +93,10 @@ export interface ZkProofExtraConfig {
 
   /**
    * Proof verification policy (canonical claims + provider routing).
-   * If omitted, middleware falls back to legacy string matching for v1 behavior.
+   *
+   * **Required for secure proof-gated pricing**. If omitted, the middleware will
+   * treat `X-User-Proofs` as an intent signal only and will NOT apply discounts
+   * unless `allowInsecureProofs` is explicitly enabled.
    */
   proofPolicy?: ProofPolicy;
 
@@ -101,6 +104,14 @@ export interface ZkProofExtraConfig {
    * Proof verification cost schedule (separate from proofPolicy).
    */
   proofCosts?: ProofCosts;
+
+  /**
+   * UNSAFE / demo-only: allow discounts based on legacy string matching rather than
+   * canonical claim verification. This is vulnerable to user self-assertion.
+   *
+   * Prefer configuring `proofPolicy` instead.
+   */
+  allowInsecureProofs?: boolean;
 
   /**
    * Additional custom configuration
@@ -181,6 +192,11 @@ export interface ProofVerificationResult {
    * Detailed verification results for each proof
    */
   verificationDetails: ProofVerificationDetail[];
+
+  /**
+   * Optional machine-readable reason when verification is skipped/disabled.
+   */
+  reason?: string;
 }
 
 /**

@@ -294,7 +294,7 @@ export default function Home() {
 
       // self-verify if i am eligible for a discount
       // Hard code the proofs that I have
-      const myProofs = ['zkproofOf(human)', 'zkproofOf(instituion=NYT)'];
+      const myProofs = ['zkproofOf(human)'];
 
       console.log('My proofs:', myProofs);
 
@@ -338,6 +338,7 @@ export default function Home() {
       const response = await fetchWithPayment(`${API_URL}/motivate`, {
         method: 'GET',
         headers: {
+          ...(address ? { 'X-Wallet-Address': address } : {}),
           'X-User-Proofs': JSON.stringify(myProofs),
         },
       });
@@ -838,8 +839,7 @@ Content-Type: application/json
                       </span>
                       {`: [{ `}
                       <span style={{ color: '#33FF33' }}>
-                        "requestedProofs": "zkproofOf(human),
-                        zkproofOf(instituion=NYT)", "amountRequired": "5000"
+                        "requestedProofs": "zkproofOf(human)", "amountRequired": "5000"
                       </span>
                       {` }]
     `}

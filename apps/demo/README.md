@@ -51,24 +51,17 @@ this project showcases **four Coinbase Developer Platform (CDP) products** worki
 
 ## local testing
 
-For end-to-end testing with a local blockchain, see [TESTING.md](./TESTING.md).
+For end-to-end testing with a local blockchain (Anvil + MockUSDC + full 402 flow), see:
 
-Quick test workflow:
-
-```bash
-npm run install:all
-npm run test:setup
-npm run dev:server
-npm run test:e2e
-npm run test:teardown
-```
+- `apps/demo/local-chain/README.md`
+- `DEVELOPER_TESTING.md`
 
 ## production setup
 
 ### 1. install server dependencies
 
 ```bash
-cd server
+cd apps/demo/server
 npm install
 ```
 
@@ -95,7 +88,8 @@ PORT=3001
 ### 3. start server
 
 ```bash
-npm run dev:server
+cd apps/demo/server
+npm run dev
 ```
 
 you should see:
@@ -112,7 +106,7 @@ leave this terminal running
 open a new terminal:
 
 ```bash
-cd client
+cd apps/demo/client
 npm install
 ```
 
@@ -137,7 +131,8 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 ### 6. start client (in a new terminal)
 
 ```bash
-npm run dev:client
+cd apps/demo/client
+npm run dev
 ```
 
 you should see:
@@ -182,7 +177,7 @@ x402-demo/
 this is literally all the code needed to add payments to your API:
 
 ```javascript
-import { paymentMiddleware } from "x402-express";
+import { paymentMiddleware } from "x402-zkx402";
 import { facilitator } from "@coinbase/x402";
 
 app.use(paymentMiddleware(
@@ -279,13 +274,13 @@ the **`useX402` hook** from CDP Embedded Wallet automatically:
 
 ## suggested demo presentation flow
 
-1. **show server code** (`server/index.js`)
+1. **show server code** (`apps/demo/server/index.js`)
    - show how simple the integration is
    - point out the 3 lines of x402 config
    - explain the endpoint just returns data normally
 
 2. **start server**
-   - run `npm run dev:server`
+   - run `cd apps/demo/server && npm run dev` (or from repo root: `npm run dev:server`)
    - show it's just a normal Express server
 
 3. **show client UI** (http://localhost:3000)

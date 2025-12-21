@@ -9,15 +9,11 @@ import {
 } from "x402/shared";
 import { getPaywallHtml } from "x402/paywall";
 import {
-  moneySchema,
   settleResponseHeader,
   SupportedEVMNetworks,
   SupportedSVMNetworks,
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
 import { parseLegacyZkProofToClaim } from "./proofs/claims.js";
 import { claimKey } from "./proofs/claims.js";
 import { normalizeProofPolicy } from "./proofs/policy.js";
@@ -32,36 +28,36 @@ import { createSelfApiProvider } from "./proofs/providers/self_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// NOTE: This middleware intentionally avoids any legacy "institution proof" flows.
+// Proof-gated pricing should be driven by `proofPolicy` + provider routing.
 
-// Load proof.json for institution proof verification
-let institutionProofData = null;
-try {
-  const candidatePaths = [
-    // packaged location (if consumer copies proof.json next to the package)
-    join(__dirname, "..", "proof.json"),
-    // typical monorepo/demo layouts
-    join(process.cwd(), "proof.json"),
-    join(process.cwd(), "apps", "demo", "proof.json"),
-    // legacy path (backward compat)
-    join(process.cwd(), "zkx402-demo", "proof.json"),
-  ];
-  for (const p of candidatePaths) {
-    try {
-      const proofContent = readFileSync(p, "utf-8");
-      institutionProofData = JSON.parse(proofContent);
-      break;
-    } catch (_) {
-      // try next
-    }
+function safeBigInt(v) {
+  try {
+    if (typeof v === "bigint") return v;
+    const s = String(v ?? "").trim();
+    if (!s) return null;
+    // Only allow base-10 integers for config inputs
+    if (!/^\d+$/.test(s)) return null;
+    return BigInt(s);
+  } catch {
+    return null;
   }
-} catch (error) {
-  // best-effort; legacy institution checks are optional
 }
 
-const VERIFY_API_URL = "https://zkx402-server.vercel.app/api/verify";
+function formatAtomicToFixedDecimalString(amountAtomic, decimals) {
+  const a = typeof amountAtomic === "bigint" ? amountAtomic : safeBigInt(amountAtomic) ?? 0n;
+  const d = Number.isFinite(Number(decimals)) ? Math.max(0, Math.trunc(Number(decimals))) : 0;
+  const base = 10n ** BigInt(d);
+  const i = a / base;
+  const f = a % base;
+  const frac = d === 0 ? "" : `.${f.toString().padStart(d, "0")}`;
+  return `${i.toString()}${frac}`;
+}
+
+function formatUsdLikePriceFromAtomic(amountAtomic, decimals) {
+  // NOTE: This is a display helper only. The actual payment requirement uses atomic units.
+  return `$${formatAtomicToFixedDecimalString(amountAtomic, decimals)}`;
+}
 
 /**
  * Creates a payment middleware factory for Express
@@ -352,103 +348,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             };
           }
 
-          // Special handling for institution proof - verify via API
-          if (requiredProof === "zkproofof(instituion=nyt)" && hasProof) {
-            dbg("institution_proof_verify_start", { provider: "legacy_api" });
-
-            if (!institutionProofData) {
-              dbg("institution_proof_missing_payload", {});
-              return {
-                proof: requiredProof,
-                verified: false,
-                reason: "proof data not loaded",
-              };
-            }
-
-            try {
-              // Send the full vlayer proof data from proof.json
-              // The production API should handle vlayer format
-              const proofForVerification = {
-                success: institutionProofData.success,
-                data: institutionProofData.data,
-                version: institutionProofData.version,
-                meta: institutionProofData.meta,
-              };
-
-              const verifyResponse = await fetch(VERIFY_API_URL, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(proofForVerification),
-              });
-
-              const responseText = await verifyResponse.text();
-              dbg("institution_proof_verify_response", {
-                status: verifyResponse.status,
-              });
-
-              if (!verifyResponse.ok) {
-                let errorData;
-                try {
-                  errorData = JSON.parse(responseText);
-                } catch (e) {
-                  errorData = { raw: responseText.substring(0, 500) };
-                }
-                dbg("institution_proof_verify_failed", {
-                  status: verifyResponse.status,
-                });
-                return {
-                  proof: requiredProof,
-                  verified: false,
-                  reason: `API error: ${verifyResponse.status}`,
-                  errorDetails: errorData,
-                };
-              }
-
-              let verifyResult;
-              try {
-                verifyResult = JSON.parse(responseText);
-              } catch (e) {
-                dbg("institution_proof_verify_bad_json", {});
-                return {
-                  proof: requiredProof,
-                  verified: false,
-                  reason: "Invalid JSON response from verify API",
-                };
-              }
-
-              // Handle vlayer API response format
-              // The vlayer API might return different structures, so check multiple possibilities
-              const isVerified =
-                verifyResult.verified === true ||
-                verifyResult.valid === true ||
-                (verifyResult.status === "success" && !verifyResult.error) ||
-                (verifyResult.success === true && !verifyResult.error);
-
-              dbg("institution_proof_verify_done", { verified: isVerified });
-
-              return {
-                proof: requiredProof,
-                verified: isVerified,
-                apiResult: verifyResult,
-              };
-            } catch (error) {
-              dbg("institution_proof_verify_error", {
-                error: error?.message || String(error),
-              });
-              return {
-                proof: requiredProof,
-                verified: false,
-                reason: error.message,
-              };
-            }
-          }
-
-          // For human proof and others, use simple string matching (hardcoded)
-          if (requiredProof === "zkproofof(human)") {
-            dbg("human_proof_legacy_string_match", {});
-          }
+          // Legacy/insecure mode: simple presence check only (no external calls).
           return { proof: requiredProof, verified: hasProof };
         })
       );
@@ -473,18 +373,56 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       };
     }
 
-    // Verify proofs against variableAmountRequired and adjust price if qualified
-    let finalPrice = price;
+    // Compute base amount once. From here on, prefer atomic units (no floats).
+    const baseAtomicAmountForAsset = processPriceToAtomicAmount(price, network);
+    if ("error" in baseAtomicAmountForAsset) {
+      throw new Error(baseAtomicAmountForAsset.error);
+    }
+    const baseMaxAmountRequired = baseAtomicAmountForAsset.maxAmountRequired;
+    const baseAsset = baseAtomicAmountForAsset.asset;
+
+    // Verify proofs against variableAmountRequired and adjust amount if qualified.
+    // SECURITY: discounts without `proofPolicy` are insecure; require explicit opt-in.
+    const allowInsecureProofs =
+      extraConfig?.allowInsecureProofs === true ||
+      process.env.ZKX402_ALLOW_INSECURE_PROOFS === "true";
+
+    let finalMaxAmountRequired = baseMaxAmountRequired;
     let verificationMetadata = null;
 
     if (userProofs.length > 0 && extraConfig?.variableAmountRequired) {
       const variableAmountRequired = extraConfig.variableAmountRequired;
 
+      if (!extraConfig?.proofPolicy && !allowInsecureProofs) {
+        verificationMetadata = {
+          qualified: false,
+          discountApplied: false,
+          userProofs,
+          verificationResult: {
+            isValid: false,
+            hasAllProofs: false,
+            missingProofs: [],
+            userProofs: userProofs.map((p) => String(p).trim().toLowerCase()),
+            requestedProofs: [],
+            verifiedCount: 0,
+            totalRequired: 0,
+            verificationDetails: [],
+            reason: "proofPolicy_required",
+          },
+        };
+      } else {
       // Check each discount option
       for (const discountOption of variableAmountRequired) {
         const requestedProofs =
           discountOption.requestedProofs?.split(",").map((p) => p.trim()) || [];
-        const discountedAmount = discountOption.amountRequired;
+        const discountedAmountAtomic = safeBigInt(discountOption.amountRequired);
+        if (discountedAmountAtomic === null) {
+          dbg("discount_amount_invalid", {
+            correlationId,
+            amountRequired: discountOption.amountRequired,
+          });
+          continue;
+        }
 
         // Use custom verification function to verify proofs (now async)
         const verificationResult = await verifyProofs(
@@ -519,23 +457,18 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             verificationFeeAtomic = 0n;
           }
 
-          // Convert discounted atomic amount to price format
-          // amountRequired is in atomic units (e.g., "5000" = 0.005 USDC for 6 decimals)
-          // We need to convert it back to dollar format for processPriceToAtomicAmount
-          const discountedAmountNum = BigInt(discountedAmount) + verificationFeeAtomic;
-          const usdcDecimals = 6n;
-          const dollarAmount =
-            Number(discountedAmountNum) / Number(10n ** usdcDecimals);
-
-          // Use the discounted amount as the new price
-          finalPrice = `$${dollarAmount.toFixed(6)}`;
+          const discountedTotalAtomic = discountedAmountAtomic + verificationFeeAtomic;
+          finalMaxAmountRequired = discountedTotalAtomic.toString();
 
           verificationMetadata = {
             qualified: true,
             discountApplied: true,
             requestedProofs: discountOption.requestedProofs,
-            discountedAmount: discountedAmount,
-            discountedPrice: finalPrice,
+            discountedAmount: discountedAmountAtomic.toString(),
+            discountedPrice: formatUsdLikePriceFromAtomic(
+              discountedTotalAtomic,
+              baseAsset?.decimals ?? 6
+            ),
             verificationFeeAtomic: verificationFeeAtomic.toString(),
             userProofs: userProofs,
             verificationResult: verificationResult,
@@ -564,19 +497,13 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           verificationResult: lastVerification,
         };
       }
+      }
     }
 
     // Store verification metadata for use in route handler
     req.verificationMetadata = verificationMetadata;
-
-    const atomicAmountForAsset = processPriceToAtomicAmount(
-      finalPrice,
-      network
-    );
-    if ("error" in atomicAmountForAsset) {
-      throw new Error(atomicAmountForAsset.error);
-    }
-    const { maxAmountRequired, asset } = atomicAmountForAsset;
+    const maxAmountRequired = finalMaxAmountRequired;
+    const asset = baseAsset;
 
     const resourceUrl =
       resource || `${req.protocol}://${req.headers.host}${req.path}`;
@@ -684,17 +611,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     if (!payment) {
       // TODO handle paywall html for solana
       if (isWebBrowser) {
-        let displayAmount;
-        if (typeof price === "string" || typeof price === "number") {
-          const parsed = moneySchema.safeParse(price);
-          if (parsed.success) {
-            displayAmount = parsed.data;
-          } else {
-            displayAmount = Number.NaN;
-          }
-        } else {
-          displayAmount = Number(price.amount) / 10 ** price.asset.decimals;
-        }
+        // Best-effort: use the computed atomic requirement for display, so the paywall
+        // reflects any proof-gated discounts. This is only UI and may lose precision.
+        const displayAmount = Number(
+          formatAtomicToFixedDecimalString(
+            safeBigInt(maxAmountRequired) ?? 0n,
+            asset?.decimals ?? 6
+          )
+        );
 
         const html =
           customPaywallHtml ||

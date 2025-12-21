@@ -174,21 +174,16 @@ Proof policy is typically **not secret**. If we ever need encrypted-at-rest conf
 
 Do **not** put secrets (API keys) into policy JSON; keep secrets in env vars.
 
-## 2) Institution Proof JSON (legacy)
+## 2) Removed: institution proof JSON (legacy)
 
-### 2.1 File location (repo)
+Earlier iterations of this repo experimented with a hardcoded “institution proof” flow that loaded `proof.json` and called an external verifier.
 
-- `apps/demo/proof.json`
+This path has been **removed** in favor of a cleaner design:
 
-This file is a captured proof payload used by the legacy “institution=NYT” verifier path.
+- **Canonical claims** (`proofPolicy`) describe *what* you need.
+- **Providers** describe *how* you verify it (chain-first, optional API).
 
-### 2.2 Loader behavior
-
-The middleware attempts to load `proof.json` from these candidate paths:
-
-- `packages/x402-zkx402/proof.json` (if a consumer places it next to the package)
-- `<cwd>/proof.json`
-- `<cwd>/apps/demo/proof.json` (this repo’s layout)
+If you need institution-like checks, model them as canonical claims + provider logic rather than a one-off JSON blob.
 
 ## 3) Scripts to run (how to validate)
 
