@@ -93,7 +93,7 @@ How the project can be built further:
 | USDC (testnet)   | 0x036CbD53842c5426634e7929541eC2318f3dCF7e |
 The verified smart contract on Base Sepolia testnet is:
 
-https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e#code
+`https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e#code`
 
 
 ### Celo Alfajores testnet (chainID: 44787)
@@ -125,7 +125,7 @@ open server in terminal
 ```
 
 ## Demo movie
-https://youtu.be/kEA0Jhq6qjM
+`https://youtu.be/kEA0Jhq6qjM`
 
 ## Demo site
-https://zkx402.io
+`https://zkx402.io`
