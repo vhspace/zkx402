@@ -41,6 +41,8 @@ try {
     join(__dirname, "..", "proof.json"),
     // typical monorepo/demo layouts
     join(process.cwd(), "proof.json"),
+    join(process.cwd(), "apps", "demo", "proof.json"),
+    // legacy path (backward compat)
     join(process.cwd(), "zkx402-demo", "proof.json"),
   ];
   for (const p of candidatePaths) {

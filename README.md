@@ -106,7 +106,7 @@ The verified smart contract for Celo testnet is:
 ### Client
 Go to the "client" folder and run these commands after filling in the environment variables based on the example env file:
 ```bash
-cd zkx402-demo
+cd apps/demo
 npm run install:all
 npm run dev:server
 npm run dev:client
@@ -116,7 +116,7 @@ open client in browser: localhost:3000
 ### Server
 For server, go to the "server" folder and run these commands after filling in the environment variables based on the example env file:
 ```bash
-cd zkx402-demo
+cd apps/demo
 npm run install:all
 npm run dev:server
 npm run dev:client

@@ -30,6 +30,30 @@ const RPC_URL = "http://localhost:8545";
 const CHAIN_ID = 31337;
 const SERVER_PORT = 3001;
 
+function findRepoRoot(startDir) {
+  let dir = startDir;
+  for (let i = 0; i < 8; i++) {
+    const pkgJson = path.join(dir, "package.json");
+    const packagesDir = path.join(dir, "packages");
+    if (fs.existsSync(pkgJson) && fs.existsSync(packagesDir)) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.resolve(startDir, "..", "..", "..");
+}
+
+function ensureContractsSubmodules(repoRoot, contractsDir) {
+  const forgeStdDir = path.join(contractsDir, "lib", "forge-std");
+  if (fs.existsSync(forgeStdDir)) return;
+  execSync("git submodule update --init --recursive", {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+}
+
 async function checkAnvilRunning() {
   try {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -79,6 +103,8 @@ async function deployMockUSDC() {
   log(colors.blue, "Deploying MockUSDC...");
 
   const contractsDir = path.join(__dirname, "..", "contracts");
+  const repoRoot = findRepoRoot(__dirname);
+  ensureContractsSubmodules(repoRoot, contractsDir);
 
   try {
     const output = execSync(
@@ -103,6 +129,8 @@ async function deployMockHumanRegistry() {
   log(colors.blue, "Deploying MockHumanRegistry...");
 
   const contractsDir = path.join(__dirname, "..", "contracts");
+  const repoRoot = findRepoRoot(__dirname);
+  ensureContractsSubmodules(repoRoot, contractsDir);
 
   const output = execSync(
     `forge create src/MockHumanRegistry.sol:MockHumanRegistry --rpc-url ${RPC_URL} --private-key ${DEPLOYER_PRIVATE_KEY} --broadcast --constructor-args ${PAYER_ADDRESS}`,
@@ -287,7 +315,7 @@ async function main() {
     }
 
     log(colors.blue, "Running unit tests (x402-zkx402)...");
-    const repoRoot = path.resolve(__dirname, "..", "..");
+    const repoRoot = findRepoRoot(__dirname);
     const unitTestCwd = path.join(repoRoot, "packages", "x402-zkx402");
     execSync("npm test", { cwd: unitTestCwd, stdio: "inherit" });
     log(colors.green, "Unit tests passed.");

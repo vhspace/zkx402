@@ -3,8 +3,8 @@
 ## Overview
 
 This project consists of two separate deployments on Vercel:
-1. **Backend API** (`zkx402-demo/server/`)
-2. **Frontend** (`zkx402-demo/client/`)
+1. **Backend API** (`apps/demo/server/`)
+2. **Frontend** (`apps/demo/client/`)
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ This project consists of two separate deployments on Vercel:
 
 ### 1. Navigate to server directory:
 ```bash
-cd zkx402-demo/server
+cd apps/demo/server
 ```
 
 ### 2. Deploy to Vercel:
@@ -128,7 +128,7 @@ app.use(cors({
 
 Then redeploy the backend:
 ```bash
-cd zkx402-demo/server
+cd apps/demo/server
 vercel --prod
 ```
 
@@ -139,8 +139,8 @@ vercel --prod
 1. Push your code to GitHub
 2. Import your project in Vercel dashboard
 3. Configure two projects:
-   - **zkx402-api**: Root Directory = `zkx402-demo/server`
-   - **zkx402-client**: Root Directory = `zkx402-demo/client`
+  - **zkx402-api**: Root Directory = `apps/demo/server`
+  - **zkx402-client**: Root Directory = `apps/demo/client`
 4. Set environment variables in Vercel dashboard
 5. Enable automatic deployments
 
@@ -150,7 +150,7 @@ Link your local projects to Vercel:
 
 ```bash
 # Backend
-cd zkx402-demo/server
+cd apps/demo/server
 vercel link
 
 # Frontend
@@ -161,7 +161,7 @@ vercel link
 Deploy updates:
 ```bash
 # Backend
-cd zkx402-demo/server
+cd apps/demo/server
 vercel --prod
 
 # Frontend
@@ -214,13 +214,13 @@ vercel env add VARIABLE_NAME
 
 Backend logs:
 ```bash
-cd zkx402-demo/server
+cd apps/demo/server
 vercel logs
 ```
 
 Frontend logs:
 ```bash
-cd zkx402-demo/client
+cd apps/demo/client
 vercel logs
 ```
 
@@ -235,12 +235,12 @@ Test locally before deploying:
 
 ```bash
 # Backend
-cd zkx402-demo/server
+cd apps/demo/server
 npm install
 npm start
 
 # Frontend (in another terminal)
-cd zkx402-demo/client
+cd apps/demo/client
 npm install
 npm run dev
 ```
