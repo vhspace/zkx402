@@ -21,17 +21,12 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
-      - name: Install x402-zkx402 deps (for tests)
-        working-directory: packages/x402-zkx402
+      - name: Install workspace deps (root)
         run: npm install --ignore-scripts --legacy-peer-deps
 
       - name: Unit tests (x402-zkx402)
         working-directory: packages/x402-zkx402
         run: npm test
-
-      - name: Install demo server deps
-        working-directory: zkx402-demo/server
-        run: npm ci --ignore-scripts --legacy-peer-deps
 
       - name: Install local-chain deps
         working-directory: zkx402-demo/local-chain

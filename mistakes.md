@@ -28,4 +28,16 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Re-read the relevant section and re-apply with an exact match.
 - **Where**: `zkx402-demo/local-chain/test-e2e.js`
 
+### CI/GitHub Actions failure: `x402` not declared as a runtime dependency of `x402-zkx402`
+
+- **Mistake**: `packages/x402-zkx402` imports `x402/*` at runtime but `x402` was only installed at the repo root. In a clean CI environment (no root install), the demo server crashes with `ERR_MODULE_NOT_FOUND: Cannot find package 'x402'`.
+- **Fix**: Added `"dependencies": { "x402": "1.0.1" }` to `packages/x402-zkx402/package.json` so consumers/CI install it automatically.
+- **Where**: `packages/x402-zkx402/package.json`
+
+### CI/GitHub Actions failure: missing `@solana/kit` during clean installs
+
+- **Mistake**: CI was installing dependencies per-subdirectory. In a clean environment this can produce a dependency layout where Solana libraries are present but their required peer/runtime packages are not, causing server startup to crash with `ERR_MODULE_NOT_FOUND` for `@solana/kit`.
+- **Fix**: Updated CI to do a single **root workspace install** (`npm install` at repo root) before running unit tests and the local E2E runner. This matches how the monorepo resolves/hoists dependencies and avoids missing runtime modules.
+- **Where**: `.github/workflows/ci.yml`
+
 

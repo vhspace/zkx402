@@ -11,6 +11,9 @@
   "scripts": {
     "test": "node --test test/*.test.js"
   },
+  "dependencies": {
+    "x402": "1.0.1"
+  },
   "keywords": [
     "x402",
     "zkproof",
