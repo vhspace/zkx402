@@ -66,42 +66,20 @@ CELOSCAN_API_KEY=your_key_here
 BASESCAN_API_KEY=your_key_here
 ```
 
-### Step 2: Deploy to Base Sepolia (FIRST!)
+### Step 2: Deploy (Node-first, recommended)
 
 ```bash
-forge script script/DeployReceiver.s.sol:DeployReceiver \
-  --rpc-url base-sepolia \
-  --broadcast \
-  --verify
+node scripts/deploy.mjs --verify
 ```
 
-**Save the deployed address!** You'll see:
-```
-ProofOfHumanReceiver deployed at: 0xABC123...
-```
+This will:
+- deploy the Base receiver (and write `BASE_PROOF_OF_HUMAN_RECEIVER` to `.env`)
+- deploy the Celo sender (and write `CELO_PROOF_OF_HUMAN_SENDER` to `.env`)
 
-Copy this address and add to `.env`:
-```bash
-BASE_PROOF_OF_HUMAN_RECEIVER=0xABC123...
-```
-
-### Step 3: Deploy to Celo Sepolia (SECOND!)
+Optional: configure trusted sender enforcement on Base:
 
 ```bash
-forge script script/DeploySender.s.sol:DeploySender \
-  --rpc-url celo-sepolia \
-  --broadcast \
-  --verify
-```
-
-**Save the deployed address!** You'll see:
-```
-ProofOfHumanSender deployed at: 0xDEF456...
-```
-
-Copy this address and add to `.env`:
-```bash
-CELO_PROOF_OF_HUMAN_SENDER=0xDEF456...
+node scripts/deploy.mjs --configure-trusted-sender
 ```
 
 ### Step 4: Add Trusted Sender (Optional)
@@ -265,6 +243,18 @@ After deploying contracts:
 3. **View on explorers:**
    - Celo: https://celo-sepolia.blockscout.com/address/YOUR_ADDRESS
    - Base: https://sepolia.basescan.org/address/YOUR_ADDRESS
+
+## Blockscout verification (optional, Node script)
+
+If you need Blockscout verification using flattened sources (instead of `forge --verify`), use:
+
+```bash
+node scripts/blockscout-verify.mjs \
+  --chain base-sepolia \
+  --address 0xYourContract \
+  --contract ProofOfHumanReceiver \
+  --flattened ProofOfHumanReceiver.flattened.sol
+```
 
 ## Resources
 

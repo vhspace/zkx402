@@ -16,6 +16,7 @@
     "vibe:setup": "node scripts/vibe-setup.mjs",
     "vercel:deploy": "node scripts/vercel-deploy.mjs",
     "vercel:env": "node scripts/vercel-env.mjs",
+    "test:tools": "node --test scripts/test/*.test.mjs",
     "dev:server": "npm run dev --workspace=apps/demo/server",
     "dev:client": "npm run dev --workspace=apps/demo/client",
     "dev:replit": "concurrently -k -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\""
