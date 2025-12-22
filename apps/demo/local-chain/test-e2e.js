@@ -320,6 +320,97 @@ async function main() {
     );
   }
 
+  log(colors.blue, "\nStep 9: Test vlayer_chain claim (origin_http_get) pricing");
+
+  const vlayerHeaders = {
+    Accept: "application/json",
+    "X-Wallet-Address": config.payerAddress,
+    "X-Proof-Claims": JSON.stringify([{ type: "origin_http_get", url: "https://example.com" }]),
+  };
+
+  const vlayerResponse = await fetch(`${config.serverUrl}/motivate`, {
+    method: "GET",
+    headers: { ...vlayerHeaders },
+  });
+
+  assert.equal(vlayerResponse.status, 402);
+  const vlayerRequirements = await vlayerResponse.json();
+  const vlayerRequirement = vlayerRequirements.accepts[0];
+
+  log(colors.green, "  Received requirements with vlayer_chain claim");
+  log(
+    colors.yellow,
+    `  Discounted price (vlayer): ${ethers.formatUnits(vlayerRequirement.maxAmountRequired, 6)} USDC`
+  );
+
+  // Expect the vlayer tier to be more discounted than the base price.
+  assert.ok(BigInt(vlayerRequirement.maxAmountRequired) < BigInt(maxAmountRequired));
+
+  log(colors.blue, "\nStep 10: Pay vlayer discounted price (vlayer_chain provider path)");
+
+  const payerBalanceBeforeVlayer = await usdcContract.balanceOf(config.payerAddress);
+  const receiverBalanceBeforeVlayer = await usdcContract.balanceOf(config.receiverAddress);
+
+  const vlayerAuthorization = {
+    from: config.payerAddress,
+    to: vlayerRequirement.payTo,
+    value: vlayerRequirement.maxAmountRequired,
+    validAfter,
+    validBefore,
+    nonce: ethers.hexlify(ethers.randomBytes(32)),
+  };
+
+  const vlayerSignature = await payerWallet.signTypedData(domain, types, vlayerAuthorization);
+
+  const vlayerPaymentHeader = Buffer.from(
+    JSON.stringify({
+      x402Version: 1,
+      scheme: "exact",
+      network: vlayerRequirement.network,
+      payload: {
+        signature: vlayerSignature,
+        authorization: {
+          from: vlayerAuthorization.from,
+          to: vlayerAuthorization.to,
+          value: String(vlayerAuthorization.value),
+          validAfter: String(vlayerAuthorization.validAfter),
+          validBefore: String(vlayerAuthorization.validBefore),
+          nonce: vlayerAuthorization.nonce,
+        },
+      },
+    })
+  ).toString("base64");
+
+  const vlayerPaidResponse = await fetch(`${config.serverUrl}/motivate`, {
+    method: "GET",
+    headers: {
+      ...vlayerHeaders,
+      "X-PAYMENT": vlayerPaymentHeader,
+    },
+  });
+
+  assert.equal(vlayerPaidResponse.status, 200);
+  const vlayerPaidData = await vlayerPaidResponse.json();
+  assert.equal(vlayerPaidData.paid, true);
+  assert.equal(vlayerPaidData.verification?.qualified, true);
+  assert.equal(vlayerPaidData.verification?.discountApplied, true);
+
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  const payerBalanceAfterVlayer = await usdcContract.balanceOf(config.payerAddress);
+  const receiverBalanceAfterVlayer = await usdcContract.balanceOf(config.receiverAddress);
+
+  const payerDiffVlayer = payerBalanceBeforeVlayer - payerBalanceAfterVlayer;
+  const receiverDiffVlayer = receiverBalanceAfterVlayer - receiverBalanceBeforeVlayer;
+
+  assert.equal(payerDiffVlayer, BigInt(vlayerRequirement.maxAmountRequired));
+  assert.equal(receiverDiffVlayer, BigInt(vlayerRequirement.maxAmountRequired));
+
+  log(
+    colors.green,
+    `  vlayer payment spent: ${ethers.formatUnits(payerDiffVlayer, 6)} USDC`
+  );
+
   log(colors.blue, "\nTest Summary");
   log(colors.green, "  Server health check passed");
   log(colors.green, "  Received 402 Payment Required");
@@ -327,6 +418,7 @@ async function main() {
   log(colors.green, "  Payment accepted and content received");
   log(colors.green, "  Payment response header received");
   log(colors.green, "  Dynamic pricing with zkproofs tested");
+  log(colors.green, "  Dynamic pricing with vlayer_chain tested");
 
   log(colors.blue, "\nAll tests passed!\n");
 }

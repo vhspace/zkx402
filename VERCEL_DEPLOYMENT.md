@@ -18,7 +18,23 @@ This project consists of two separate deployments on Vercel:
    vercel login
    ```
 
+### Optional: Node-based helpers (recommended)
+
+From repo root:
+
+- Deploy both projects interactively: `npm run vercel:deploy`
+- Set env vars from your local environment: `npm run vercel:env`
+
 ## Backend Deployment (API Server)
+
+### Important note (why the old guide often fails)
+
+This backend is an Express app, and on Vercel it must run as a **serverless handler** (no `app.listen(...)`).
+The server now exports `export default app;` and only calls `listen(...)` when **not** running on Vercel.
+
+Also, the demo server depends on the local workspace package `packages/x402-zkx402`. For Vercel, the server now uses a local file dependency:
+
+- `apps/demo/server/package.json` → `"x402-zkx402": "file:../../packages/x402-zkx402"`
 
 ### 1. Navigate to server directory:
 ```bash
@@ -45,6 +61,7 @@ After deployment, set these environment variables in Vercel dashboard or via CLI
 vercel env add CDP_API_KEY_ID
 vercel env add CDP_API_KEY_SECRET
 vercel env add RECEIVER_WALLET
+vercel env add ALLOWED_ORIGINS
 ```
 
 Or via Vercel Dashboard:
@@ -54,6 +71,14 @@ Or via Vercel Dashboard:
   - `CDP_API_KEY_ID`: Your Coinbase CDP API Key ID
   - `CDP_API_KEY_SECRET`: Your Coinbase CDP API Secret Key
   - `RECEIVER_WALLET`: Wallet address that receives payments
+  - `ALLOWED_ORIGINS`: Comma-separated list of allowed frontend origins
+
+Optional (proof-aware pricing / vlayer):
+- `ENABLE_PROOF_POLICY=true`
+- `ENABLE_PROOF_COSTS=true`
+- `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER` (for chain-based Self checks)
+- `VLAYERS_RPC_URL` + `VLAYERS_PROOF_REGISTRY` (for `vlayer_chain`)
+- `VLAYERS_API_URL` (+ `VLAYERS_API_KEY`) (for `vlayer_api`)
 
 ### 4. Deploy to Production:
 ```bash
@@ -105,6 +130,11 @@ vercel env add NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID
 vercel env add NEXT_PUBLIC_CDP_PROJECT_ID
 # Add any other environment variables your frontend needs
 ```
+
+### 4.1 Re-check the client Vercel config
+
+The frontend Vercel config should not reference missing Vercel “secret aliases” by default.
+Set `NEXT_PUBLIC_API_URL` in the Vercel project Environment Variables instead.
 
 ### 5. Deploy to Production:
 ```bash
@@ -167,6 +197,25 @@ vercel --prod
 # Frontend
 cd ../client
 vercel --prod
+```
+
+## Node “no-shell” helpers (recommended)
+
+Instead of bash scripts, use the Node helpers shipped in this repo:
+
+```bash
+npm run vercel:deploy
+```
+
+To set environment variables non-interactively (values read from your local environment):
+
+```bash
+export CDP_API_KEY_ID="..."
+export CDP_API_KEY_SECRET="..."
+export RECEIVER_WALLET="0x..."
+export NEXT_PUBLIC_CDP_PROJECT_ID="..."
+export NEXT_PUBLIC_API_URL="https://<your-backend>.vercel.app"
+npm run vercel:env
 ```
 
 ## Troubleshooting

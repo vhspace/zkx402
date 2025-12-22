@@ -88,6 +88,57 @@ Response handling:
 
 - Any JSON response with `verified: true` or `valid: true` (or `success: true` without `error`) is treated as verified.
 
+### 1.7.2 vlayer verification (API + chain providers)
+
+We support vlayer as a **separate provider family** so apps can choose between:
+
+- **`vlayer_chain`**: reliable request-path verification via **on-chain attestation lookup** (no vendor API calls)
+- **`vlayer_api`**: direct verification by POSTing the proof payload to a verifier API (may be billed per request)
+
+#### Provider names
+
+- **Chain provider**: `vlayer_chain`
+- **API provider**: `vlayer_api`
+
+#### Canonical claim supported (v1)
+
+- `{ "type": "origin_http_get" }`
+  - Optional fields like `url` may be included for app-level UX/debugging, but the v1 cost key is just `origin_http_get`.
+
+#### `vlayer_api` (off-chain verifier)
+
+- **Environment variables**:
+  - `VLAYERS_API_URL`: URL to POST verification requests to
+  - `VLAYERS_API_KEY` (optional): bearer token sent as `Authorization: Bearer ...`
+  - `VLAYERS_API_TIMEOUT_MS` (optional): request timeout (default 8000ms)
+- **Request header**:
+  - `X-Vlayer-Proof`: JSON string containing the vlayer proof/presentation payload (passed through to the verifier as `proof`)
+
+Request body shape sent to `VLAYERS_API_URL`:
+
+```json
+{
+  "vendor": "vlayer",
+  "scope": "zkx402",
+  "subject": { "walletAddress": "0xabc..." },
+  "claim": { "type": "origin_http_get" },
+  "proof": { "success": true, "data": "..." }
+}
+```
+
+#### `vlayer_chain` (chain attestation lookup)
+
+This provider assumes a proof was **verified + recorded** on-chain (e.g., by an attestor service), and the API server only needs to do a view call.
+
+- **Environment variables**:
+  - `VLAYERS_RPC_URL`: RPC URL for the chain where attestations are stored
+  - `VLAYERS_PROOF_REGISTRY`: registry contract address with:
+    - `isVerified(address subject, bytes32 claimHash) -> bool`
+
+The `claimHash` is computed as:
+
+- `sha256(stableStringify({ scope, claim }))`
+
 ## 1.8 Proof Cost JSON (separate schema; v1)
 
 Proof verification can have a **real cost** (vendor API billing, infra, rate-limits). To keep pricing flexible (and compatible with future real-time quotes), we store proof verification costs in a **separate JSON schema** from `proofPolicy`.

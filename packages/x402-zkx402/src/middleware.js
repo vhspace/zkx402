@@ -24,6 +24,8 @@ import {
 } from "./proofs/audit.js";
 import { createSelfChainProvider } from "./proofs/providers/self_chain.js";
 import { createSelfApiProvider } from "./proofs/providers/self_api.js";
+import { createVlayerChainProvider } from "./proofs/providers/vlayer_chain.js";
+import { createVlayerApiProvider } from "./proofs/providers/vlayer_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
 
@@ -116,7 +118,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
   const auditEnabled = process.env.ZKX402_AUDIT_LOG === "true";
   const debugEnabled = process.env.ZKX402_DEBUG_LOG === "true";
 
-  const proofProviders = [createSelfChainProvider(), createSelfApiProvider()];
+  const proofProviders = [
+    createSelfChainProvider(),
+    createSelfApiProvider(),
+    createVlayerChainProvider(),
+    createVlayerApiProvider(),
+  ];
   const dbg = (message, data) =>
     logDebug(message, data, { enabled: debugEnabled });
 
@@ -187,6 +194,25 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         selfProof = JSON.parse(String(selfProofHeader));
       } catch (error) {
         dbg("x_self_proof_parse_failed", {
+          correlationId,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    let vlayerProof = null;
+    const vlayerProofHeader =
+      req.headers["x-vlayer-proof"] ||
+      req.headers["x-vlayer-presentation"] ||
+      req.headers["x-vlayer-presentation-json"] ||
+      null;
+    if (vlayerProofHeader) {
+      try {
+        vlayerProof = JSON.parse(String(vlayerProofHeader));
+      } catch (error) {
+        // Allow non-JSON payloads (e.g., hex-encoded proof blobs) as raw strings.
+        vlayerProof = String(vlayerProofHeader);
+        dbg("x_vlayer_proof_parse_failed", {
           correlationId,
           error: error?.message || String(error),
         });
@@ -283,7 +309,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               claim,
               policy: routedPolicy,
               providers: proofProviders,
-              context: { walletAddress, selfProof, correlationId },
+              context: { walletAddress, selfProof, vlayerProof, correlationId },
             });
             durationMs = Date.now() - startedAt;
           }

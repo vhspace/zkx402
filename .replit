@@ -1,0 +1,5 @@
+run = "npm run dev:replit"
+
+[env]
+NODE_ENV = "development"
+

@@ -22,5 +22,10 @@ test("claimKey: ofac_clear", () => {
   assert.equal(claimKey(c), "ofac_clear");
 });
 
+test("claimKey: origin_http_get", () => {
+  const c = { type: ClaimType.ORIGIN_HTTP_GET, url: "https://example.com" };
+  assert.equal(claimKey(c), "origin_http_get");
+});
+
 
 

@@ -56,6 +56,60 @@ For end-to-end testing with a local blockchain (Anvil + MockUSDC + full 402 flow
 - `apps/demo/local-chain/README.md`
 - `DEVELOPER_TESTING.md`
 
+## proof-aware pricing in this demo (Self + vlayer)
+
+This repo’s demo server uses `x402-zkx402`, which extends x402 with **proof-aware pricing**:
+
+- You can advertise/charge different prices based on **canonical claims** in `X-Proof-Claims`.
+- Proof verification is **provider-routed** via `extra.proofPolicy` and priced via `extra.proofCosts`.
+
+### canonical claims used
+
+- **Self**: `{ "type": "human" }` (verified via `self` chain provider, optional `self_api`)
+- **vlayer**: `{ "type": "origin_http_get" }` (verified via `vlayer_chain` or `vlayer_api`)
+
+### step-by-step: get the vlayer discount (demo)
+
+The easiest way (fully deterministic) is the local-chain runner, which deploys and seeds a local on-chain vlayer registry attestation:
+
+```bash
+cd apps/demo/local-chain
+node run-e2e-test.js
+```
+
+That runner:
+- deploys `VlayerProofRegistry` on Anvil,
+- seeds a `vlayer_chain` attestation for the test payer,
+- proves the discount path by calling `/motivate` with `X-Proof-Claims: [{"type":"origin_http_get"}]`.
+
+### step-by-step: use `vlayer_api` (real proof payload path)
+
+If you want “present a proof payload” verification instead of chain-attestation lookup:
+
+1) Configure the demo server with a verifier endpoint:
+
+- set `VLAYERS_API_URL` (and optionally `VLAYERS_API_KEY`) in `apps/demo/server/.env`
+- update `apps/demo/server/proof-policy.json` to allow `vlayer_api` (or set `X-ZK-Proof-Plan` to select it when multiple are allowed)
+
+2) Obtain a vlayer proof/presentation payload (example format in `apps/demo/proof.json`).
+
+3) Call the protected endpoint with:
+
+- `X-Wallet-Address: 0x...`
+- `X-Proof-Claims: [{"type":"origin_http_get"}]`
+- `X-Vlayer-Proof: <stringified payload>`
+
+Notes:
+- In **quote mode** (no `X-PAYMENT`), API providers are not called; you’ll get a quote. Verification happens when you retry with payment.
+
+### future proofs: how to add one (high-level)
+
+When adding a new proof system:
+- Add a canonical claim + `claimKey(...)`
+- Add a provider (`chain` and/or `api`)
+- Wire it into the middleware and demo policy/cost config
+- Add unit tests + extend `apps/demo/local-chain/test-e2e.js` if it affects pricing
+
 ## production setup
 
 ### 1. install server dependencies

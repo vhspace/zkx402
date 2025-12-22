@@ -17,6 +17,8 @@ function methodForClaim(claim) {
       return "verifyExcludedCountriesNotContains";
     case ClaimType.OFAC_CLEAR:
       return "verifyOfacClear";
+    case ClaimType.ORIGIN_HTTP_GET:
+      return "verifyOriginHttpGet";
     default:
       return null;
   }

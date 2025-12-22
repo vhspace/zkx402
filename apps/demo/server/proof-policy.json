@@ -3,13 +3,13 @@
   "policy": {
     "version": 1,
     "scope": "zkx402",
-    "claims": [{ "type": "human" }],
-    "allowedProviders": ["self"],
-    "preferenceOrder": ["self"],
+    "claims": [{ "type": "human" }, { "type": "origin_http_get" }],
+    "allowedProviders": ["vlayer_chain", "vlayer_api", "self", "self_api"],
+    "preferenceOrder": ["vlayer_chain", "vlayer_api", "self", "self_api"],
     "fallback": "none"
   },
   "integrity": {
     "hashAlg": "sha256",
-    "hash": "504a6e7908b9c6606d4a5f0c14d46a7289d4342c81701bb95c833671db09f43b"
+    "hash": "b8791baeca660749b6c731694cf04188598b31b43339772ffd4378d733394a1e"
   }
 }

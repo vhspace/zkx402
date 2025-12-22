@@ -60,6 +60,7 @@ See:
 See:
 - `JSON_SPECS.md` (policy JSON envelope + integrity hashing)
 - `PROOF_VERIFICATION_PLAN.md` (design/roadmap)
+- `VIBE_CODE_SETUP.md` (setup guide for Cursor/Claude/v0/Lovable)
 
 ## Contributing
 
