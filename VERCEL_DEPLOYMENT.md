@@ -18,6 +18,17 @@ This project consists of two separate deployments on Vercel:
    vercel login
    ```
 
+### Recommended Vercel settings (important for this monorepo)
+
+This repo uses npm workspaces, and **Node 24 can trigger workspace-related install/build issues on Vercel**
+(commonly showing `npm error code ENOWORKSPACES` during Next.js SWC install/download).
+
+For both the backend and frontend Vercel projects, set:
+
+- **Node.js Version**: **22.x** (Project → Settings → General → Node.js Version)
+- **Install Command**: `npm install --ignore-scripts --legacy-peer-deps`
+  - (Project → Settings → Build & Development Settings → Install Command)
+
 ### Optional: Node-based helpers (recommended)
 
 From repo root:
@@ -304,6 +315,12 @@ npm run vercel:env
 - Check build logs: `vercel logs`
 - Test build locally: `npm run build`
 - Verify all dependencies are installed
+
+**`npm error code ENOWORKSPACES` (often during “Downloading swc package @next/swc-…”)**
+- Ensure the Vercel project is using **Node 22.x** (not 24).
+- Set an explicit **Install Command** (Vercel project settings):
+  - `npm install --ignore-scripts --legacy-peer-deps`
+- Redeploy with **“Clear cache”** enabled.
 
 ### Environment Variables
 
