@@ -22,6 +22,15 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 ## 2025-12-22
 
+### Docs drift: placeholder repo links + confusing facilitator guidance
+
+- **Mistake**: Some docs and package metadata still referenced placeholder repo URLs (`yourusername/...`) and the demo server root endpoint pointed to a different repo. Also, facilitator usage was underspecified, leading to confusion about whether the middleware expects `x402` or `@coinbase/x402`.
+- **Fix**:
+  - Updated `packages/x402-zkx402/package.json` repository/bugs/homepage to the real repo.
+  - Updated `packages/x402-zkx402/README.md` and `examples/basic-usage.js` to clarify facilitator shapes and to link to `docs/proof-concepts.md`.
+  - Updated `apps/demo/server/index.js` root `github` link to this repo.
+- **Where**: `packages/x402-zkx402/*`, `apps/demo/server/index.js`
+
 ### Tried to follow “use MCP for GitHub” but no GitHub MCP server was configured
 
 - **Mistake**: Assumed an MCP GitHub server would be available for code lookups. Discovery returned no MCP resources, so attempting to rely on MCP would have blocked progress.

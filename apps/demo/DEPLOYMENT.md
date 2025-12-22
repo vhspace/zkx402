@@ -2,7 +2,7 @@
 
 ## Prerequisites
 ```bash
-cd /Users/ballew/Documents/repos/ethglobal-playground/x402-demo/contracts
+cd apps/demo/contracts
 source .env
 ```
 
@@ -47,7 +47,7 @@ cast send $BASE_PROOF_OF_HUMAN_RECEIVER \
 
 ## Step 4: Update Frontend
 
-Update `x402-demo/client/.env.local`:
+Update `apps/demo/client/.env.local`:
 ```
 NEXT_PUBLIC_CELO_BRIDGE_ADDRESS=<CELO_PROOF_OF_HUMAN_SENDER>
 NEXT_PUBLIC_BASE_REGISTRY_ADDRESS=<BASE_PROOF_OF_HUMAN_RECEIVER>

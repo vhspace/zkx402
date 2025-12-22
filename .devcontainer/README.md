@@ -44,15 +44,15 @@ This devcontainer provides a consistent development environment for the zkx402 p
 ## Forwarded Ports
 
 The following ports are automatically forwarded:
-- **3000** - Next.js Frontend (zkx402-demo/client)
-- **3001** - Backend Server (zkx402-demo/server)
+- **3000** - Next.js frontend (`apps/demo/client`)
+- **3001** - Backend server (`apps/demo/server`)
 - **8545** - Local Blockchain (Anvil/Hardhat)
 
 ## Development Workflow
 
 ### Smart Contracts
 ```bash
-cd zkx402-demo/contracts
+cd apps/demo/contracts
 
 # Compile contracts
 forge build
@@ -69,7 +69,7 @@ anvil
 
 ### Frontend
 ```bash
-cd zkx402-demo/client
+cd apps/demo/client
 
 # Install dependencies (if needed)
 npm install
@@ -80,7 +80,7 @@ npm run dev
 
 ### Backend
 ```bash
-cd zkx402-demo/server
+cd apps/demo/server
 
 # Install dependencies (if needed)
 npm install
