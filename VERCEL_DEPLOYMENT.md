@@ -18,6 +18,13 @@ This project consists of two separate deployments on Vercel:
    vercel login
    ```
 
+### Optional: Node-based helpers (recommended)
+
+From repo root:
+
+- Deploy both projects interactively: `npm run vercel:deploy`
+- Set env vars from your local environment: `npm run vercel:env`
+
 ## Backend Deployment (API Server)
 
 ### Important note (why the old guide often fails)
@@ -190,6 +197,25 @@ vercel --prod
 # Frontend
 cd ../client
 vercel --prod
+```
+
+## Node “no-shell” helpers (recommended)
+
+Instead of bash scripts, use the Node helpers shipped in this repo:
+
+```bash
+npm run vercel:deploy
+```
+
+To set environment variables non-interactively (values read from your local environment):
+
+```bash
+export CDP_API_KEY_ID="..."
+export CDP_API_KEY_SECRET="..."
+export RECEIVER_WALLET="0x..."
+export NEXT_PUBLIC_CDP_PROJECT_ID="..."
+export NEXT_PUBLIC_API_URL="https://<your-backend>.vercel.app"
+npm run vercel:env
 ```
 
 ## Troubleshooting

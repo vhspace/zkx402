@@ -31,7 +31,7 @@ This file tracks mistakes found during implementation and what we changed to pre
 ### Accidentally kept real secrets in a repo script (`set-vercel-env.sh`)
 
 - **Mistake**: A helper script contained what looked like real CDP credentials and wallet addresses committed in plaintext.
-- **Fix**: Deleted `set-vercel-env.sh` and replaced it with `set-vercel-env.example.sh` which requires secrets to be provided via environment variables (or set in the Vercel Dashboard).
+- **Fix**: Deleted `set-vercel-env.sh` and replaced shell automation with Node-based helpers (`scripts/vercel-env.mjs`, `scripts/vercel-deploy.mjs`). Secrets are provided via environment variables (or set in the Vercel Dashboard).
 - **Where**: Vercel deployment helpers.
 
 ### Bad CLI flag when merging PRs with `gh`

@@ -97,6 +97,14 @@ Notes:
 - `dev:replit` runs both the demo server and Next.js client in one process using `concurrently`.
 - The local deterministic E2E (`apps/demo/local-chain`) requires Foundry/Anvil and is better suited for a full devcontainer/local machine.
 
+## No-shell principle (repo automation)
+
+Where we provide automation, we prefer **Node scripts** over bash:
+
+- Setup wizard: `npm run vibe:setup`
+- Vercel deploy helper: `npm run vercel:deploy`
+- Vercel env helper: `npm run vercel:env`
+
 ## vlayer proofs in this repo (how to “get” them)
 
 We support two verification paths:
