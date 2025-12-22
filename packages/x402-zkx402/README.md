@@ -14,6 +14,7 @@ Routes can quote/charge different prices based on **canonical proof claims** (st
 - ✅ **Drop-in Replacement** - Works with existing x402 infrastructure
 - ✅ **Multiple claim types (opt-in)** - Human (chain), plus richer claims via API provider when configured
 - ✅ **Cross-chain Compatible** - Works with Base, Celo, and other EVM chains
+- ✅ **vlayer support (API + chain)** - Verify “web origin” proofs via `vlayer_api` or chain-first `vlayer_chain`
 
 ## Installation
 
@@ -129,6 +130,96 @@ This middleware uses **canonical claims** end-to-end:
 | age_gte | `{ type: "age_gte", age: 21 }` | `self_api` only |
 | excluded_countries_not_contains | `{ type: "excluded_countries_not_contains", countries: ["US","RU"] }` | `self_api` only |
 | ofac_clear | `{ type: "ofac_clear" }` | `self_api` only |
+| origin_http_get | `{ type: "origin_http_get" }` | `vlayer_chain` (chain) or `vlayer_api` (API) |
+
+## vlayer proofs (step-by-step)
+
+There are **two** supported paths. Use **chain** if you want reliability and low request-path latency; use **API** if you want to verify a newly presented proof on demand.
+
+### Option A: `vlayer_chain` (recommended for production request-path)
+
+This assumes an attestor/prover flow already recorded an attestation on-chain. The middleware does a **read-only** chain lookup during request handling.
+
+1) **Deploy/choose a registry** contract that exposes:
+
+- `isVerified(address subject, bytes32 claimHash) -> bool`
+
+2) **Set server env**:
+
+- `VLAYERS_RPC_URL=<rpc url>`
+- `VLAYERS_PROOF_REGISTRY=<0x...>`
+
+3) **Enable the provider in policy**:
+
+```js
+proofPolicy: {
+  version: 1,
+  scope: "zkx402",
+  claims: [{ type: "origin_http_get" }],
+  allowedProviders: ["vlayer_chain"],
+  preferenceOrder: ["vlayer_chain"],
+  fallback: "none",
+}
+```
+
+4) **Client request headers**:
+
+- `X-Wallet-Address: 0x...`
+- `X-Proof-Claims: [{"type":"origin_http_get"}]`
+
+Notes:
+- In the default implementation, the claim hash includes `{ scope, claim }`. **If you add fields** (like `url`) to the *required* claim, they become part of the attestation key.
+
+### Option B: `vlayer_api` (verify presented proof payload)
+
+This calls a verifier endpoint during paid requests (and is **skipped in quote mode** when `X-PAYMENT` is missing).
+
+1) **Set server env**:
+
+- `VLAYERS_API_URL=<https://...>` (required)
+- `VLAYERS_API_KEY=<secret>` (optional)
+- `VLAYERS_API_TIMEOUT_MS=8000` (optional)
+
+2) **Enable the provider in policy**:
+
+```js
+proofPolicy: {
+  version: 1,
+  scope: "zkx402",
+  claims: [{ type: "origin_http_get" }],
+  allowedProviders: ["vlayer_api"],
+  preferenceOrder: ["vlayer_api"],
+  fallback: "none",
+}
+```
+
+3) **Client sends the proof payload**:
+
+- `X-Vlayer-Proof: <json string or hex string>`
+
+4) (Optional) **Constrain provider selection** (useful when multiple providers are allowed):
+
+- `X-ZK-Proof-Plan: {"provider":"vlayer_api"}`
+
+5) **Costing**:
+
+Add `proofCosts` so the server can quote + include verification fees/commission in the required payment amount.
+
+## Adding a new proof provider (future-proof checklist)
+
+When adding a new proof system (Worldcoin, zkPassport, custom ZK, etc.), follow this checklist:
+
+1) **Add/extend a canonical claim** in `src/proofs/claims.js` (+ update `claimKey(...)`).
+2) **Route the claim** in `src/proofs/router.js` by mapping claim → provider method name.
+3) **Implement a provider** in `src/proofs/providers/`:
+   - choose a `name` and `kind` (`"chain"` or `"api"`)
+   - implement the `verifyX(...)` method(s)
+4) **Wire provider into middleware** (`src/middleware.js`) and parse any needed headers.
+5) **Add proof cost entries** (`proofCosts.entries[]`) for `{ provider, claimKey }` and update docs.
+6) **Add unit tests**:
+   - provider tests (success/failure/not_configured)
+   - router tests (claim maps to method, respects allowlist/order)
+7) **Update demo config** (`apps/demo/server/proof-policy.json`, `proof-costs.json`) and E2E if relevant.
 
 ## Client Usage
 

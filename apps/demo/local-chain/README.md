@@ -23,7 +23,10 @@ This testing suite provides a complete local environment to test the x402 paymen
 1. **Local Chain**: Starts Anvil (Foundry's local Ethereum node) on port 8545
 2. **Mock USDC**: Deploys a test USDC token contract with 6 decimals
 3. **Test Accounts**: Uses Anvil's deterministic accounts with funded balances
-4. **E2E Tests**: Tests the complete payment flow including dynamic pricing with zkproofs
+4. **Proof registries (local)**:
+   - Deploys `MockHumanRegistry` for `self` chain verification (`human`)
+   - Deploys `VlayerProofRegistry` for `vlayer_chain` verification (`origin_http_get`)
+5. **E2E Tests**: Tests the complete payment flow including dynamic pricing with zkproofs (Self + vlayer)
 
 ## Commands
 
