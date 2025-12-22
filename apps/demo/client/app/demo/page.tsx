@@ -230,7 +230,7 @@ export default function Home() {
 
     try {
       console.log(
-        'make request to check zkx402 support',
+        'requesting quote (expect 402) from',
         `${API_URL}/motivate`
       );
       const response0 = await fetch(`${API_URL}/motivate`, {
@@ -251,46 +251,14 @@ export default function Home() {
       console.log('contentMetadata:', contentMetadata);
       console.log('variableAmountRequired:', variableAmountRequired);
 
-      // Verify metadata zkproofs and decide whether to proceed with payment
-      // Hard coded contentMetadata requirement we require
-      const requiredProof = 'zkproof(human)';
-
-      // Check if the required proof exists in contentMetadata
-      const hasRequiredProof = contentMetadata?.some(
-        (item: any) => item.proof === requiredProof
-      );
-
-      console.log(`Required proof: ${requiredProof}`);
-      console.log(`Has required proof: ${hasRequiredProof}`);
-
-      // Dummy function to verify the proof
-      const verifyProof = async (proof: string): Promise<boolean> => {
-        // TODO: Implement actual ZK proof verification
-        // For now, just check if proof exists in contentMetadata
-        const exists = contentMetadata?.some(
-          (item: any) => item.proof === proof
-        );
-
-        // Dummy verification logic - in real implementation, this would:
-        // 1. Verify the ZK proof cryptographically
-        // 2. Check proof validity and expiration
-        // 3. Validate proof against requirements
-
-        if (exists) {
-          console.log(`✓ Proof verified: ${proof}`);
-          return true;
-        } else {
-          console.log(`✗ Proof not found: ${proof}`);
-          return false;
-        }
-      };
-
-      // Verify the required proof
-      const isVerified = await verifyProof(requiredProof);
-
-      if (!isVerified) {
-        throw new Error(`Required proof not found: ${requiredProof}`);
-      }
+      // IMPORTANT:
+      // - `contentMetadata` is informational only (not enforced by zkx402).
+      // - Real discounts/enforcement come from canonical claims + server-side `proofPolicy`.
+      // We show/log these fields as UX hints, but we do not treat them as cryptographic proof.
+      const hasHumanHint = Array.isArray(contentMetadata)
+        ? contentMetadata.some((item: any) => item?.proof === 'zkproof(human)')
+        : false;
+      console.log('contentMetadata has zkproof(human) hint:', hasHumanHint);
 
       // Claim intent (for discounts)
       const myClaims = [{ type: 'human' }];

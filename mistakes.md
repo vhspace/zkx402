@@ -22,6 +22,12 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 ## 2025-12-22
 
+### Demo UI implied client-side ZK proof verification
+
+- **Mistake**: The demo client treated server-provided `contentMetadata` as if it were a cryptographic proof and blocked payment if `zkproof(human)` wasn’t present. This is misleading because `contentMetadata` is informational only; real verification happens server-side via canonical claims + `proofPolicy` providers.
+- **Fix**: Removed the dummy “verify proof” function and reframed the metadata as a non-enforcing UX hint in `apps/demo/client/app/demo/page.tsx`.
+- **Where**: `apps/demo/client/app/demo/page.tsx` (`handleCallApi`)
+
 ### Docs drift: placeholder repo links + confusing facilitator guidance
 
 - **Mistake**: Some docs and package metadata still referenced placeholder repo URLs (`yourusername/...`) and the demo server root endpoint pointed to a different repo. Also, facilitator usage was underspecified, leading to confusion about whether the middleware expects `x402` or `@coinbase/x402`.
