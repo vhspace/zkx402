@@ -787,42 +787,28 @@ export default function Home() {
 Content-Type: application/json
 
 {
-  "scheme": "`}
-                      <span style={{ color: '#33FF33' }}>variable</span>
-                      {`",
-  "network": "base-sepolia",
-  "maxAmountRequired": "10000",
-  "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-  "payTo": "0xYourReceiverAddress",
-  "resource": "http://localhost:3001/motivate",
-  "description": "Access classified whistleblower content",
-  "extra": {
-    "gasLimit": "200000"`}
-                      <span style={{ color: '#33FF33' }}>,</span>
-                      {`
-    `}
-                      <span style={{ color: '#33FF33' }}>
-                        "variableAmountRequired"
-                      </span>
-                      {`: [{ `}
-                      <span style={{ color: '#33FF33' }}>
-                        "requiredClaims": [{ "type": "human" }], "amountRequired": "5000"
-                      </span>
-                      {` }]
-    `}
-                      <span style={{ color: '#C9FFD2' }}>
-                        "contentMetadata"
-                      </span>
-                      {`: [{ `}
-                      <span style={{ color: '#C9FFD2' }}>
-                        "proof": "zkproof("Edward Snowden")"
-                      </span>
-                      {` },{ `}
-                      <span style={{ color: '#C9FFD2' }}>
-                        "proof": "zkproof(human)"
-                      </span>
-                      {` }]
-  }
+  "x402Version": 1,
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "base-sepolia",
+      "maxAmountRequired": "10000",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0xYourReceiverAddress",
+      "resource": "http://localhost:3001/motivate",
+      "description": "Access classified whistleblower content",
+      "extra": {
+        "gasLimit": "200000",
+        "variableAmountRequired": [
+          { "requiredClaims": [{ "type": "human" }], "amountRequired": "5000" }
+        ],
+        "contentMetadata": [
+          { "proof": "zkproof(Edward Snowden)" },
+          { "proof": "zkproof(human)" }
+        ]
+      }
+    }
+  ]
 }`}
                     </pre>
                   </details>

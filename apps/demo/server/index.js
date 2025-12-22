@@ -58,10 +58,32 @@ const LOCAL_USDC_ADDRESS = process.env.USDC_ADDRESS;
 const RECEIVER_PRIVATE_KEY = process.env.RECEIVER_PRIVATE_KEY;
 
 // enable CORS for local development and production
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : null;
+
 const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",")
-    : ["http://localhost:3000", "http://localhost:3001"],
+  origin: (origin, callback) => {
+    // Allow non-browser clients / same-origin requests
+    if (!origin) return callback(null, true);
+
+    // If explicitly configured, enforce the allow-list
+    if (allowedOrigins) {
+      return callback(null, allowedOrigins.includes(origin));
+    }
+
+    // On Vercel, default to allowing cross-origin for the demo unless configured otherwise.
+    // (Recommended for production: set ALLOWED_ORIGINS explicitly.)
+    if (process.env.VERCEL) {
+      return callback(null, true);
+    }
+
+    // Local dev defaults
+    const localAllowed = ["http://localhost:3000", "http://localhost:3001"];
+    return callback(null, localAllowed.includes(origin));
+  },
   credentials: true,
 };
 app.use(cors(corsOptions));

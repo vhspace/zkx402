@@ -32,9 +32,9 @@ From repo root:
 This backend is an Express app, and on Vercel it must run as a **serverless handler** (no `app.listen(...)`).
 The server now exports `export default app;` and only calls `listen(...)` when **not** running on Vercel.
 
-Also, the demo server depends on the local workspace package `packages/x402-zkx402`. For Vercel, the server now uses a local file dependency:
+Also, the demo server depends on the local workspace package `packages/x402-zkx402`. For Vercel, the server uses a local file dependency:
 
-- `apps/demo/server/package.json` → `"x402-zkx402": "file:../../packages/x402-zkx402"`
+- `apps/demo/server/package.json` → `"x402-zkx402": "file:../../../packages/x402-zkx402"`
 
 ### 1. Navigate to server directory:
 ```bash

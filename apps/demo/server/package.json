@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "x402-zkx402": "file:../../packages/x402-zkx402",
+    "x402-zkx402": "file:../../../packages/x402-zkx402",
     "@coinbase/x402": "latest",
     "@coinbase/cdp-sdk": "latest",
     "cors": "^2.8.5",
