@@ -40,6 +40,12 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Updated `NavLink` props to extend `React.AnchorHTMLAttributes<HTMLAnchorElement>` (omitting `href`) and forward props safely.
 - **Where**: `apps/demo/client/components/NavLink.tsx`, `apps/demo/client/components/Header.tsx`
 
+### Vercel docs weren’t explicit about Self chain env var values
+
+- **Mistake**: The Vercel deployment guide listed `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER` but didn’t say they must point to **Base Sepolia RPC** + the **Base Sepolia ProofOfHumanReceiver** address (and where to find that address in this repo).
+- **Fix**: Added a dedicated section to `VERCEL_DEPLOYMENT.md` explaining expected values and a minimal example.
+- **Where**: `VERCEL_DEPLOYMENT.md`
+
 ### Docs drift: placeholder repo links + confusing facilitator guidance
 
 - **Mistake**: Some docs and package metadata still referenced placeholder repo URLs (`yourusername/...`) and the demo server root endpoint pointed to a different repo. Also, facilitator usage was underspecified, leading to confusion about whether the middleware expects `x402` or `@coinbase/x402`.
