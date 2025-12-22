@@ -7,7 +7,7 @@ import { requestFaucet } from "./faucet.js";
 import { getTokenBalances } from "./balances.js";
 import { createLocalFacilitator } from "../local-chain/local-facilitator.js";
 import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 
 dotenv.config({ path: ".env" });
 dotenv.config({ path: ".env.local", override: true });
@@ -249,23 +249,39 @@ app.post("/faucet", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`x402 demo server running on http://localhost:${PORT}`);
-  console.log(`\nEndpoints:`);
-  console.log(`   • GET  /health           - health check (public)`);
-  console.log(
-    `   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`
-  );
-  console.log(
-    `   • POST /faucet           - request test USDC via CDP Faucet API (public)`
-  );
-  console.log(
-    `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`
-  );
-  console.log(`\nCDP products in use:`);
-  console.log(`   • CDP x402 Facilitator - payment verification & settlement`);
-  console.log(`   • CDP Faucet API       - test USDC distribution`);
-  console.log(`   • CDP Token Balances   - real-time balance checking`);
-  console.log(`\nreceiving payments at: ${RECEIVER_WALLET}`);
-  console.log(`Price: 0.01 USDC on Base Sepolia`);
-});
+// Vercel serverless compatibility + import-safety:
+// - Vercel imports this file as a serverless handler (no explicit listen)
+// - When imported (tests/tools), do not side-effect by binding a port
+const isEntrypoint = (() => {
+  try {
+    const argvUrl = pathToFileURL(process.argv[1] || "").href;
+    return import.meta.url === argvUrl;
+  } catch {
+    return false;
+  }
+})();
+
+if (!process.env.VERCEL && isEntrypoint) {
+  app.listen(PORT, () => {
+    console.log(`x402 demo server running on http://localhost:${PORT}`);
+    console.log(`\nEndpoints:`);
+    console.log(`   • GET  /health           - health check (public)`);
+    console.log(
+      `   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`
+    );
+    console.log(
+      `   • POST /faucet           - request test USDC via CDP Faucet API (public)`
+    );
+    console.log(
+      `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`
+    );
+    console.log(`\nCDP products in use:`);
+    console.log(`   • CDP x402 Facilitator - payment verification & settlement`);
+    console.log(`   • CDP Faucet API       - test USDC distribution`);
+    console.log(`   • CDP Token Balances   - real-time balance checking`);
+    console.log(`\nreceiving payments at: ${RECEIVER_WALLET}`);
+    console.log(`Price: 0.01 USDC on Base Sepolia`);
+  });
+}
+
+export default app;

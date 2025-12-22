@@ -28,6 +28,12 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Fall back to the authenticated GitHub CLI (`gh`) for repo/code inspection when no MCP GitHub server is configured.
 - **Where**: vlayer proof re-integration (needed upstream vlayer contract samples).
 
+### Accidentally kept real secrets in a repo script (`set-vercel-env.sh`)
+
+- **Mistake**: A helper script contained what looked like real CDP credentials and wallet addresses committed in plaintext.
+- **Fix**: Deleted `set-vercel-env.sh` and replaced it with `set-vercel-env.example.sh` which requires secrets to be provided via environment variables (or set in the Vercel Dashboard).
+- **Where**: Vercel deployment helpers.
+
 ### Bad CLI flag when merging PRs with `gh`
 
 - **Mistake**: Tried `gh pr merge ... --yes` (flag doesn’t exist for `gh pr merge`; it uses non-interactive merge via other flags / API).
