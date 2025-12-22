@@ -20,6 +20,14 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Use the standard file read/search tools for workspace files unless we’ve confirmed an MCP resource server is available via discovery.
 - **Where**: Initial review pass while gathering `claims.js`/tests for the pricing refactor.
 
+## 2025-12-22
+
+### Tried to follow “use MCP for GitHub” but no GitHub MCP server was configured
+
+- **Mistake**: Assumed an MCP GitHub server would be available for code lookups. Discovery returned no MCP resources, so attempting to rely on MCP would have blocked progress.
+- **Fix**: Fall back to the authenticated GitHub CLI (`gh`) for repo/code inspection when no MCP GitHub server is configured.
+- **Where**: vlayer proof re-integration (needed upstream vlayer contract samples).
+
 ### Bad CLI flag when merging PRs with `gh`
 
 - **Mistake**: Tried `gh pr merge ... --yes` (flag doesn’t exist for `gh pr merge`; it uses non-interactive merge via other flags / API).

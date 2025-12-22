@@ -9,6 +9,7 @@
     "apps/demo/server"
   ],
   "dependencies": {
+    "@solana/kit": "^5.1.0",
     "x402": "1.0.1"
   },
   "scripts": {

@@ -3,6 +3,10 @@ export const ClaimType = {
   AGE_GTE: "age_gte",
   EXCLUDED_COUNTRIES_NOT_CONTAINS: "excluded_countries_not_contains",
   OFAC_CLEAR: "ofac_clear",
+  // Vendor-neutral claim: subject can prove access to an HTTP GET resource.
+  // Verified either via a vendor API verifier (e.g., vlayer) or by checking an on-chain
+  // attestation/registry that a valid proof was recorded.
+  ORIGIN_HTTP_GET: "origin_http_get",
 };
 
 export function claimKey(claim) {
@@ -18,6 +22,10 @@ export function claimKey(claim) {
       )}`;
     case ClaimType.OFAC_CLEAR:
       return "ofac_clear";
+    case ClaimType.ORIGIN_HTTP_GET:
+      // Intentionally do not include URL in the key (it can be large/unbounded).
+      // Costs should be schedulable per-claim-type, not per-resource.
+      return "origin_http_get";
     default:
       return String(claim.type);
   }

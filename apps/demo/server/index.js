@@ -101,10 +101,18 @@ app.use(
                 requiredClaims: [{ type: "human" }],
                 amountRequired: "5000",
               },
+              {
+                // Example "web proof" tier (vlayer): if the caller can prove origin access,
+                // they qualify for a bigger discount. Verification fees (if any) are added
+                // on top via `proofCosts`.
+                requiredClaims: [{ type: "origin_http_get" }],
+                amountRequired: "4000",
+              },
             ],
             contentMetadata: [
               { proof: "zkproof(Edward Snowden)" },
               { proof: "zkproof(human)" },
+              { proof: "zkproof(origin_http_get)" },
             ],
             ...(PROOF_POLICY ? { proofPolicy: PROOF_POLICY } : {}),
             ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),

@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import net from "net";
+import crypto from "node:crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,6 +146,57 @@ async function deployMockHumanRegistry() {
   return address;
 }
 
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((k) => JSON.stringify(k) + ":" + stableStringify(value[k])).join(",")}}`;
+}
+
+function claimHashSha256Hex({ scope, claim }) {
+  const s = stableStringify({ scope, claim });
+  return `0x${crypto.createHash("sha256").update(s).digest("hex")}`;
+}
+
+async function deployVlayerProofRegistry({ payerAddress } = {}) {
+  log(colors.blue, "Deploying VlayerProofRegistry...");
+
+  const contractsDir = path.join(__dirname, "..", "contracts");
+  const repoRoot = findRepoRoot(__dirname);
+  ensureContractsSubmodules(repoRoot, contractsDir);
+
+  const output = execSync(
+    `forge create src/VlayerProofRegistry.sol:VlayerProofRegistry --rpc-url ${RPC_URL} --private-key ${DEPLOYER_PRIVATE_KEY} --broadcast`,
+    { cwd: contractsDir, encoding: "utf-8" }
+  );
+
+  const match = output.match(/Deployed to: (0x[a-fA-F0-9]{40})/);
+  if (!match) throw new Error("Could not find deployed VlayerProofRegistry address");
+
+  const registryAddress = match[1];
+  log(colors.green, `VlayerProofRegistry deployed at: ${registryAddress}`);
+
+  // Seed a verified attestation for the payer for the demo claim.
+  // Matches the hashing logic in x402-zkx402's vlayer_chain provider.
+  const claimHash = claimHashSha256Hex({
+    scope: "zkx402",
+    claim: { type: "origin_http_get" },
+  });
+
+  try {
+    execSync(
+      `cast send ${registryAddress} "setVerified(address,bytes32,bool)" ${payerAddress || PAYER_ADDRESS} ${claimHash} true --rpc-url ${RPC_URL} --private-key ${DEPLOYER_PRIVATE_KEY}`,
+      { encoding: "utf-8", stdio: "ignore" }
+    );
+    log(colors.green, "Seeded vlayer_chain attestation for payer (origin_http_get)");
+  } catch (error) {
+    log(colors.red, "Failed to seed vlayer proof registry");
+    throw error;
+  }
+
+  return registryAddress;
+}
+
 async function fundAccounts(usdcAddress) {
   log(colors.blue, "Funding test accounts...");
 
@@ -166,7 +218,7 @@ async function fundAccounts(usdcAddress) {
   }
 }
 
-function createEnvFile(usdcAddress, mockHumanRegistryAddress) {
+function createEnvFile(usdcAddress, mockHumanRegistryAddress, vlayerProofRegistryAddress) {
   log(colors.blue, "Creating .env.local...");
 
   const envContent = `CHAIN_ID=${CHAIN_ID}
@@ -182,6 +234,8 @@ USE_LOCAL_FACILITATOR=true
 ENABLE_PROOF_POLICY=true
 SELF_RPC_URL=${RPC_URL}
 BASE_PROOF_OF_HUMAN_RECEIVER=${mockHumanRegistryAddress}
+VLAYERS_RPC_URL=${RPC_URL}
+VLAYERS_PROOF_REGISTRY=${vlayerProofRegistryAddress}
 `;
 
   const envPath = path.join(__dirname, "..", "server", ".env.local");
@@ -331,8 +385,11 @@ async function main() {
 
     const usdcAddress = await deployMockUSDC();
     const mockHumanRegistryAddress = await deployMockHumanRegistry();
+    const vlayerProofRegistryAddress = await deployVlayerProofRegistry({
+      payerAddress: PAYER_ADDRESS,
+    });
     await fundAccounts(usdcAddress);
-    createEnvFile(usdcAddress, mockHumanRegistryAddress);
+    createEnvFile(usdcAddress, mockHumanRegistryAddress, vlayerProofRegistryAddress);
     installDependencies();
 
     serverProcess = await startServer();

@@ -257,6 +257,15 @@ We now support an **optional** `self_api` provider in `packages/x402-zkx402` tha
 
 Some verification strategies can incur a **direct per-request cost** (vendor billing) or an **indirect cost** (infra/latency/rate limits). We treat this as a first-class pricing input via a separate `proofCosts` schema (`zkx402.proofCostEnvelope.v1`) rather than hardcoding assumptions about whether Self (or future providers like vlayer) are free.
 
+#### Update: vlayer providers (API + chain attestation)
+
+We now support a minimal vlayer integration as two providers:
+
+- `vlayer_api`: verifies a presented vlayer proof via an HTTP verifier endpoint (off-chain; potentially billed)
+- `vlayer_chain`: verifies via a read-only on-chain attestation registry (reliable request-path; no vendor API calls)
+
+Both providers currently support the canonical claim `{ "type": "origin_http_get" }`.
+
 - Decide which rich claims are enforceable and how:
   - which are “rules” (enforced)
   - which are “disclosures” (optional reveal, not enforced)

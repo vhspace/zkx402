@@ -35,6 +35,29 @@ test("router: supports AGE_GTE when provider implements it", async () => {
   assert.equal(res.provider, "self_api");
 });
 
+test("router: supports ORIGIN_HTTP_GET when provider implements it", async () => {
+  const providers = [
+    {
+      name: "vlayer_api",
+      verifyOriginHttpGet: async ({ claim }) => {
+        assert.equal(claim.type, ClaimType.ORIGIN_HTTP_GET);
+        assert.equal(claim.url, "https://example.com/secret");
+        return { ok: true, verified: true };
+      },
+    },
+  ];
+
+  const res = await verifyClaimWithPolicy({
+    claim: { type: ClaimType.ORIGIN_HTTP_GET, url: "https://example.com/secret" },
+    policy: { allowedProviders: ["vlayer_api"], preferenceOrder: ["vlayer_api"] },
+    providers,
+    context: { walletAddress: "0x0000000000000000000000000000000000000001" },
+  });
+
+  assert.equal(res.status, VerifyStatus.VERIFIED);
+  assert.equal(res.provider, "vlayer_api");
+});
+
 test("router: human claim, no providers after filtering -> ERROR", async () => {
   const res = await verifyClaimWithPolicy({
     claim: { type: ClaimType.HUMAN },
