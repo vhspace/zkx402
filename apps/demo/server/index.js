@@ -165,7 +165,7 @@ app.get("/", (req, res) => {
       price: "0.01 USDC",
       network: "base-sepolia",
     },
-    github: "https://github.com/jnix2007/x402-demo",
+    github: "https://github.com/vhspace/zkx402",
   });
 });
 

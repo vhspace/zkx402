@@ -60,6 +60,7 @@ See:
 See:
 - `JSON_SPECS.md` (policy JSON envelope + integrity hashing)
 - `PROOF_VERIFICATION_PLAN.md` (design/roadmap)
+- `docs/proof-concepts.md` (claims vs policy vs proofs vs contentMetadata)
 - `VIBE_CODE_SETUP.md` (setup guide for Cursor/Claude/v0/Lovable)
 
 ## Contributing

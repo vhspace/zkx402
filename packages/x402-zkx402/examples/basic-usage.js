@@ -79,7 +79,8 @@ app.use(paymentMiddleware(
       }
     }
   },
-  facilitator // Use CDP's hosted facilitator
+  // Facilitator client object (verify/settle/supported). This example uses CDP via `@coinbase/x402`.
+  facilitator
 ));
 
 // Protected endpoint handler

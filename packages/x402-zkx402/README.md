@@ -22,7 +22,21 @@ Routes can quote/charge different prices based on **canonical proof claims** (st
 npm install x402-zkx402 express viem
 ```
 
-If you're using the hosted CDP facilitator, also install `@coinbase/x402`.
+### Facilitator integration (important)
+
+`paymentMiddleware(payTo, routes, facilitator, paywall)` accepts **either**:
+
+1) A **facilitator client object** (used as-is) with functions:
+
+- `verify(decodedPayment, paymentRequirements)`
+- `settle(decodedPayment, paymentRequirements)`
+- `supported()`
+
+This is what the demo uses via `@coinbase/x402` (CDP).
+
+2) A **facilitator config object** (passed through to `x402`’s `useFacilitator(...)`), if you are using a hosted facilitator implementation.
+
+If you're using the CDP facilitator client, install `@coinbase/x402` too.
 
 ## Quick Start
 
@@ -63,7 +77,7 @@ app.use(paymentMiddleware(
       }
     }
   },
-  facilitator  // CDP facilitator
+  facilitator  // Facilitator client (verify/settle/supported)
 ));
 
 // Protected endpoint
@@ -119,6 +133,10 @@ extra: {
   ]
 }
 ```
+
+Note:
+
+- `contentMetadata` is **informational only** (UX / discovery). Enforcement uses canonical claims + `proofPolicy`.
 
 ### Supported Proof Types
 
@@ -432,8 +450,12 @@ MIT
 ## Links
 
 - [Full Demo](https://zkx402.io)
-- [Documentation](https://github.com/yourusername/zkx402)
+- [Documentation](https://github.com/vhspace/zkx402)
 - [x402 Spec](https://x402.org)
-- [Issues](https://github.com/yourusername/zkx402/issues)
+- [Issues](https://github.com/vhspace/zkx402/issues)
+
+## More docs
+
+- `docs/proof-concepts.md` (claims vs policy vs proofs vs contentMetadata)
 
 

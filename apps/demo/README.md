@@ -62,6 +62,7 @@ This repo’s demo server uses `x402-zkx402`, which extends x402 with **proof-aw
 
 - You can advertise/charge different prices based on **canonical claims** in `X-Proof-Claims`.
 - Proof verification is **provider-routed** via `extra.proofPolicy` and priced via `extra.proofCosts`.
+- `contentMetadata` is **informational only** (not enforced); enforcement/discounts come from claims + policy.
 
 ### canonical claims used
 
