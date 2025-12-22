@@ -22,6 +22,24 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 ## 2025-12-22
 
+### Wrong local `file:` dependency path broke Vercel/server installs
+
+- **Mistake**: Set `apps/demo/server/package.json` to `"x402-zkx402": "file:../../packages/x402-zkx402"`, but from `apps/demo/server` that resolves to `apps/packages/x402-zkx402` (non-existent). This would fail `npm install` on Vercel (and any clean install).
+- **Fix**: Corrected it to `"file:../../../packages/x402-zkx402"` and aligned the root lockfile entry.
+- **Where**: `apps/demo/server/package.json`, `package-lock.json`, `VERCEL_DEPLOYMENT.md`
+
+### Missed Next.js App Router requirement: `useSearchParams()` needs Suspense
+
+- **Mistake**: Tried to ship the demo client with `/demo` and `/consumer` pages calling `useSearchParams()` directly at the page level, which causes `next build` to fail with “missing suspense boundary”.
+- **Fix**: Wrapped the hook usage behind `<Suspense>` by moving hook logic into inner components and keeping the exported page component as the Suspense boundary.
+- **Where**: `apps/demo/client/app/demo/page.tsx`, `apps/demo/client/app/consumer/page.tsx`
+
+### Overly narrow `NavLink` typing blocked valid anchor props
+
+- **Mistake**: Our `NavLink` wrapper props didn’t include standard anchor attributes, so passing `target="_blank"` / `rel="noopener noreferrer"` caused a TypeScript error.
+- **Fix**: Updated `NavLink` props to extend `React.AnchorHTMLAttributes<HTMLAnchorElement>` (omitting `href`) and forward props safely.
+- **Where**: `apps/demo/client/components/NavLink.tsx`, `apps/demo/client/components/Header.tsx`
+
 ### Docs drift: placeholder repo links + confusing facilitator guidance
 
 - **Mistake**: Some docs and package metadata still referenced placeholder repo URLs (`yourusername/...`) and the demo server root endpoint pointed to a different repo. Also, facilitator usage was underspecified, leading to confusion about whether the middleware expects `x402` or `@coinbase/x402`.

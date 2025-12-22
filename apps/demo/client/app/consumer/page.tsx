@@ -3,10 +3,11 @@
 import { Marketplace } from '@/components/Marketplace';
 import { Header } from '@/components/Header';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useCurrentUser, useIsSignedIn } from '@coinbase/cdp-hooks';
 
-export default function ConsumerPage() {
+function ConsumerPageInner() {
   const { isSignedIn } = useIsSignedIn();
   const { currentUser } = useCurrentUser();
   const searchParams = useSearchParams();
@@ -32,5 +33,14 @@ export default function ConsumerPage() {
         isUserVerified={isVerified}
       />
     </div>
+  );
+}
+
+export default function ConsumerPage() {
+  // Next.js requires useSearchParams() callers to be wrapped in Suspense.
+  return (
+    <Suspense fallback={null}>
+      <ConsumerPageInner />
+    </Suspense>
   );
 }

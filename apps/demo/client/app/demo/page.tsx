@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useCurrentUser,
@@ -29,7 +29,7 @@ interface PaymentResponse {
   payer?: string;
 }
 
-export default function Home() {
+function DemoPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useCurrentUser();
@@ -1051,5 +1051,14 @@ Decoded X-PAYMENT-RESPONSE:
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  // Next.js requires useSearchParams() callers to be wrapped in Suspense.
+  return (
+    <Suspense fallback={null}>
+      <DemoPageInner />
+    </Suspense>
   );
 }
