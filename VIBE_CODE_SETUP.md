@@ -64,6 +64,39 @@ npm run dev:server
 npm run dev:client
 ```
 
+## Replit support (vibe coding)
+
+This repo includes a Replit-friendly setup:
+
+- `.replit` runs: `npm run dev:replit`
+- `replit.nix` installs Node
+
+### Recommended Replit flow
+
+1) **Set Secrets** (Replit “Secrets” tab) instead of committing `.env` files:
+   - `RECEIVER_WALLET` (required)
+   - If using hosted CDP facilitator:
+     - `CDP_API_KEY_ID`
+     - `CDP_API_KEY_SECRET`
+   - If using the demo client:
+     - `NEXT_PUBLIC_CDP_PROJECT_ID`
+2) Run the setup wizard (optional, writes local env files):
+
+```bash
+npm run vibe:setup
+```
+
+3) Install deps and start:
+
+```bash
+npm install --ignore-scripts --legacy-peer-deps
+npm run dev:replit
+```
+
+Notes:
+- `dev:replit` runs both the demo server and Next.js client in one process using `concurrently`.
+- The local deterministic E2E (`apps/demo/local-chain`) requires Foundry/Anvil and is better suited for a full devcontainer/local machine.
+
 ## vlayer proofs in this repo (how to “get” them)
 
 We support two verification paths:

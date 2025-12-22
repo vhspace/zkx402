@@ -13,8 +13,13 @@
     "x402": "1.0.1"
   },
   "scripts": {
+    "vibe:setup": "node scripts/vibe-setup.mjs",
     "dev:server": "npm run dev --workspace=apps/demo/server",
-    "dev:client": "npm run dev --workspace=apps/demo/client"
+    "dev:client": "npm run dev --workspace=apps/demo/client",
+    "dev:replit": "concurrently -k -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   },
   "keywords": ["x402", "zkproof", "payment", "verification"],
   "author": "",
