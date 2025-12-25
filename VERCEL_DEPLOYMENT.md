@@ -246,6 +246,19 @@ This demo is **two Vercel projects** (backend + frontend). Do them in this order
 4. Set environment variables in Vercel dashboard
 5. Enable automatic deployments
 
+#### Ensure “deploy on push to main”
+
+Vercel will auto-deploy by default when you use the Git integration, but make sure both projects are configured the same way:
+
+- In **each** Vercel project (backend + frontend), go to:
+  - **Project → Settings → Git**
+  - Set **Production Branch** to **`main`**
+- Result:
+  - **Push to `main`** → **Production** deployment updates automatically
+  - **Push to any other branch / PR** → **Preview** deployment updates automatically
+
+Monorepo note: because this repo is two separate Vercel projects, you must set the Production Branch on **both** projects (and ensure each one points at the correct Root Directory).
+
 ### Option 2: CLI Deployment
 
 Link your local projects to Vercel:

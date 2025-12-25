@@ -78,6 +78,18 @@ If the demo client shows a generic **network error** during “sign in”, it’
 
 Agent note: the helper `npm run vercel:env` now sets env vars for **production + preview** by default, but it will still fail if the var already exists (update via dashboard/CLI in that case).
 
+## Vercel: auto-deploy when pushing to `main`
+
+If you want Vercel to update automatically on `git push`:
+
+- Use the **Vercel Git integration** (not manual CLI-only deploys).
+- Create **two** Vercel projects pointing at the same repo:
+  - backend root: `apps/demo/server`
+  - frontend root: `apps/demo/client`
+- In **both** projects, set **Production Branch = `main`** (Project → Settings → Git).
+
+Result: pushes to `main` produce Production deploys; PRs/branches produce Preview deploys.
+
 ## Replit support (vibe coding)
 
 This repo includes a Replit-friendly setup:
