@@ -49,6 +49,7 @@ npm install --ignore-scripts --legacy-peer-deps
 Notes for agent tools:
 - Don’t assume per-folder installs are enough; some runtime deps resolve via the workspace layout.
 - Keep secrets out of committed files; use `.env` / `.env.local`.
+ - Never ask users to paste tokens/keys into chat; direct them to dashboard env vars or secret stores instead.
 
 ## Running the demo (web-first)
 

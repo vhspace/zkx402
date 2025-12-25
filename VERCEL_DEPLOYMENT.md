@@ -18,6 +18,9 @@ This project consists of two separate deployments on Vercel:
    vercel login
    ```
 
+Security note:
+- **Never paste tokens/keys into chat, issues, or PRs.** Use the Vercel dashboard env vars, your local shell env, or a CI secret store.
+
 ### Recommended Vercel settings (important for this monorepo)
 
 This repo uses npm workspaces, and **Node 24 can trigger workspace-related install/build issues on Vercel**
@@ -367,6 +370,9 @@ Update environment variable:
 vercel env rm VARIABLE_NAME
 vercel env add VARIABLE_NAME
 ```
+
+Security note:
+- If you accidentally shared a `VERCEL_TOKEN` / CDP key anywhere public/logged, **revoke/rotate it** immediately.
 
 ## Monitoring
 

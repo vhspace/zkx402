@@ -159,3 +159,11 @@ This file tracks mistakes found during implementation and what we changed to pre
   - Make the demo client fail fast with a clear error when `NEXT_PUBLIC_CDP_PROJECT_ID` is missing.
   - Document the CDP “Allowed origins” + “redeploy after env changes” gotchas in `VERCEL_DEPLOYMENT.md` and `VIBE_CODE_SETUP.md`.
 - **Where**: `scripts/vercel-env.mjs`, `apps/demo/client/app/providers.tsx`, `VERCEL_DEPLOYMENT.md`, `VIBE_CODE_SETUP.md`
+
+### Shared a deployment token in chat (secret leakage)
+
+- **Mistake**: Posting what appears to be a `VERCEL_TOKEN` (or any deployment credential) in a chat/tooling context. Chat transcripts/logs are not a secure secret store.
+- **Fix**:
+  - Immediately **revoke/rotate** the token in Vercel.
+  - Prefer Vercel Dashboard for configuration, or store tokens in a secret manager / CI secret store (never commit, never paste into PRs/issues/chats).
+- **Where**: Vercel config troubleshooting during demo deployment.
