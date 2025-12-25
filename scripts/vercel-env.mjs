@@ -25,6 +25,14 @@ function runVercelEnvAdd({ cwd, name, value, target = "production" }) {
   });
 }
 
+async function setForTargets({ cwd, name, value, targets }) {
+  for (const target of targets) {
+    // Note: `vercel env add` is intentionally interactive if the var already exists.
+    // This helper is for fresh setup; if it fails due to an existing var, update via dashboard/CLI.
+    await runVercelEnvAdd({ cwd, name, value, target });
+  }
+}
+
 async function main() {
   // Backend
   const CDP_API_KEY_ID = requireEnv("CDP_API_KEY_ID");
@@ -35,33 +43,42 @@ async function main() {
   const NEXT_PUBLIC_CDP_PROJECT_ID = requireEnv("NEXT_PUBLIC_CDP_PROJECT_ID");
   const NEXT_PUBLIC_API_URL = requireEnv("NEXT_PUBLIC_API_URL");
 
+  // Vercel “Preview” deployments are commonly used during development and will NOT
+  // see Production-only env vars. For this repo, set both by default.
+  const targets = ["production", "preview"];
+
   console.log("Setting backend env vars (apps/demo/server)...");
-  await runVercelEnvAdd({
+  await setForTargets({
     cwd: "apps/demo/server",
     name: "CDP_API_KEY_ID",
     value: CDP_API_KEY_ID,
+    targets,
   });
-  await runVercelEnvAdd({
+  await setForTargets({
     cwd: "apps/demo/server",
     name: "CDP_API_KEY_SECRET",
     value: CDP_API_KEY_SECRET,
+    targets,
   });
-  await runVercelEnvAdd({
+  await setForTargets({
     cwd: "apps/demo/server",
     name: "RECEIVER_WALLET",
     value: RECEIVER_WALLET,
+    targets,
   });
 
   console.log("Setting frontend env vars (apps/demo/client)...");
-  await runVercelEnvAdd({
+  await setForTargets({
     cwd: "apps/demo/client",
     name: "NEXT_PUBLIC_CDP_PROJECT_ID",
     value: NEXT_PUBLIC_CDP_PROJECT_ID,
+    targets,
   });
-  await runVercelEnvAdd({
+  await setForTargets({
     cwd: "apps/demo/client",
     name: "NEXT_PUBLIC_API_URL",
     value: NEXT_PUBLIC_API_URL,
+    targets,
   });
 
   console.log("Done.");

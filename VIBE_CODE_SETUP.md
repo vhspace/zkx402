@@ -64,6 +64,20 @@ npm run dev:server
 npm run dev:client
 ```
 
+## CDP Embedded Wallet “network error” (what it really means)
+
+If the demo client shows a generic **network error** during “sign in”, it’s usually *config*, not networking:
+
+- **`NEXT_PUBLIC_CDP_PROJECT_ID` missing** (very common on Vercel Preview)
+  - Must be set on the **frontend** project env vars for **Preview + Production**
+  - Next inlines this at **build time**, so you must **redeploy** the frontend after setting it
+- **CDP project “Allowed origins” mismatch**
+  - Add the exact deployed origin in the CDP portal (`https://host`, no path)
+  - Remember `www.` vs apex are different origins
+  - Vercel preview URLs change per-deploy; prefer a stable custom domain if possible
+
+Agent note: the helper `npm run vercel:env` now sets env vars for **production + preview** by default, but it will still fail if the var already exists (update via dashboard/CLI in that case).
+
 ## Replit support (vibe coding)
 
 This repo includes a Replit-friendly setup:

@@ -311,6 +311,26 @@ npm run vercel:env
 - Check CORS configuration on backend
 - Ensure API is deployed and accessible
 
+### CDP Embedded Wallet sign-in shows “Network error”
+
+In this demo, “sign in” is powered by **CDP Embedded Wallet** via `@coinbase/cdp-hooks`.
+When CDP is misconfigured, the SDK often throws a generic **network error** even though the real issue is configuration.
+
+Most common causes:
+
+- **Missing `NEXT_PUBLIC_CDP_PROJECT_ID` at build time**
+  - Next.js inlines `NEXT_PUBLIC_*` env vars at **build** time (not request time).
+  - On Vercel, it’s easy to set the env var for **Production** but forget **Preview**.
+  - If you’re testing a Preview URL, a Production-only env var behaves like “unset”.
+  - **Fix**: Set `NEXT_PUBLIC_CDP_PROJECT_ID` for **Preview + Production** on the *frontend* Vercel project, then **redeploy** the frontend.
+- **CDP “Allowed origins” not matching your deployed origin**
+  - In the CDP portal, add the exact origin for your frontend:
+    - `https://your-app.vercel.app` (no path, no trailing slash)
+    - Include both `https://` and the correct host (apex vs `www` are different origins)
+    - If you use Vercel Preview URLs, each preview has a unique hostname → either add each one or use a stable custom domain for testing.
+- **OAuth providers additionally require redirect URIs**
+  - If Email/SMS works but Google/X fails, check the provider’s redirect URI settings in the CDP portal and ensure the deployed callback origin matches.
+
 **Build errors**
 - Check build logs: `vercel logs`
 - Test build locally: `npm run build`

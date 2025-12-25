@@ -148,3 +148,14 @@ This file tracks mistakes found during implementation and what we changed to pre
   This fails in GitHub Actions (checkout path is not `/workspaces/zkx402`) and produces “Could not find '/workspaces/zkx402/…'”.
 - **Fix**: Compute repo root from `__dirname` and pass the test directory to `node --test` (no absolute path, no glob).
 - **Where**: `zkx402-demo/local-chain/run-e2e-test.js`
+
+## 2025-12-25
+
+### CDP Embedded Wallet “network error” caused by Vercel Preview env drift
+
+- **Mistake**: The helper script `scripts/vercel-env.mjs` only set env vars for the **production** target. If you tested a Vercel **preview** deployment, the frontend often ran without `NEXT_PUBLIC_CDP_PROJECT_ID`, and `@coinbase/cdp-hooks` surfaced the misconfig as a generic “network error”.
+- **Fix**:
+  - Update `scripts/vercel-env.mjs` to set env vars for **production + preview** by default.
+  - Make the demo client fail fast with a clear error when `NEXT_PUBLIC_CDP_PROJECT_ID` is missing.
+  - Document the CDP “Allowed origins” + “redeploy after env changes” gotchas in `VERCEL_DEPLOYMENT.md` and `VIBE_CODE_SETUP.md`.
+- **Where**: `scripts/vercel-env.mjs`, `apps/demo/client/app/providers.tsx`, `VERCEL_DEPLOYMENT.md`, `VIBE_CODE_SETUP.md`
