@@ -18,6 +18,17 @@ This project consists of two separate deployments on Vercel:
    vercel login
    ```
 
+### Recommended Vercel settings (important for this monorepo)
+
+This repo uses npm workspaces, and **Node 24 can trigger workspace-related install/build issues on Vercel**
+(commonly showing `npm error code ENOWORKSPACES` during Next.js SWC install/download).
+
+For both the backend and frontend Vercel projects, set:
+
+- **Node.js Version**: **22.x** (Project → Settings → General → Node.js Version)
+- **Install Command**: `npm install --ignore-scripts --legacy-peer-deps`
+  - (Project → Settings → Build & Development Settings → Install Command)
+
 ### Optional: Node-based helpers (recommended)
 
 From repo root:
@@ -32,9 +43,9 @@ From repo root:
 This backend is an Express app, and on Vercel it must run as a **serverless handler** (no `app.listen(...)`).
 The server now exports `export default app;` and only calls `listen(...)` when **not** running on Vercel.
 
-Also, the demo server depends on the local workspace package `packages/x402-zkx402`. For Vercel, the server now uses a local file dependency:
+Also, the demo server depends on the local workspace package `packages/x402-zkx402`. For Vercel, the server uses a local file dependency:
 
-- `apps/demo/server/package.json` → `"x402-zkx402": "file:../../packages/x402-zkx402"`
+- `apps/demo/server/package.json` → `"x402-zkx402": "file:../../../packages/x402-zkx402"`
 
 ### 1. Navigate to server directory:
 ```bash
@@ -76,9 +87,32 @@ Or via Vercel Dashboard:
 Optional (proof-aware pricing / vlayer):
 - `ENABLE_PROOF_POLICY=true`
 - `ENABLE_PROOF_COSTS=true`
-- `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER` (for chain-based Self checks)
+- `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER` (for chain-based “human” checks via Base Sepolia state)
 - `VLAYERS_RPC_URL` + `VLAYERS_PROOF_REGISTRY` (for `vlayer_chain`)
 - `VLAYERS_API_URL` (+ `VLAYERS_API_KEY`) (for `vlayer_api`)
+
+#### What to set for `SELF_RPC_URL` and `BASE_PROOF_OF_HUMAN_RECEIVER`
+
+These are used by the **chain-based Self provider** (`self` / “human” claim) to call:
+
+- `ProofOfHumanReceiver.isVerified(address)` on **Base Sepolia**
+
+Set:
+
+- `SELF_RPC_URL`: a **Base Sepolia RPC** URL
+  - Example: `https://sepolia.base.org`
+  - Or a provider RPC (Alchemy/Infura/etc) for Base Sepolia
+- `BASE_PROOF_OF_HUMAN_RECEIVER`: the **Base Sepolia ProofOfHumanReceiver contract address**
+  - If you’re using this repo’s published deployment, the current address is listed in
+    `apps/demo/contracts/DEPLOYED_ADDRESSES.md` (look for “Base Sepolia → ProofOfHumanReceiver”).
+  - As of the latest repo docs, it is: `0xe1cb350fbb5f4b3e9e489ef1d6c11cc086dc1982`
+
+Minimal example (backend env vars):
+
+```bash
+SELF_RPC_URL=https://sepolia.base.org
+BASE_PROOF_OF_HUMAN_RECEIVER=0xe1cb350fbb5f4b3e9e489ef1d6c11cc086dc1982
+```
 
 ### 4. Deploy to Production:
 ```bash
@@ -162,6 +196,44 @@ cd apps/demo/server
 vercel --prod
 ```
 
+## “What do I do next?” (Vercel dashboard checklist)
+
+This demo is **two Vercel projects** (backend + frontend). Do them in this order:
+
+### 1) Create the backend project (API)
+
+- In Vercel: **Add New → Project → Import Git Repository**
+- Set **Root Directory** to `apps/demo/server`
+- Deploy (Preview is fine first)
+- In **Project → Settings → Environment Variables**, add (Production + Preview):
+  - `CDP_API_KEY_ID`
+  - `CDP_API_KEY_SECRET`
+  - `RECEIVER_WALLET`
+  - (Recommended) `ALLOWED_ORIGINS` — you can fill this after the frontend is deployed
+  - (Optional) `ENABLE_PROOF_POLICY=true`, `ENABLE_PROOF_COSTS=true`
+  - (Optional for chain “human”) `SELF_RPC_URL`, `BASE_PROOF_OF_HUMAN_RECEIVER` (see above)
+- Redeploy once env vars are set (Vercel prompts this automatically, or use “Redeploy”)
+- Copy the deployed backend URL (e.g. `https://<your-api>.vercel.app`)
+
+### 2) Create the frontend project (Next.js)
+
+- In Vercel: **Add New → Project → Import Git Repository**
+- Set **Root Directory** to `apps/demo/client`
+- In **Project → Settings → Environment Variables**, add (Production + Preview):
+  - `NEXT_PUBLIC_API_URL` = your backend URL from step 1
+  - `NEXT_PUBLIC_CDP_PROJECT_ID`
+  - (Optional, for the verification UI) `NEXT_PUBLIC_BASE_REGISTRY_ADDRESS` and `NEXT_PUBLIC_CELO_BRIDGE_ADDRESS`
+    - These are also listed in `apps/demo/contracts/DEPLOYED_ADDRESSES.md`
+- Deploy
+- Copy the deployed frontend URL (e.g. `https://<your-client>.vercel.app`)
+
+### 3) Lock down backend CORS (recommended)
+
+- Go back to the **backend** project env vars and set:
+  - `ALLOWED_ORIGINS=https://<your-client>.vercel.app`
+  - (Add your Preview URL too if you use Preview deployments; comma-separated)
+- Redeploy the backend
+
 ## Continuous Deployment
 
 ### Option 1: GitHub Integration (Recommended)
@@ -243,6 +315,12 @@ npm run vercel:env
 - Check build logs: `vercel logs`
 - Test build locally: `npm run build`
 - Verify all dependencies are installed
+
+**`npm error code ENOWORKSPACES` (often during “Downloading swc package @next/swc-…”)**
+- Ensure the Vercel project is using **Node 22.x** (not 24).
+- Set an explicit **Install Command** (Vercel project settings):
+  - `npm install --ignore-scripts --legacy-peer-deps`
+- Redeploy with **“Clear cache”** enabled.
 
 ### Environment Variables
 
