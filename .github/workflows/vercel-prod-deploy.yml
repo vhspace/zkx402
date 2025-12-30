@@ -46,6 +46,7 @@ jobs:
     needs: ci
     permissions:
       contents: read
+      deployments: write
     # Avoid running in forks by default (forks won't have the required secrets).
     if: github.repository == 'vhspace/zkx402' && github.event_name != 'pull_request'
     env:
@@ -84,16 +85,58 @@ jobs:
           npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server
 
       - name: Deploy frontend (apps/demo/client) to production
+        id: deploy_frontend_prod
         run: |
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client
+          OUT="$(npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
+          echo "$OUT"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\\.vercel\\.app' | tail -n 1 || true)"
+          if [ -z "$URL" ]; then
+            echo "Failed to parse frontend prod URL from vercel output"
+            exit 1
+          fi
+          echo "frontend_prod_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Report GitHub deployment (production)
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          FRONTEND_URL: ${{ steps.deploy_frontend_prod.outputs.frontend_prod_url }}
+        with:
+          script: |
+            const sha = context.sha;
+            const envName = 'production';
+            const url = process.env.FRONTEND_URL;
+
+            // Create a Deployment so GitHub shows "deployed" for the commit/branch.
+            const { data: deployment } = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              environment: envName,
+              auto_merge: false,
+              required_contexts: [],
+              description: `Vercel production deployment${url ? `: ${url}` : ''}`,
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.id,
+              state: url ? 'success' : 'error',
+              environment: envName,
+              environment_url: url || undefined,
+              log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: url ? 'Deployed to Vercel (prod)' : 'Deployed to Vercel (prod) but URL parse failed',
+            });
 
   deploy-preview:
     runs-on: ubuntu-latest
     needs: ci
     permissions:
       contents: read
+      deployments: write
     # Only run previews for PRs coming from this repo (not forks), since secrets aren't exposed to forks.
     if: github.repository == 'vhspace/zkx402' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     env:
@@ -147,6 +190,42 @@ jobs:
             exit 1
           fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Report GitHub deployment (preview)
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          FRONTEND_URL: ${{ steps.deploy_frontend.outputs.frontend_url }}
+          BACKEND_URL: ${{ steps.deploy_backend.outputs.backend_url }}
+        with:
+          script: |
+            const sha = context.payload.pull_request?.head?.sha || context.sha;
+            const envName = 'preview';
+            const frontend = process.env.FRONTEND_URL;
+            const backend = process.env.BACKEND_URL;
+            const envUrl = frontend || backend;
+            const desc = `Vercel preview deployment${frontend ? ` (frontend: ${frontend})` : ''}${backend ? ` (backend: ${backend})` : ''}`;
+
+            const { data: deployment } = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              environment: envName,
+              auto_merge: false,
+              required_contexts: [],
+              description: desc,
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.id,
+              state: envUrl ? 'success' : 'error',
+              environment: envName,
+              environment_url: envUrl || undefined,
+              log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: envUrl ? 'Deployed to Vercel (preview)' : 'Deployed to Vercel (preview) but URL parse failed',
+            });
 
   e2e-preview:
     name: Browser E2E (Preview URL)
