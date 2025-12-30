@@ -70,6 +70,18 @@ export default function VerifyPage() {
   const address = currentUser?.evmAccounts?.[0];
   const excludedCountries = useMemo(() => [], []); // No exclusions
 
+  function extractFlowId(result: any): string | null {
+    const id =
+      result?.flowId ??
+      result?.flow_id ??
+      result?.id ??
+      result?.data?.flowId ??
+      result?.data?.flow_id ??
+      result?.data?.id ??
+      null;
+    return typeof id === 'string' && id.trim() ? id.trim() : null;
+  }
+
   // Debug logging
   useEffect(() => {
     console.log('=== CDP Wallet State ===');
@@ -110,7 +122,12 @@ export default function VerifyPage() {
 
     try {
       const result = await signInWithEmail({ email: emailOrPhone });
-      setFlowId(result.flowId);
+      const id = extractFlowId(result);
+      if (!id) {
+        console.error('signInWithEmail returned unexpected result:', result);
+        throw new Error('OTP sent, but missing flow id (check console).');
+      }
+      setFlowId(id);
       setAuthType('email');
       setAuthStep('otp');
     } catch (err) {
@@ -129,7 +146,12 @@ export default function VerifyPage() {
 
     try {
       const result = await signInWithSms({ phoneNumber: emailOrPhone });
-      setFlowId(result.flowId);
+      const id = extractFlowId(result);
+      if (!id) {
+        console.error('signInWithSms returned unexpected result:', result);
+        throw new Error('OTP sent, but missing flow id (check console).');
+      }
+      setFlowId(id);
       setAuthType('sms');
       setAuthStep('otp');
     } catch (err) {
@@ -141,7 +163,11 @@ export default function VerifyPage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || !flowId) return;
+    if (!otp) return;
+    if (!flowId) {
+      setError('Missing flow id. Please resend OTP.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -606,7 +632,7 @@ export default function VerifyPage() {
             />
             <button
               onClick={handleVerifyOtp}
-              disabled={loading || !otp}
+              disabled={loading || !otp || !flowId}
               style={{
                 padding: '12px',
                 background: '#0052ff',
