@@ -148,3 +148,29 @@ This file tracks mistakes found during implementation and what we changed to pre
   This fails in GitHub Actions (checkout path is not `/workspaces/zkx402`) and produces “Could not find '/workspaces/zkx402/…'”.
 - **Fix**: Compute repo root from `__dirname` and pass the test directory to `node --test` (no absolute path, no glob).
 - **Where**: `zkx402-demo/local-chain/run-e2e-test.js`
+
+## 2025-12-30
+
+### Mixed multiple concerns into one working tree while preparing PRs
+
+- **Mistake**: I made a CI/workflow change while also investigating a runtime Preview crash, leaving unrelated modifications in the working tree and increasing the risk of an unfocused PR.
+- **Fix**: Create separate branches per concern (e.g., `ci/*` vs `fix/*`), keep the working tree clean, and use `git restore` / `stash` / `cherry-pick` to isolate changes before opening PRs.
+- **Where**: `.github/workflows/vercel-prod-deploy.yml` vs `apps/demo/client/app/providers.tsx`
+
+### Assumed browser tools were initialized; tool calls failed with `pageState` undefined
+
+- **Mistake**: I attempted to use the MCP browser tools (`browser_navigate` / `browser_snapshot`) and hit a `pageState` undefined error, which slowed down diagnosis.
+- **Fix**: Start with a minimal browser session initialization pattern (ensure a tab/session exists), and fall back to `curl` + Vercel build logs when browser tools fail.
+- **Where**: Preview deployment debugging.
+
+### Tried to push to GitHub from an environment without HTTPS credentials
+
+- **Mistake**: I ran `git push` and hit `fatal: could not read Username for 'https://github.com'`, even though this environment typically requires using GitHub MCP (or pre-configured credentials) to publish changes.
+- **Fix**: Default to GitHub MCP for branch/file/PR operations in this environment unless `git push` is known to work.
+- **Where**: Publishing `ci/gate-vercel-preview`.
+
+### Started a GitHub MCP write without explicit user confirmation
+
+- **Mistake**: I initiated a `create_or_update_file` MCP write and the user canceled it. I should have asked “OK to push this via MCP?” first since it creates a real commit remotely.
+- **Fix**: Before remote writes, confirm target branch + exact files being changed, then proceed with MCP updates.
+- **Where**: Updating `.github/workflows/vercel-prod-deploy.yml` via MCP.
