@@ -61,6 +61,18 @@ function DemoPageInner() {
 
   const address = currentUser?.evmAccounts?.[0];
   
+  function extractFlowId(result: any): string | null {
+    const id =
+      result?.flowId ??
+      result?.flow_id ??
+      result?.id ??
+      result?.data?.flowId ??
+      result?.data?.flow_id ??
+      result?.data?.id ??
+      null;
+    return typeof id === 'string' && id.trim() ? id.trim() : null;
+  }
+
   // Get price from URL parameter, default to 0.01 if not provided
   const priceParam = searchParams.get('price');
   const purchasePrice = priceParam ? parseFloat(priceParam) : 0.01;
@@ -99,7 +111,14 @@ function DemoPageInner() {
 
     try {
       const result = await signInWithEmail({ email: emailOrPhone });
-      setFlowId(result.flowId);
+      const id = extractFlowId(result);
+      if (!id) {
+        console.error('signInWithEmail returned unexpected result:', result);
+        throw new Error(
+          'OTP request sent, but missing flow id. Check your CDP project configuration + browser console.'
+        );
+      }
+      setFlowId(id);
       setAuthType('email');
       setAuthStep('otp');
     } catch (err) {
@@ -119,7 +138,14 @@ function DemoPageInner() {
 
     try {
       const result = await signInWithSms({ phoneNumber: emailOrPhone });
-      setFlowId(result.flowId);
+      const id = extractFlowId(result);
+      if (!id) {
+        console.error('signInWithSms returned unexpected result:', result);
+        throw new Error(
+          'OTP request sent, but missing flow id. Check your CDP project configuration + browser console.'
+        );
+      }
+      setFlowId(id);
       setAuthType('sms');
       setAuthStep('otp');
     } catch (err) {
@@ -132,7 +158,11 @@ function DemoPageInner() {
 
   // verify OTP
   const handleVerifyOtp = async () => {
-    if (!otp || !flowId) return;
+    if (!otp) return;
+    if (!flowId) {
+      setError('Missing flow id. Please resend OTP.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -417,6 +447,11 @@ function DemoPageInner() {
             <div className="cta-section">
               <h2>sign in to get started</h2>
               <p>authenticate with email, SMS, Google, or X</p>
+              {error && (
+                <div className="error" style={{ marginTop: '16px' }}>
+                  <strong>error:</strong> {error}
+                </div>
+              )}
               {!showAuthMethods ? (
                 <button
                   className="button button-primary"
@@ -564,6 +599,11 @@ function DemoPageInner() {
                   >
                     enter the 6-digit code sent to {emailOrPhone}
                   </p>
+                  {!flowId && (
+                    <p style={{ fontSize: '12px', color: '#c62828' }}>
+                      Missing flow id — please go back and resend OTP.
+                    </p>
+                  )}
                   <input
                     type="text"
                     placeholder="Enter OTP code"
@@ -581,7 +621,7 @@ function DemoPageInner() {
                   <button
                     className="button button-primary"
                     onClick={handleVerifyOtp}
-                    disabled={loading || !otp}
+                    disabled={loading || !otp || !flowId}
                   >
                     {loading ? 'verifying...' : 'verify OTP'}
                   </button>
