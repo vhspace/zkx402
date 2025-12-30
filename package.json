@@ -26,7 +26,12 @@
     "@playwright/test": "^1.55.0",
     "concurrently": "^9.2.1"
   },
-  "keywords": ["x402", "zkproof", "payment", "verification"],
+  "keywords": [
+    "x402",
+    "zkproof",
+    "payment",
+    "verification"
+  ],
   "author": "",
   "license": "ISC"
 }
