@@ -744,7 +744,7 @@ function DemoPageInner() {
               </h3>
               <ol>
                 <li>
-                  <strong>user clicks "Access Sensitive Content"</strong>
+                  <strong>user clicks &quot;Access Sensitive Content&quot;</strong>
                 </li>
 
                 <li>
@@ -907,7 +907,7 @@ Decoded X-PAYMENT:
                       {`
       `}
                       <span style={{ color: '#33FF33' }}>
-                        "zkproofs": "zkproof(abc), zkproof(def)"
+                        &quot;zkproofs&quot;: &quot;zkproof(abc), zkproof(def)&quot;
                       </span>
                       {`
     }
@@ -955,7 +955,7 @@ Response:
                       {`
   `}
                       <span style={{ color: '#33FF33' }}>
-                        "isVerified": true
+                        &quot;isVerified&quot;: true
                       </span>
                       {`
 }`}
@@ -982,7 +982,7 @@ Response:
                       }}
                     >
                       <p>
-                        Facilitator calls USDC contract's{' '}
+                        Facilitator calls USDC contract&apos;s{' '}
                         <code>transferWithAuthorization</code>:
                       </p>
                       <ul style={{ marginLeft: '20px', marginTop: '8px' }}>
