@@ -101,6 +101,9 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID_SERVER: ${{ secrets.VERCEL_PROJECT_ID_SERVER }}
       VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
+    outputs:
+      backend_url: ${{ steps.deploy_backend.outputs.backend_url }}
+      frontend_url: ${{ steps.deploy_frontend.outputs.frontend_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,15 +117,55 @@ jobs:
           fi
 
       - name: Deploy backend preview (apps/demo/server)
+        id: deploy_backend
+        shell: bash
         run: |
+          set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server
+          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server)"
+          echo "$OUT"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^ ]+vercel\\.app' | tail -n 1)"
+          echo "backend_url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Deploy frontend preview (apps/demo/client)
+        id: deploy_frontend
+        shell: bash
         run: |
+          set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client
+          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client)"
+          echo "$OUT"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^ ]+vercel\\.app' | tail -n 1)"
+          echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
+
+  e2e-preview:
+    name: Browser E2E (Preview URL)
+    runs-on: ubuntu-latest
+    needs: deploy-preview
+    permissions:
+      contents: read
+    if: github.repository == 'vhspace/zkx402' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --legacy-peer-deps
+
+      - name: Install Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright against frontend preview
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.frontend_url }}
+        run: npm run test:e2e
 
 
