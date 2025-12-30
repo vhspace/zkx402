@@ -85,6 +85,9 @@ const corsOptions = {
     return callback(null, localAllowed.includes(origin));
   },
   credentials: true,
+  // The x402 flow returns a settlement header that browser clients may want to read.
+  // Without this, `fetch(...).headers.get('x-payment-response')` will be null in browsers.
+  exposedHeaders: ["X-PAYMENT-RESPONSE"],
 };
 app.use(cors(corsOptions));
 

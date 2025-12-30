@@ -1,0 +1,96 @@
+name: Deploy to Vercel (Production)
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-prod-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Avoid running in forks by default (forks won't have the required secrets).
+    if: github.repository == 'vhspace/zkx402' && github.event_name != 'pull_request'
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID_SERVER: ${{ secrets.VERCEL_PROJECT_ID_SERVER }}
+      VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          if [ -z "${VERCEL_TOKEN}" ]; then
+            echo "Missing required secret: VERCEL_TOKEN"
+            exit 1
+          fi
+          if [ -z "${VERCEL_ORG_ID}" ]; then
+            echo "Missing required secret: VERCEL_ORG_ID"
+            exit 1
+          fi
+          if [ -z "${VERCEL_PROJECT_ID_SERVER}" ]; then
+            echo "Missing required secret: VERCEL_PROJECT_ID_SERVER"
+            exit 1
+          fi
+          if [ -z "${VERCEL_PROJECT_ID_CLIENT}" ]; then
+            echo "Missing required secret: VERCEL_PROJECT_ID_CLIENT"
+            exit 1
+          fi
+
+      - name: Deploy backend (apps/demo/server) to production
+        run: |
+          export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
+          export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server
+
+      - name: Deploy frontend (apps/demo/client) to production
+        run: |
+          export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
+          export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client
+
+  deploy-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Only run previews for PRs coming from this repo (not forks), since secrets aren't exposed to forks.
+    if: github.repository == 'vhspace/zkx402' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID_SERVER: ${{ secrets.VERCEL_PROJECT_ID_SERVER }}
+      VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          if [ -z "${VERCEL_TOKEN}" ] || [ -z "${VERCEL_ORG_ID}" ] || [ -z "${VERCEL_PROJECT_ID_SERVER}" ] || [ -z "${VERCEL_PROJECT_ID_CLIENT}" ]; then
+            echo "Missing required Vercel secrets; skipping."
+            exit 1
+          fi
+
+      - name: Deploy backend preview (apps/demo/server)
+        run: |
+          export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
+          export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server
+
+      - name: Deploy frontend preview (apps/demo/client)
+        run: |
+          export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
+          export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client
+
+
