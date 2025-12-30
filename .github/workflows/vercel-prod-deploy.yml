@@ -123,9 +123,13 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server)"
+          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^ ]+vercel\\.app' | tail -n 1)"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^ ]+vercel\\.app' | tail -n 1 || true)"
+          if [ -z "$URL" ]; then
+            echo "Failed to parse backend preview URL from vercel output"
+            exit 1
+          fi
           echo "backend_url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Deploy frontend preview (apps/demo/client)
@@ -135,9 +139,13 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client)"
+          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^ ]+vercel\\.app' | tail -n 1)"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^ ]+vercel\\.app' | tail -n 1 || true)"
+          if [ -z "$URL" ]; then
+            echo "Failed to parse frontend preview URL from vercel output"
+            exit 1
+          fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
 
   e2e-preview:
