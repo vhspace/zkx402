@@ -174,3 +174,9 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Mistake**: I initiated a `create_or_update_file` MCP write and the user canceled it. I should have asked “OK to push this via MCP?” first since it creates a real commit remotely.
 - **Fix**: Before remote writes, confirm target branch + exact files being changed, then proceed with MCP updates.
 - **Where**: Updating `.github/workflows/vercel-prod-deploy.yml` via MCP.
+
+### GitHub token scope: cannot update workflow files without `workflow` permission
+
+- **Mistake**: I assumed the same GitHub authentication used for normal file writes could also update `.github/workflows/*`. GitHub rejects this with a 403 unless the token includes the **`workflow`** scope.
+- **Fix**: Avoid relying on MCP to edit workflow files unless we’ve confirmed the token has `workflow` scope. If not, either (a) push via `git` using a credentialed environment, or (b) have a maintainer apply the workflow patch.
+- **Where**: Attempted update to `.github/workflows/vercel-prod-deploy.yml` on PR #38.
