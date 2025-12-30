@@ -125,7 +125,7 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\\.vercel\\.app' | tail -n 1 || true)"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\.vercel\.app' | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse backend preview URL from vercel output"
             exit 1
@@ -141,7 +141,7 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\\.vercel\\.app' | tail -n 1 || true)"
+          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\.vercel\.app' | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse frontend preview URL from vercel output"
             exit 1
