@@ -54,6 +54,7 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID_SERVER: ${{ secrets.VERCEL_PROJECT_ID_SERVER }}
       VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,6 +77,9 @@ jobs:
           if [ -z "${VERCEL_PROJECT_ID_CLIENT}" ]; then
             echo "Missing required secret: VERCEL_PROJECT_ID_CLIENT"
             exit 1
+          fi
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "Info: CLOUDFLARE_API_TOKEN not set - DNS updates will be skipped (optional)"
           fi
 
       - name: Deploy backend (apps/demo/server) to production
@@ -100,6 +104,17 @@ jobs:
             exit 1
           fi
           echo "frontend_prod_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Update Cloudflare DNS for zkx402.io (optional)
+        if: success() && env.CLOUDFLARE_API_TOKEN != ''
+        continue-on-error: true
+        run: |
+          echo "Updating DNS records to point zkx402.io to ${{ steps.deploy_frontend_prod.outputs.frontend_prod_url }}"
+          if node scripts/cloudflare-dns-update.mjs ${{ steps.deploy_frontend_prod.outputs.frontend_prod_url }}; then
+            echo "DNS update completed successfully"
+          else
+            echo "DNS update failed, but deployment continues. Add CLOUDFLARE_API_TOKEN secret to enable automatic DNS updates."
+          fi
 
       - name: Report GitHub deployment (production)
         if: always()
