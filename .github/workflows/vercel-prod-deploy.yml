@@ -91,9 +91,12 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           OUT="$(npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\\.vercel\\.app' | tail -n 1 || true)"
+          # Try multiple patterns to extract the URL - Vercel CLI output format may vary
+          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse frontend prod URL from vercel output"
+            echo "=== Full Vercel Output ==="
+            echo "$OUT"
             exit 1
           fi
           echo "frontend_prod_url=$URL" >> "$GITHUB_OUTPUT"
@@ -168,9 +171,12 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\.vercel\.app' | tail -n 1 || true)"
+          # Try multiple patterns to extract the URL - Vercel CLI output format may vary
+          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse backend preview URL from vercel output"
+            echo "=== Full Vercel Output ==="
+            echo "$OUT"
             exit 1
           fi
           echo "backend_url=$URL" >> "$GITHUB_OUTPUT"
@@ -184,9 +190,12 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
           echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[^[:space:]]+\.vercel\.app' | tail -n 1 || true)"
+          # Try multiple patterns to extract the URL - Vercel CLI output format may vary
+          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse frontend preview URL from vercel output"
+            echo "=== Full Vercel Output ==="
+            echo "$OUT"
             exit 1
           fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
