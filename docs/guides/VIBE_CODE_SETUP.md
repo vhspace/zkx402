@@ -171,7 +171,7 @@ When implementing “future proofs”:
 7) **Docs**
    - update `packages/x402-zkx402/README.md`
    - update `apps/demo/README.md`
-   - add config + env var notes to `JSON_SPECS.md` when new providers are introduced
+   - add config + env var notes to `docs/specs/JSON_SPECS.md` when new providers are introduced
 
 ## “Do not do” (for agent tools)
 

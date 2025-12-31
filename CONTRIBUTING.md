@@ -41,6 +41,7 @@ node run-e2e-test.js
 ```
 
 This runs:
+
 - `packages/x402-zkx402` unit tests
 - Anvil + contract deploys
 - demo server startup
@@ -82,7 +83,7 @@ git submodule update --init --recursive
   - `cd apps/demo/local-chain && node run-e2e-test.js`
 - Update docs when you change:
   - paths, scripts, env vars, JSON formats, or CI behavior
-- If you discover a mistake, update `mistakes.md`.
+- If you discover a mistake, update `docs/process/mistakes.md`.
 
 ## Releases (GitHub Releases)
 
@@ -98,9 +99,7 @@ This repo uses **Release Please** to generate release PRs and GitHub Releases fo
 
 ## Useful docs
 
-- `DEVELOPER_TESTING.md`
-- `JSON_SPECS.md`
-- `PROOF_VERIFICATION_PLAN.md`
-- `mistakes.md`
-
-
+- `docs/guides/DEVELOPER_TESTING.md`
+- `docs/specs/JSON_SPECS.md`
+- `docs/specs/PROOF_VERIFICATION_PLAN.md`
+- `docs/process/mistakes.md`

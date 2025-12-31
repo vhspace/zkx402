@@ -26,7 +26,7 @@ This file tracks mistakes found during implementation and what we changed to pre
 
 - **Mistake**: Set `apps/demo/server/package.json` to `"x402-zkx402": "file:../../packages/x402-zkx402"`, but from `apps/demo/server` that resolves to `apps/packages/x402-zkx402` (non-existent). This would fail `npm install` on Vercel (and any clean install).
 - **Fix**: Corrected it to `"file:../../../packages/x402-zkx402"` and aligned the root lockfile entry.
-- **Where**: `apps/demo/server/package.json`, `package-lock.json`, `VERCEL_DEPLOYMENT.md`
+- **Where**: `apps/demo/server/package.json`, `package-lock.json`, `docs/guides/VERCEL_DEPLOYMENT.md`
 
 ### Missed Next.js App Router requirement: `useSearchParams()` needs Suspense
 
@@ -43,8 +43,8 @@ This file tracks mistakes found during implementation and what we changed to pre
 ### Vercel docs weren’t explicit about Self chain env var values
 
 - **Mistake**: The Vercel deployment guide listed `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER` but didn’t say they must point to **Base Sepolia RPC** + the **Base Sepolia ProofOfHumanReceiver** address (and where to find that address in this repo).
-- **Fix**: Added a dedicated section to `VERCEL_DEPLOYMENT.md` explaining expected values and a minimal example.
-- **Where**: `VERCEL_DEPLOYMENT.md`
+- **Fix**: Added a dedicated section to `docs/guides/VERCEL_DEPLOYMENT.md` explaining expected values and a minimal example.
+- **Where**: `docs/guides/VERCEL_DEPLOYMENT.md`
 
 ### Docs drift: placeholder repo links + confusing facilitator guidance
 

@@ -66,6 +66,6 @@ Include the subject wallet:
 
 ### More design context
 
-See `PROOF_VERIFICATION_PLAN.md`.
+See `docs/specs/PROOF_VERIFICATION_PLAN.md`.
 
 
