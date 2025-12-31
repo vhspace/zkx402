@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "packages": {
+    "packages/x402-zkx402": {
+      "package-name": "x402-zkx402",
+      "changelog-path": "CHANGELOG.md",
+      "include-component-in-tag": true
+    }
+  }
+}
+
+

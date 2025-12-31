@@ -84,6 +84,18 @@ git submodule update --init --recursive
   - paths, scripts, env vars, JSON formats, or CI behavior
 - If you discover a mistake, update `mistakes.md`.
 
+## Releases (GitHub Releases)
+
+This repo uses **Release Please** to generate release PRs and GitHub Releases for `packages/x402-zkx402`.
+
+- **How it works**:
+  - On merges to `main`, Release Please will open/refresh a **Release PR** that bumps the package version and updates `packages/x402-zkx402/CHANGELOG.md`.
+  - When that Release PR is merged, it automatically creates a **Git tag** + **GitHub Release**.
+- **Commit messages**: Prefer **Conventional Commits** so version bumps are correct:
+  - `fix: ...` → patch
+  - `feat: ...` → minor
+  - `feat!: ...` or `fix!: ...` → major (breaking)
+
 ## Useful docs
 
 - `DEVELOPER_TESTING.md`
