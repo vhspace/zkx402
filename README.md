@@ -1,5 +1,12 @@
 # zkx402
 
+[![CI](https://img.shields.io/github/actions/workflow/status/vhspace/zkx402/ci.yml?branch=main)](https://github.com/vhspace/zkx402/actions/workflows/ci.yml)
+[![Vercel Deploy](https://img.shields.io/github/actions/workflow/status/vhspace/zkx402/vercel-prod-deploy.yml?branch=main&label=vercel%20deploy)](https://github.com/vhspace/zkx402/actions/workflows/vercel-prod-deploy.yml)
+[![Release Please](https://img.shields.io/github/actions/workflow/status/vhspace/zkx402/release-please.yml?branch=main&label=release%20please)](https://github.com/vhspace/zkx402/actions/workflows/release-please.yml)
+[![License](https://img.shields.io/github/license/vhspace/zkx402)](LICENSE)
+[![Ethereum](https://img.shields.io/badge/Ethereum-3C3C3D?logo=ethereum&logoColor=white)](https://ethereum.org/)
+[![Solana](https://img.shields.io/badge/Solana-000000?logo=solana&logoColor=white)](https://solana.com/)
+
 zkx402 is an extension of the [x402 payment protocol](https://github.com/coinbase/x402) that adds **proof-aware pricing and access control**.
 
 In practice: your API can require payment via x402 and optionally apply discounts (or reject access) based on **canonical proof claims** (starting with chain-only “human”).
@@ -58,10 +65,10 @@ See:
 ## Proof policy and JSON formats
 
 See:
-- `JSON_SPECS.md` (policy JSON envelope + integrity hashing)
-- `PROOF_VERIFICATION_PLAN.md` (design/roadmap)
+- `docs/specs/JSON_SPECS.md` (policy JSON envelope + integrity hashing)
+- `docs/specs/PROOF_VERIFICATION_PLAN.md` (design/roadmap)
 - `docs/proof-concepts.md` (claims vs policy vs proofs vs contentMetadata)
-- `VIBE_CODE_SETUP.md` (setup guide for Cursor/Claude/v0/Lovable)
+- `docs/guides/VIBE_CODE_SETUP.md` (setup guide for Cursor/Claude/v0/Lovable)
 
 ## Contributing
 
