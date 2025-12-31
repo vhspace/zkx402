@@ -54,7 +54,7 @@ this project showcases **four Coinbase Developer Platform (CDP) products** worki
 For end-to-end testing with a local blockchain (Anvil + MockUSDC + full 402 flow), see:
 
 - `apps/demo/local-chain/README.md`
-- `DEVELOPER_TESTING.md`
+- `docs/guides/DEVELOPER_TESTING.md`
 
 ## proof-aware pricing in this demo (Self + vlayer)
 
