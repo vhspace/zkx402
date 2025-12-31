@@ -109,11 +109,11 @@ jobs:
         if: success() && env.CLOUDFLARE_API_TOKEN != ''
         continue-on-error: true
         run: |
-          echo "🔄 Updating DNS records to point zkx402.io to ${{ steps.deploy_frontend_prod.outputs.frontend_prod_url }}"
+          echo "Updating DNS records to point zkx402.io to ${{ steps.deploy_frontend_prod.outputs.frontend_prod_url }}"
           if node scripts/cloudflare-dns-update.mjs ${{ steps.deploy_frontend_prod.outputs.frontend_prod_url }}; then
-            echo "✅ DNS update completed successfully"
+            echo "DNS update completed successfully"
           else
-            echo "⚠️ DNS update failed, but deployment continues. Add CLOUDFLARE_API_TOKEN secret to enable automatic DNS updates."
+            echo "DNS update failed, but deployment continues. Add CLOUDFLARE_API_TOKEN secret to enable automatic DNS updates."
           fi
 
       - name: Report GitHub deployment (production)

@@ -5,30 +5,18 @@
  * Usage: node scripts/cloudflare-dns-update.mjs <vercel-url>
  */
 
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Configuration
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const DOMAIN = "zkx402.io";
-const RECORD_NAME = "zkx402.io"; // Apex domain
-const RECORD_TYPE = "CNAME"; // Vercel recommends CNAME for custom domains
+const RECORD_NAME = "zkx402.io";
+const RECORD_TYPE = "CNAME";
 
-// Get Vercel URL from command line argument
 const vercelUrl = process.argv[2];
 if (!vercelUrl) {
   console.error("Usage: node scripts/cloudflare-dns-update.mjs <vercel-url>");
-  console.error(
-    "Example: node scripts/cloudflare-dns-update.mjs https://zkx402.vercel.app"
-  );
+  console.error("Example: node scripts/cloudflare-dns-update.mjs https://zkx402.vercel.app");
   process.exit(1);
 }
 
-// Extract the domain part from Vercel URL (remove https://)
 const targetDomain = vercelUrl.replace(/^https?:\/\//, "");
 if (!targetDomain.endsWith(".vercel.app")) {
   console.error("Error: Vercel URL must end with .vercel.app");
@@ -99,52 +87,26 @@ async function getDnsRecord(zoneId, recordName, recordType) {
   return record;
 }
 
-async function updateDnsRecord(
-  zoneId,
-  recordId,
-  recordName,
-  recordType,
-  content
-) {
-  console.log(`Updating DNS record: ${recordName} -> ${content}`);
+async function upsertDnsRecord(zoneId, recordId, recordName, recordType, content) {
+  const method = recordId ? "PUT" : "POST";
+  const endpoint = recordId
+    ? `/zones/${zoneId}/dns_records/${recordId}`
+    : `/zones/${zoneId}/dns_records`;
 
-  const data = await makeCloudflareRequest(
-    `/zones/${zoneId}/dns_records/${recordId}`,
-    {
-      method: "PUT",
-      body: JSON.stringify({
-        type: recordType,
-        name: recordName,
-        content: content,
-        ttl: 1, // Auto TTL
-        proxied: true, // Cloudflare proxy enabled
-      }),
-    }
-  );
+  console.log(`${recordId ? "Updating" : "Creating"} DNS record: ${recordName} -> ${content}`);
 
-  console.log(
-    `Successfully updated DNS record: ${data.result.name} -> ${data.result.content}`
-  );
-  return data.result;
-}
-
-async function createDnsRecord(zoneId, recordName, recordType, content) {
-  console.log(`Creating DNS record: ${recordName} -> ${content}`);
-
-  const data = await makeCloudflareRequest(`/zones/${zoneId}/dns_records`, {
-    method: "POST",
+  const data = await makeCloudflareRequest(endpoint, {
+    method,
     body: JSON.stringify({
       type: recordType,
       name: recordName,
-      content: content,
-      ttl: 1, // Auto TTL
-      proxied: true, // Cloudflare proxy enabled
+      content,
+      ttl: 1,
+      proxied: true,
     }),
   });
 
-  console.log(
-    `Successfully created DNS record: ${data.result.name} -> ${data.result.content}`
-  );
+  console.log(`Updated DNS record: ${data.result.name} -> ${data.result.content}`);
   return data.result;
 }
 
@@ -153,48 +115,25 @@ async function updateDomainDns(vercelUrl) {
     throw new Error("CLOUDFLARE_API_TOKEN environment variable is required");
   }
 
-  console.log(`Starting DNS update for ${DOMAIN} to point to ${vercelUrl}`);
+  console.log(`Updating DNS for ${DOMAIN} to point to ${vercelUrl}`);
 
   try {
-    // Get zone ID
     const zoneId = await getZoneId(DOMAIN);
-
-    // Check if record exists
     const existingRecord = await getDnsRecord(zoneId, RECORD_NAME, RECORD_TYPE);
 
-    if (existingRecord) {
-      // Update existing record
-      if (existingRecord.content === targetDomain) {
-        console.log(
-          `DNS record already points to ${targetDomain}, no update needed`
-        );
-        return;
-      }
-
-      await updateDnsRecord(
-        zoneId,
-        existingRecord.id,
-        RECORD_NAME,
-        RECORD_TYPE,
-        targetDomain
-      );
-    } else {
-      // Create new record
-      await createDnsRecord(zoneId, RECORD_NAME, RECORD_TYPE, targetDomain);
+    if (existingRecord?.content === targetDomain) {
+      console.log(`DNS record already points to ${targetDomain}, no update needed`);
+      return;
     }
 
-    console.log(
-      `✅ Successfully updated ${DOMAIN} DNS to point to ${vercelUrl}`
-    );
-    console.log(
-      "Note: DNS changes may take a few minutes to propagate globally."
-    );
+    await upsertDnsRecord(zoneId, existingRecord?.id, RECORD_NAME, RECORD_TYPE, targetDomain);
+
+    console.log(`Updated ${DOMAIN} DNS to point to ${vercelUrl}`);
+    console.log("DNS changes may take a few minutes to propagate globally.");
   } catch (error) {
-    console.error("❌ Failed to update DNS:", error.message);
-    console.log(
-      "Note: DNS update failed, but deployment continues. You can manually update DNS or add CLOUDFLARE_API_TOKEN to automate this."
-    );
-    process.exit(0); // Soft fail - don't break the deployment
+    console.error("Failed to update DNS:", error.message);
+    console.log("DNS update failed, but deployment continues. Add CLOUDFLARE_API_TOKEN to automate this.");
+    process.exit(0);
   }
 }
 
