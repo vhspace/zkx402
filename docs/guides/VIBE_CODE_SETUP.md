@@ -28,7 +28,7 @@ It runs:
 
 ## Prereqs
 
-- **Node.js**: 18+ (repo often works on newer, but Node 24 can break native builds; see `.cursorrules`)
+- **Node.js**: 18+ (repo often works on newer, but Node 24 can break native builds; see `.cursor/rules/01-repo-basics.md`)
 - **Foundry**: required for Anvil/forge/cast
 
 Foundry install:
