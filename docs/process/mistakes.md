@@ -178,5 +178,11 @@ This file tracks mistakes found during implementation and what we changed to pre
 ### GitHub token scope: cannot update workflow files without `workflow` permission
 
 - **Mistake**: I assumed the same GitHub authentication used for normal file writes could also update `.github/workflows/*`. GitHub rejects this with a 403 unless the token includes the **`workflow`** scope.
-- **Fix**: Avoid relying on MCP to edit workflow files unless we’ve confirmed the token has `workflow` scope. If not, either (a) push via `git` using a credentialed environment, or (b) have a maintainer apply the workflow patch.
+- **Fix**: Avoid relying on MCP to edit workflow files unless we've confirmed the token has `workflow` scope. If not, either (a) push via `git` using a credentialed environment, or (b) have a maintainer apply the workflow patch.
 - **Where**: Attempted update to `.github/workflows/vercel-prod-deploy.yml` on PR #38.
+
+### Vercel URL parsing regex too strict, failed on production deployment output
+
+- **Mistake**: The GitHub Actions workflow used `grep -oE 'https?://[^[:space:]]+\\.vercel\\.app'` to extract Vercel deployment URLs. The double-backslash escaping (`\\.`) and `[^[:space:]]` pattern failed to match the actual Vercel CLI output format (e.g., `Production: https://zkx402-oopl71vpo-markballews-projects.vercel.app [54s]`), causing the workflow to exit with "Failed to parse frontend prod URL from vercel output" even though the deployment itself succeeded.
+- **Fix**: Updated the regex to `grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app'` which uses a more explicit character class and simpler dot escaping. Also added debug output (full Vercel log) when URL parsing fails to aid future diagnosis.
+- **Where**: `.github/workflows/vercel-prod-deploy.yml` (production and preview deployment steps).
