@@ -120,6 +120,31 @@ Security note:
 
 - If you omit `proofPolicy`, discounts are **disabled by default** (to avoid insecure “self-asserted proofs”).
 
+### Access control (hard proof-gating)
+
+If you want to **deny access unless proofs verify** (not just discount pricing), configure required claims on the route:
+
+```js
+extra: {
+  proofPolicy: {
+    version: 1,
+    scope: "zkx402",
+    allowedProviders: ["self"],
+    preferenceOrder: ["self"],
+    fallback: "none",
+  },
+  // Shortcut form (implies deny-on-failure):
+  requiredClaims: [{ type: "human" }],
+  // Preferred explicit form for dashboards/UIs:
+  // accessControl: { mode: "deny", statusCode: 403, requiredClaims: [{ type: "human" }] },
+}
+```
+
+Behavior:
+
+- In **quote mode** (no `X-PAYMENT`), the server still returns `402` with `accepts[]`.
+- In **paid mode**, after payment verifies, the server verifies required claims and returns **403** if they fail.
+
 ### Content Metadata
 
 Attach zkproof-like strings as metadata (not enforced by this middleware):
@@ -324,14 +349,17 @@ Whistleblowers sell sensitive content at premium prices, but offer discounts to 
 Only allow verified humans to access API:
 
 ```javascript
-variableAmountRequired: [
-  {
-    requiredClaims: [{ type: "human" }],
-    amountRequired: "1000"  // Must have proof to pay any amount
-  }
-]
-// Without proof: Full price ($0.01)
-// With human proof: Discounted ($0.001)
+extra: {
+  proofPolicy: {
+    version: 1,
+    scope: "zkx402",
+    allowedProviders: ["self"],
+    preferenceOrder: ["self"],
+    fallback: "none",
+  },
+  // Hard-gate: deny unless claim verifies (even if the user pays)
+  requiredClaims: [{ type: "human" }],
+}
 ```
 
 ### 3. Organization Members

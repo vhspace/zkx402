@@ -240,15 +240,42 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       return s;
     }
 
-    // Custom function to verify presented claims against required claims (for a discount tier)
+    function normalizeRequiredClaims(v) {
+      return Array.isArray(v) ? v : [];
+    }
+
+    function resolveAccessControl(extra) {
+      const accessControl =
+        extra && typeof extra === "object" && extra.accessControl && typeof extra.accessControl === "object"
+          ? extra.accessControl
+          : null;
+
+      const requiredClaims =
+        normalizeRequiredClaims(accessControl?.requiredClaims).length > 0
+          ? normalizeRequiredClaims(accessControl?.requiredClaims)
+          : normalizeRequiredClaims(extra?.requiredClaims);
+
+      const mode = String(accessControl?.mode ?? "deny");
+      const enabled = requiredClaims.length > 0 && mode !== "off" && mode !== "none";
+      const statusCode = Number(accessControl?.statusCode ?? 403);
+
+      return { enabled, mode, statusCode, requiredClaims };
+    }
+
+    const accessControl = resolveAccessControl(extraConfig);
+
+    // Custom function to verify claims (discount tiers and hard-gating)
     /**
-     * Verifies if user qualifies for a discount tier.
+     * Verifies whether `requiredClaims` are verified under the route policy.
      *
      * @param {Array} presentedClaims - Array of canonical claim objects the user intends to use.
      * @param {Array} requiredClaims - Array of canonical claim objects required by this tier.
+     * @param {Object} options
+     * @param {boolean} options.requirePresentation - If true, claims must be declared in `presentedClaims` (discount intent).
      * @returns {Promise<Object>} Verification result with isValid flag and details
      */
-    async function verifyClaimsForTier(presentedClaims, requiredClaims) {
+    async function verifyClaimsForTier(presentedClaims, requiredClaims, options = {}) {
+      const requirePresentation = options?.requirePresentation !== false;
       const presented = Array.isArray(presentedClaims) ? presentedClaims : [];
       const required = Array.isArray(requiredClaims) ? requiredClaims : [];
       const presentedKeys = claimKeySet(presented);
@@ -263,8 +290,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         required.map(async (claim) => {
           const ck = claimKey(claim);
           const presentedByClient = presentedKeys.has(ck);
-
-          if (!presentedByClient) {
+          if (requirePresentation && !presentedByClient) {
             return { claimKey: ck, claim, verified: false, reason: "not_presented" };
           }
 
@@ -356,6 +382,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               claim,
               verified: false,
               reason: routed.reason || "verification_error",
+              attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
             };
           }
 
@@ -375,6 +402,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             provider: routed.provider,
             verificationCost,
             quoted: Boolean(routed.quoted),
+            attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
           };
         })
       );
@@ -549,6 +577,15 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         extra: {
           ...asset.eip712,
           ...extraConfig,
+          ...(accessControl?.enabled
+            ? {
+                accessControl: {
+                  mode: accessControl.mode,
+                  statusCode: accessControl.statusCode,
+                  requiredClaims: accessControl.requiredClaims,
+                },
+              }
+            : {}),
           // Proof cost metadata (never include secret API keys here).
           ...(extraConfig?.proofCosts
             ? {
@@ -705,6 +742,41 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         accepts: toJsonSafe(paymentRequirements),
       });
       return;
+    }
+
+    // Hard proof-gated access control: after payment is verified, deny access unless required claims verify.
+    if (accessControl?.enabled) {
+      if (!extraConfig?.proofPolicy) {
+        dbg("access_control_missing_proof_policy", { correlationId });
+        res.status(500).json({
+          x402Version,
+          error: "proofPolicy_required_for_access_control",
+        });
+        return;
+      }
+
+      const accessVerification = await verifyClaimsForTier(
+        presentedClaims,
+        accessControl.requiredClaims,
+        { requirePresentation: false }
+      );
+
+      req.accessControlMetadata = {
+        mode: accessControl.mode,
+        requiredClaims: accessControl.requiredClaims,
+        verificationResult: accessVerification,
+      };
+
+      if (!accessVerification?.isValid) {
+        res.status(accessControl.statusCode).json({
+          x402Version,
+          error: "proofs_required",
+          message: "Access denied: required proofs missing or unverified",
+          requiredClaims: accessControl.requiredClaims,
+          verificationResult: accessVerification,
+        });
+        return;
+      }
     }
 
     // Intercept and buffer all core methods that can commit response to client

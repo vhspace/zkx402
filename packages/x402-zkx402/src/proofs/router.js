@@ -72,21 +72,34 @@ export async function verifyClaimWithPolicy({
     };
   }
 
+  const attempts = [];
   for (const provider of finalProviders) {
     const fn = provider?.[methodName];
     if (typeof fn !== "function") continue;
     const result = await fn({ ...(context || {}), claim, policy });
     if (!result?.ok) {
+      attempts.push({
+        provider: provider?.name ?? "unknown",
+        ok: false,
+        status: result?.status ?? "error",
+        reason: result?.reason ?? "provider_error",
+      });
       // continue trying other providers in chain-only mode
       continue;
     }
+    attempts.push({
+      provider: provider?.name ?? "unknown",
+      ok: true,
+      status: result?.verified ? VerifyStatus.VERIFIED : VerifyStatus.NOT_VERIFIED,
+    });
     return result.verified
-      ? { status: VerifyStatus.VERIFIED, provider: provider.name }
-      : { status: VerifyStatus.NOT_VERIFIED, provider: provider.name };
+      ? { status: VerifyStatus.VERIFIED, provider: provider.name, attempts }
+      : { status: VerifyStatus.NOT_VERIFIED, provider: provider.name, attempts };
   }
 
   return {
     status: VerifyStatus.ERROR,
     reason: "All providers failed or were not configured",
+    attempts,
   };
 }

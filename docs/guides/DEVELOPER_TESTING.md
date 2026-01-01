@@ -20,6 +20,7 @@ What it covers:
 - EIP-3009 `transferWithAuthorization` signing
 - local settlement via `transferWithAuthorization`
 - **proofPolicy/router path** (chain-only “human”): deploys a local `MockHumanRegistry` and checks `isVerified(address)` via `SELF_RPC_URL` + `BASE_PROOF_OF_HUMAN_RECEIVER`
+- **hard proof-gated access control**: `/motivate-gated` returns **403** on paid requests when required claims can’t be verified (and **does not** settle payment on denied responses)
 
 Optional (cost model):
 

@@ -144,6 +144,37 @@ app.use(
           },
         },
       },
+
+      // Hard proof-gated example: deny access unless the caller verifies as "human".
+      // Only enabled when PROOF_POLICY is present (otherwise the middleware will 500 on access).
+      ...(PROOF_POLICY
+        ? {
+            "GET /motivate-gated": {
+              price: "$0.01",
+              network: "base-sepolia",
+              config: {
+                description: "motivational quote (requires payment + verified human proof)",
+                asset:
+                  USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS
+                    ? LOCAL_USDC_ADDRESS
+                    : undefined,
+                outputSchema: {
+                  type: "object",
+                  properties: {
+                    quote: { type: "string" },
+                    timestamp: { type: "string" },
+                  },
+                },
+                extra: {
+                  // hard-gate access: deny without verified claim(s)
+                  requiredClaims: [{ type: "human" }],
+                  proofPolicy: PROOF_POLICY,
+                  ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),
+                },
+              },
+            },
+          }
+        : {}),
     },
     USE_LOCAL_FACILITATOR
       ? createLocalFacilitator({
@@ -175,6 +206,16 @@ app.get("/motivate", (req, res) => {
   });
 });
 
+// Hard-gated endpoint example (requires verified proofs; see middleware config above)
+app.get("/motivate-gated", (req, res) => {
+  res.json({
+    quote:
+      "The best way to predict the future is to invent it. --Alan Kay",
+    timestamp: new Date().toISOString(),
+    paid: true,
+  });
+});
+
 // Root endpoint - API info
 app.get("/", (req, res) => {
   res.json({
@@ -185,6 +226,12 @@ app.get("/", (req, res) => {
       "GET /balance/:address": "Get USDC balance",
       "POST /faucet": "Request test USDC",
       "GET /motivate": "Get motivational quote (requires 0.01 USDC payment)",
+      ...(PROOF_POLICY
+        ? {
+            "GET /motivate-gated":
+              "Get motivational quote (requires payment + verified human proof)",
+          }
+        : {}),
     },
     payment: {
       price: "0.01 USDC",
@@ -300,6 +347,11 @@ if (!process.env.VERCEL && isEntrypoint) {
     console.log(
       `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`
     );
+    if (PROOF_POLICY) {
+      console.log(
+        `   • GET  /motivate-gated   - motivational quote (requires payment + verified human proof)`
+      );
+    }
     console.log(`\nCDP products in use:`);
     console.log(`   • CDP x402 Facilitator - payment verification & settlement`);
     console.log(`   • CDP Faucet API       - test USDC distribution`);
