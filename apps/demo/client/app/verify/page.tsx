@@ -8,7 +8,6 @@ import {
   useVerifyEmailOTP,
   useSignInWithSms,
   useVerifySmsOTP,
-  useSignInWithOAuth,
   useSignOut,
 } from '@coinbase/cdp-hooks';
 import {
@@ -37,7 +36,6 @@ export default function VerifyPage() {
   const { verifyEmailOTP } = useVerifyEmailOTP();
   const { signInWithSms } = useSignInWithSms();
   const { verifySmsOTP } = useVerifySmsOTP();
-  const { signInWithOAuth } = useSignInWithOAuth();
   const { signOut } = useSignOut();
 
   const [selfApp, setSelfApp] = useState<SelfApp | null>(null);
@@ -195,19 +193,7 @@ export default function VerifyPage() {
   };
 
   const handleOAuthSignIn = async (provider: 'google' | 'x') => {
-    setLoading(true);
-    setError('');
-
-    try {
-      await signInWithOAuth(provider);
-      setShowAuthMethods(false);
-      setAuthStep('method');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to sign in');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    router.push(`/oauth?provider=${provider}&next=${encodeURIComponent('/verify')}`);
   };
 
   const checkVerificationStatus = async () => {

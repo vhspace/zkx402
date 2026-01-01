@@ -13,6 +13,7 @@ export function Providers({ children }: { children: ReactNode }) {
   // Next.js replaces NEXT_PUBLIC_* at build time. Preview deployments may not have
   // this configured, so we guard to avoid a hard client-side crash.
   const cdpProjectId = process.env.NEXT_PUBLIC_CDP_PROJECT_ID;
+  const cdpDebugging = process.env.NEXT_PUBLIC_CDP_DEBUGGING === "true";
 
   const content = !cdpProjectId ? (
     <div
@@ -38,6 +39,7 @@ export function Providers({ children }: { children: ReactNode }) {
       config={
         {
           projectId: cdpProjectId,
+          debugging: cdpDebugging,
           ethereum: {
             createOnLogin: "eoa",
           },

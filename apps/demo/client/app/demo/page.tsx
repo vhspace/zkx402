@@ -9,7 +9,6 @@ import {
   useVerifyEmailOTP,
   useSignInWithSms,
   useVerifySmsOTP,
-  useSignInWithOAuth,
   useSignOut,
   useX402,
 } from '@coinbase/cdp-hooks';
@@ -38,7 +37,6 @@ function DemoPageInner() {
   const { verifyEmailOTP } = useVerifyEmailOTP();
   const { signInWithSms } = useSignInWithSms();
   const { verifySmsOTP } = useVerifySmsOTP();
-  const { signInWithOAuth } = useSignInWithOAuth();
   const { signOut } = useSignOut();
   const { fetchWithPayment } = useX402();
 
@@ -60,7 +58,7 @@ function DemoPageInner() {
   const [copied, setCopied] = useState(false);
 
   const address = currentUser?.evmAccounts?.[0];
-  
+
   function extractFlowId(result: any): string | null {
     const id =
       result?.flowId ??
@@ -188,19 +186,8 @@ function DemoPageInner() {
 
   // handle OAuth sign in
   const handleOAuthSignIn = async (provider: 'google' | 'x') => {
-    setLoading(true);
-    setError('');
-
-    try {
-      await signInWithOAuth(provider);
-      setShowAuthMethods(false);
-      setAuthStep('method');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to sign in');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    // Route through a dedicated OAuth page so the redirect/callback URL is stable.
+    router.push(`/oauth?provider=${provider}&next=${encodeURIComponent('/demo')}`);
   };
 
   // Faucet USDC using backend endpoint
