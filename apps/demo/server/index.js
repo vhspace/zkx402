@@ -58,11 +58,45 @@ const LOCAL_USDC_ADDRESS = process.env.USDC_ADDRESS;
 const RECEIVER_PRIVATE_KEY = process.env.RECEIVER_PRIVATE_KEY;
 
 // enable CORS for local development and production
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  : null;
+function compileOriginMatchers(raw) {
+  if (!raw) return null;
+
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return null;
+
+  const matchers = [];
+
+  for (const p of parts) {
+    // Exact origin match
+    if (!p.includes("*") && !p.startsWith("re:")) {
+      matchers.push((origin) => origin === p);
+      continue;
+    }
+
+    // Regex match (advanced)
+    if (p.startsWith("re:")) {
+      const source = p.slice("re:".length);
+      const re = new RegExp(source);
+      matchers.push((origin) => re.test(origin));
+      continue;
+    }
+
+    // Wildcard match (simple): turn '*' into '.*' and escape other regex chars.
+    const escaped = p
+      .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*/g, ".*");
+    const re = new RegExp(`^${escaped}$`);
+    matchers.push((origin) => re.test(origin));
+  }
+
+  return matchers;
+}
+
+const originMatchers = compileOriginMatchers(process.env.ALLOWED_ORIGINS);
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -70,8 +104,17 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     // If explicitly configured, enforce the allow-list
-    if (allowedOrigins) {
-      return callback(null, allowedOrigins.includes(origin));
+    if (originMatchers) {
+      return callback(
+        null,
+        originMatchers.some((m) => {
+          try {
+            return m(origin);
+          } catch {
+            return false;
+          }
+        })
+      );
     }
 
     // On Vercel, default to allowing cross-origin for the demo unless configured otherwise.
