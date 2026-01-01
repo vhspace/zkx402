@@ -211,6 +211,142 @@ async function main() {
   assert.equal(payerDiff, BigInt(maxAmountRequired));
   assert.equal(receiverDiff, BigInt(maxAmountRequired));
 
+  log(colors.blue, "\nStep 7: Hard-gated access control (deny without verified proof)");
+
+  // First: negotiate payment requirements for the gated endpoint
+  const gatedInitial = await fetch(`${config.serverUrl}/motivate-gated`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  assert.equal(gatedInitial.status, 402);
+  const gatedReqs = await gatedInitial.json();
+  const gatedRequirement = gatedReqs.accepts[0];
+
+  const payerBalanceBeforeGate = await usdcContract.balanceOf(config.payerAddress);
+  const receiverBalanceBeforeGate = await usdcContract.balanceOf(config.receiverAddress);
+
+  // Pay, but omit proof inputs (e.g., X-Wallet-Address) so the proof cannot be verified.
+  const gatedAuthorization = {
+    from: config.payerAddress,
+    to: gatedRequirement.payTo,
+    value: gatedRequirement.maxAmountRequired,
+    validAfter,
+    validBefore,
+    nonce: ethers.hexlify(ethers.randomBytes(32)),
+  };
+
+  const gatedSignature = await payerWallet.signTypedData(domain, types, gatedAuthorization);
+  const gatedPaymentHeader = Buffer.from(
+    JSON.stringify({
+      x402Version: 1,
+      scheme: "exact",
+      network: gatedRequirement.network,
+      payload: {
+        signature: gatedSignature,
+        authorization: {
+          from: gatedAuthorization.from,
+          to: gatedAuthorization.to,
+          value: String(gatedAuthorization.value),
+          validAfter: String(gatedAuthorization.validAfter),
+          validBefore: String(gatedAuthorization.validBefore),
+          nonce: gatedAuthorization.nonce,
+        },
+      },
+    })
+  ).toString("base64");
+
+  const gatedDenied = await fetch(`${config.serverUrl}/motivate-gated`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-PAYMENT": gatedPaymentHeader,
+    },
+  });
+
+  assert.equal(gatedDenied.status, 403);
+  const gatedDeniedBody = await gatedDenied.json();
+  assert.equal(gatedDeniedBody.error, "proofs_required");
+
+  // Ensure no settlement happened on denied response
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const payerBalanceAfterGateDenied = await usdcContract.balanceOf(config.payerAddress);
+  const receiverBalanceAfterGateDenied = await usdcContract.balanceOf(config.receiverAddress);
+  assert.equal(payerBalanceAfterGateDenied, payerBalanceBeforeGate);
+  assert.equal(receiverBalanceAfterGateDenied, receiverBalanceBeforeGate);
+
+  log(colors.blue, "\nStep 8: Hard-gated access control (allow with verified proof)");
+
+  const gatedProofsHeaders = {
+    Accept: "application/json",
+    "X-Wallet-Address": config.payerAddress,
+    "X-Proof-Claims": JSON.stringify([{ type: "human" }]),
+  };
+
+  const gatedProofsQuote = await fetch(`${config.serverUrl}/motivate-gated`, {
+    method: "GET",
+    headers: { ...gatedProofsHeaders },
+  });
+  assert.equal(gatedProofsQuote.status, 402);
+  const gatedProofsReqs = await gatedProofsQuote.json();
+  const gatedProofsRequirement = gatedProofsReqs.accepts[0];
+
+  const payerBalanceBeforeGateAllow = await usdcContract.balanceOf(config.payerAddress);
+  const receiverBalanceBeforeGateAllow = await usdcContract.balanceOf(config.receiverAddress);
+
+  const gatedAllowAuthorization = {
+    from: config.payerAddress,
+    to: gatedProofsRequirement.payTo,
+    value: gatedProofsRequirement.maxAmountRequired,
+    validAfter,
+    validBefore,
+    nonce: ethers.hexlify(ethers.randomBytes(32)),
+  };
+
+  const gatedAllowSignature = await payerWallet.signTypedData(domain, types, gatedAllowAuthorization);
+  const gatedAllowPaymentHeader = Buffer.from(
+    JSON.stringify({
+      x402Version: 1,
+      scheme: "exact",
+      network: gatedProofsRequirement.network,
+      payload: {
+        signature: gatedAllowSignature,
+        authorization: {
+          from: gatedAllowAuthorization.from,
+          to: gatedAllowAuthorization.to,
+          value: String(gatedAllowAuthorization.value),
+          validAfter: String(gatedAllowAuthorization.validAfter),
+          validBefore: String(gatedAllowAuthorization.validBefore),
+          nonce: gatedAllowAuthorization.nonce,
+        },
+      },
+    })
+  ).toString("base64");
+
+  const gatedAllowed = await fetch(`${config.serverUrl}/motivate-gated`, {
+    method: "GET",
+    headers: {
+      ...gatedProofsHeaders,
+      "X-PAYMENT": gatedAllowPaymentHeader,
+    },
+  });
+
+  assert.equal(gatedAllowed.status, 200);
+  const gatedAllowedBody = await gatedAllowed.json();
+  assert.equal(gatedAllowedBody.paid, true);
+
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const payerBalanceAfterGateAllow = await usdcContract.balanceOf(config.payerAddress);
+  const receiverBalanceAfterGateAllow = await usdcContract.balanceOf(config.receiverAddress);
+
+  assert.equal(
+    payerBalanceBeforeGateAllow - payerBalanceAfterGateAllow,
+    BigInt(gatedProofsRequirement.maxAmountRequired)
+  );
+  assert.equal(
+    receiverBalanceAfterGateAllow - receiverBalanceBeforeGateAllow,
+    BigInt(gatedProofsRequirement.maxAmountRequired)
+  );
+
   log(colors.blue, "\nStep 7: Test with zkproofs (dynamic pricing)");
 
   const proofsHeaders = {
@@ -419,6 +555,7 @@ async function main() {
   log(colors.green, "  Payment response header received");
   log(colors.green, "  Dynamic pricing with zkproofs tested");
   log(colors.green, "  Dynamic pricing with vlayer_chain tested");
+  log(colors.green, "  Hard proof-gated access control tested");
 
   log(colors.blue, "\nAll tests passed!\n");
 }

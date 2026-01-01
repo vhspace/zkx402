@@ -186,3 +186,17 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Mistake**: The GitHub Actions workflow used `grep -oE 'https?://[^[:space:]]+\\.vercel\\.app'` to extract Vercel deployment URLs. The double-backslash escaping (`\\.`) and `[^[:space:]]` pattern failed to match the actual Vercel CLI output format (e.g., `Production: https://zkx402-oopl71vpo-markballews-projects.vercel.app [54s]`), causing the workflow to exit with "Failed to parse frontend prod URL from vercel output" even though the deployment itself succeeded.
 - **Fix**: Updated the regex to `grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app'` which uses a more explicit character class and simpler dot escaping. Also added debug output (full Vercel log) when URL parsing fails to aid future diagnosis.
 - **Where**: `.github/workflows/vercel-prod-deploy.yml` (production and preview deployment steps).
+
+## 2026-01-01
+
+### GitHub CLI JSON field mismatch for issues
+
+- **Mistake**: Requested a non-existent `commentCount` field from `gh issue list --json ...`, which caused the command to fail and slowed down issue triage.
+- **Fix**: Use the supported `comments` field (or consult `gh issue list --json` available fields) before relying on a JSON shape.
+- **Where**: Repo issue prioritization pass.
+
+### Assumed an internal file path existed (`src/router.js`)
+
+- **Mistake**: Tried to read `packages/x402-zkx402/src/router.js`, but the proof router actually lives at `packages/x402-zkx402/src/proofs/router.js`.
+- **Fix**: Search (`rg`) before assuming file locations, especially in packages with nested submodules like `src/proofs/*`.
+- **Where**: Proof-gated access control implementation prep.

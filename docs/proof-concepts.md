@@ -14,7 +14,7 @@ They are sent by the client via the `X-Proof-Claims` header:
 Canonical claims are used for:
 
 - **Discount routing** (`extra.variableAmountRequired[].requiredClaims`)
-- (Future) **access control gating** (“deny unless verified”)
+- **Access control gating** (`extra.requiredClaims` / `extra.accessControl.requiredClaims`)
 
 ## `proofPolicy` (how you verify)
 
@@ -25,6 +25,23 @@ It lives under route config as:
 - `config.extra.proofPolicy`
 
 Without `proofPolicy`, the middleware will **not apply proof-gated discounts** (to avoid trusting self-asserted client input).
+
+## Access control gating (deny unless verified)
+
+If you want “proofs as access control” (not just discounts), configure **required claims** for the route:
+
+- **Shortcut**: `config.extra.requiredClaims: [{...}]` (implies deny-on-failure)
+- **Preferred**: `config.extra.accessControl: { mode: "deny", statusCode: 403, requiredClaims: [{...}] }`
+
+Behavior:
+
+- **Quote mode** (no `X-PAYMENT`): still returns `402` with `accepts[]` (and includes `accessControl` metadata in `accepts[].extra`).
+- **Paid mode** (with `X-PAYMENT`): after payment verifies, the middleware verifies the required claims and returns **403** if any are missing/unverified.
+
+Notes:
+
+- Hard-gating requires `proofPolicy` (otherwise it’s a server misconfiguration).
+- The route handler can read `req.accessControlMetadata` for structured results (useful for dashboards/UIs later).
 
 ## Providers (who verifies, and where)
 

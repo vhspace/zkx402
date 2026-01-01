@@ -25,6 +25,7 @@ It runs:
 - Anvil (local chain) + deploys `MockUSDC`, `MockHumanRegistry`, and `VlayerProofRegistry`
 - starts the demo server
 - runs a paid x402 flow + proof-aware discount checks (Self + vlayer)
+- runs a hard-gated endpoint check (`/motivate-gated`) to ensure “paying without proofs” still returns **403** (no settlement)
 
 ## Prereqs
 
