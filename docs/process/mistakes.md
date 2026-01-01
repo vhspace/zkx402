@@ -187,28 +187,6 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Updated the regex to `grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app'` which uses a more explicit character class and simpler dot escaping. Also added debug output (full Vercel log) when URL parsing fails to aid future diagnosis.
 - **Where**: `.github/workflows/vercel-prod-deploy.yml` (production and preview deployment steps).
 
-## 2026-01-02
-
-### Vercel CI failure: `vercel alias set` ran under the wrong team scope (domain “no access”)
-
-- **Mistake**: CI successfully deployed a Preview build, but failed when aliasing a stable preview domain with:
-  - `Error: You don't have access to the domain preview.<...> under <team>.`
-  This was triggered even with a broad `VERCEL_TOKEN`, because the alias command was not pinned to the correct Vercel **scope/team**.
-- **Fix**:
-  - Run aliasing with explicit scope + project context:
-    - `vercel alias set <deployment> preview.<domain> --scope <team-slug> --cwd apps/demo/client`
-  - Make aliasing **best-effort** (`continue-on-error`) so tests stay green and still report the raw `*.vercel.app` URL when aliasing is blocked.
-- **Where**: `.github/workflows/vercel-preview-domain.yml`
-
-### Vercel serverless crash: monorepo-only imports missing at runtime
-
-- **Mistake**: The backend Vercel project deploys `apps/demo/server` as an isolated serverless bundle. Importing workspace-only modules caused runtime failures:
-  - `ERR_MODULE_NOT_FOUND: Cannot find package 'x402-zkx402'`
-  - `ERR_MODULE_NOT_FOUND: Cannot find module '../local-chain/local-facilitator.js'`
-- **Fix**:
-  - Vendored `packages/x402-zkx402` into `apps/demo/server/vendor/x402-zkx402` and imported it locally.
-  - Made the local-chain facilitator import lazy/conditional so it’s never required in serverless deployments.
-- **Where**: `apps/demo/server/index.js`, `apps/demo/server/vendor/x402-zkx402/**`
 ## 2026-01-01
 
 ### GitHub CLI JSON field mismatch for issues
@@ -223,22 +201,8 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Search (`rg`) before assuming file locations, especially in packages with nested submodules like `src/proofs/*`.
 - **Where**: Proof-gated access control implementation prep.
 
-## 2026-01-03
+### GitHub CLI `--repo` flag requires an explicit `OWNER/REPO` slug
 
-### Preview CI failure: `npm ci` lockfile drift + slow installs
-
-- **Mistake**: Ran `npm ci` in GitHub Actions with a `package-lock.json` that drifted from `package.json`, causing `npm ci` to fail with `EUSAGE`. Also re-downloaded Playwright browsers each run.
-- **Fix**:
-  - Commit a synced `package-lock.json`.
-  - Use `npm ci --prefer-offline --no-audit --no-fund`.
-  - Cache `~/.cache/ms-playwright` in the preview E2E job.
-- **Where**: `.github/workflows/vercel-preview-domain.yml`, root `package-lock.json`
-
-### Preview E2E fragility: faucet/balance require CDP credentials
-
-- **Mistake**: The preview Playwright demo-flow test assumed `/faucet` + `/balance` always work, but the demo server requires `CDP_API_KEY_ID`/`CDP_API_KEY_SECRET`. In Preview CI we can’t assume those credentials exist, and rate limits make the faucet flaky even when they do.
-- **Fix**: Added an explicit `E2E_FAUCET_MOCK=true` mode for preview deployments so `/faucet` returns a deterministic 200 and `/balance/:address` returns a deterministic balance for CI E2E.
-- **Where**:
-  - `apps/demo/server/index.js` (`/faucet`, `/balance/:address`)
-  - `.github/workflows/vercel-preview-domain.yml` (backend deploy injects `E2E_FAUCET_MOCK=true`)
-
+- **Mistake**: Ran `gh issue view 10 --repo .` assuming the current directory could be used as the repo identifier. `gh` expects `--repo` to be in `OWNER/REPO` (or `HOST/OWNER/REPO`) form.
+- **Fix**: Resolve the slug first (`gh repo view --json nameWithOwner`) and then use `--repo <nameWithOwner>` (e.g. `--repo vhspace/zkx402`).
+- **Where**: Issue #10 documentation/implementation work.
