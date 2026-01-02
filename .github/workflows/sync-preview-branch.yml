@@ -1,0 +1,49 @@
+name: Sync preview branch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: sync-preview-branch
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Update preview branch to match main
+    runs-on: ubuntu-latest
+    # Avoid running in forks.
+    if: github.repository == 'vhspace/zkx402'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Force preview branch to match main
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin main preview --prune
+
+          # Make preview a clean mirror of main.
+          git checkout -B preview origin/main
+
+          # Push update (preview branch should be treated as a deployment branch).
+          if git push --force-with-lease origin preview; then
+            echo "Updated origin/preview to match origin/main"
+          else
+            echo "force-with-lease failed (branch may not exist yet); falling back to --force"
+            git push --force origin preview
+          fi
+
+
