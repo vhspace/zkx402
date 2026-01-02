@@ -1,6 +1,10 @@
 import express from "express";
 import cors from "cors";
-import { loadProofPolicyFile, loadProofCostFile, paymentMiddleware } from "x402-zkx402";
+import {
+  loadProofPolicyFile,
+  loadProofCostFile,
+  paymentMiddleware,
+} from "./vendor/x402-zkx402/src/index.js";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
