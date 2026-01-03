@@ -1,0 +1,119 @@
+name: Deploy + alias (preview domain)
+
+on:
+  push:
+    # Any non-main branch can take over the single shared preview domain.
+    branches-ignore: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: vercel-preview-domain
+  cancel-in-progress: true
+
+jobs:
+  deploy-and-alias:
+    runs-on: ubuntu-latest
+    # Avoid running in forks (forks won't have the required secrets).
+    if: github.repository == 'vhspace/zkx402'
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
+      PREVIEW_DOMAIN: preview.zkx402.vhspace.org
+      # Ensure all Vercel commands run under the correct team scope for custom domains.
+      # This matches the scope shown in Vercel CLI output: "markballews-projects/<project>".
+      VERCEL_SCOPE: markballews-projects
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          if [ -z "${VERCEL_TOKEN}" ]; then
+            echo "Missing required secret: VERCEL_TOKEN"
+            exit 1
+          fi
+          if [ -z "${VERCEL_ORG_ID}" ]; then
+            echo "Missing required secret: VERCEL_ORG_ID"
+            exit 1
+          fi
+          if [ -z "${VERCEL_PROJECT_ID_CLIENT}" ]; then
+            echo "Missing required secret: VERCEL_PROJECT_ID_CLIENT"
+            exit 1
+          fi
+
+      - name: Deploy frontend preview (apps/demo/client)
+        id: deploy_frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
+          export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          # NOTE: `--cwd` is a *global* Vercel CLI flag. Put it BEFORE the subcommand,
+          # otherwise it may be ignored and Vercel will try to build from repo root.
+          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
+          echo "$OUT"
+          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
+          if [ -z "$URL" ]; then
+            echo "Failed to parse frontend preview URL from vercel output"
+            echo "=== Full Vercel Output ==="
+            echo "$OUT"
+            exit 1
+          fi
+          echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Alias preview domain to this deployment (best-effort)
+        id: alias_preview
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="${{ steps.deploy_frontend.outputs.frontend_url }}"
+          echo "Aliasing ${PREVIEW_DOMAIN} -> ${URL}"
+          if npx --yes vercel@latest --cwd apps/demo/client --scope="${VERCEL_SCOPE}" alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}"; then
+            echo "aliased=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "aliased=false" >> "$GITHUB_OUTPUT"
+            echo "WARN: Failed to alias ${PREVIEW_DOMAIN}. This usually means the CI VERCEL_TOKEN does not have permission to manage that domain."
+          fi
+
+      - name: Report GitHub deployment (preview-domain)
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          FRONTEND_URL: ${{ steps.deploy_frontend.outputs.frontend_url }}
+          PREVIEW_DOMAIN: ${{ env.PREVIEW_DOMAIN }}
+          ALIASED: ${{ steps.alias_preview.outputs.aliased }}
+        with:
+          script: |
+            const sha = context.sha;
+            const envName = 'preview-domain';
+            const url = process.env.FRONTEND_URL;
+            const domain = process.env.PREVIEW_DOMAIN;
+            const aliased = process.env.ALIASED === 'true';
+            const envUrl = aliased && domain ? `https://${domain}` : url;
+
+            const { data: deployment } = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              environment: envName,
+              auto_merge: false,
+              required_contexts: [],
+              description: `Vercel preview domain -> ${envUrl}`,
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.id,
+              state: envUrl ? 'success' : 'error',
+              environment: envName,
+              environment_url: envUrl || undefined,
+              log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: aliased ? 'Deployed + aliased preview domain' : 'Deployed (alias failed; using raw preview URL)',
+            });

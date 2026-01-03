@@ -86,14 +86,16 @@ jobs:
         run: |
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server
+          # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
+          npx --yes vercel@latest --cwd apps/demo/server deploy --prod --yes --token="${VERCEL_TOKEN}"
 
       - name: Deploy frontend (apps/demo/client) to production
         id: deploy_frontend_prod
         run: |
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          OUT="$(npx --yes vercel@latest deploy --prod --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
+          # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
+          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --prod --yes --token="${VERCEL_TOKEN}" 2>&1)"
           echo "$OUT"
           # Try multiple patterns to extract the URL - Vercel CLI output format may vary
           URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
@@ -184,7 +186,8 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/server 2>&1)"
+          # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
+          OUT="$(npx --yes vercel@latest --cwd apps/demo/server deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
           echo "$OUT"
           # Try multiple patterns to extract the URL - Vercel CLI output format may vary
           URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
@@ -203,7 +206,8 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
+          # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
+          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
           echo "$OUT"
           # Try multiple patterns to extract the URL - Vercel CLI output format may vary
           URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
@@ -271,8 +275,32 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --legacy-peer-deps
 
+      - name: Detect Playwright version
+        id: playwright_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -e "console.log(require('@playwright/test/package.json').version)")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright_version.outputs.version }}
+
       - name: Install Playwright (Chromium)
-        run: npx playwright install --with-deps chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          # On cache hit, this should be fast (browsers already present).
+          # On cache miss, install system deps too.
+          if [ "${{ steps.playwright_cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run Playwright against frontend preview
         env:

@@ -187,6 +187,28 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Updated the regex to `grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app'` which uses a more explicit character class and simpler dot escaping. Also added debug output (full Vercel log) when URL parsing fails to aid future diagnosis.
 - **Where**: `.github/workflows/vercel-prod-deploy.yml` (production and preview deployment steps).
 
+## 2026-01-02
+
+### Vercel CI failure: `vercel alias set` ran under the wrong team scope (domain “no access”)
+
+- **Mistake**: CI successfully deployed a Preview build, but failed when aliasing a stable preview domain with:
+  - `Error: You don't have access to the domain preview.<...> under <team>.`
+  This was triggered even with a broad `VERCEL_TOKEN`, because the alias command was not pinned to the correct Vercel **scope/team**.
+- **Fix**:
+  - Run aliasing with explicit scope + project context:
+    - `vercel alias set <deployment> preview.<domain> --scope <team-slug> --cwd apps/demo/client`
+  - Make aliasing **best-effort** (`continue-on-error`) so tests stay green and still report the raw `*.vercel.app` URL when aliasing is blocked.
+- **Where**: `.github/workflows/vercel-preview-domain.yml`
+
+### Vercel serverless crash: monorepo-only imports missing at runtime
+
+- **Mistake**: The backend Vercel project deploys `apps/demo/server` as an isolated serverless bundle. Importing workspace-only modules caused runtime failures:
+  - `ERR_MODULE_NOT_FOUND: Cannot find package 'x402-zkx402'`
+  - `ERR_MODULE_NOT_FOUND: Cannot find module '../local-chain/local-facilitator.js'`
+- **Fix**:
+  - Vendored `packages/x402-zkx402` into `apps/demo/server/vendor/x402-zkx402` and imported it locally.
+  - Made the local-chain facilitator import lazy/conditional so it’s never required in serverless deployments.
+- **Where**: `apps/demo/server/index.js`, `apps/demo/server/vendor/x402-zkx402/**`
 ## 2026-01-01
 
 ### GitHub CLI JSON field mismatch for issues
@@ -200,3 +222,4 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Mistake**: Tried to read `packages/x402-zkx402/src/router.js`, but the proof router actually lives at `packages/x402-zkx402/src/proofs/router.js`.
 - **Fix**: Search (`rg`) before assuming file locations, especially in packages with nested submodules like `src/proofs/*`.
 - **Where**: Proof-gated access control implementation prep.
+

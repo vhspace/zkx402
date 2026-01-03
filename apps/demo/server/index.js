@@ -1,13 +1,12 @@
 import express from "express";
 import cors from "cors";
-import { loadProofPolicyFile, loadProofCostFile, paymentMiddleware } from "x402-zkx402";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
 import { getTokenBalances } from "./balances.js";
-import { createLocalFacilitator } from "../local-chain/local-facilitator.js";
 import { join, dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+import { createRequire } from "module";
 
 dotenv.config({ path: ".env" });
 dotenv.config({ path: ".env.local", override: true });
@@ -19,6 +18,19 @@ const ENABLE_PROOF_COSTS = process.env.ENABLE_PROOF_COSTS === "true";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// IMPORTANT:
+// - In CI/local dev, the monorepo contains `packages/x402-zkx402`, so import it directly
+//   to ensure the demo server uses the latest middleware behavior (incl. access control).
+// - In Vercel serverless deployments, the project root is `apps/demo/server`, so the monorepo
+//   package is not present. In that environment we fall back to the vendored copy.
+const {
+  loadProofPolicyFile,
+  loadProofCostFile,
+  paymentMiddleware,
+} = await (process.env.VERCEL
+  ? import("./vendor/x402-zkx402/src/index.js")
+  : import("../../../packages/x402-zkx402/src/index.js"));
 
 function loadProofPolicy() {
   try {
@@ -57,12 +69,64 @@ const USE_LOCAL_FACILITATOR = process.env.USE_LOCAL_FACILITATOR === "true";
 const LOCAL_USDC_ADDRESS = process.env.USDC_ADDRESS;
 const RECEIVER_PRIVATE_KEY = process.env.RECEIVER_PRIVATE_KEY;
 
+// The local-chain facilitator is for local development only and is not shipped in the
+// Vercel serverless bundle (apps/demo/server deploys independently). Import it lazily.
+const require = createRequire(import.meta.url);
+const maybeCreateLocalFacilitator = (() => {
+  if (!USE_LOCAL_FACILITATOR) return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require("../local-chain/local-facilitator.js");
+    return mod?.createLocalFacilitator ?? null;
+  } catch (e) {
+    console.warn(
+      "USE_LOCAL_FACILITATOR=true but local facilitator module not found; falling back to hosted facilitator.",
+      e?.message || e
+    );
+    return null;
+  }
+})();
+
 // enable CORS for local development and production
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  : null;
+function compileOriginMatchers(raw) {
+  if (!raw) return null;
+
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return null;
+
+  const matchers = [];
+
+  for (const p of parts) {
+    // Exact origin match
+    if (!p.includes("*") && !p.startsWith("re:")) {
+      matchers.push((origin) => origin === p);
+      continue;
+    }
+
+    // Regex match (advanced)
+    if (p.startsWith("re:")) {
+      const source = p.slice("re:".length);
+      const re = new RegExp(source);
+      matchers.push((origin) => re.test(origin));
+      continue;
+    }
+
+    // Wildcard match (simple): turn '*' into '.*' and escape other regex chars.
+    const escaped = p
+      .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*/g, ".*");
+    const re = new RegExp(`^${escaped}$`);
+    matchers.push((origin) => re.test(origin));
+  }
+
+  return matchers;
+}
+
+const originMatchers = compileOriginMatchers(process.env.ALLOWED_ORIGINS);
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -70,8 +134,17 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     // If explicitly configured, enforce the allow-list
-    if (allowedOrigins) {
-      return callback(null, allowedOrigins.includes(origin));
+    if (originMatchers) {
+      return callback(
+        null,
+        originMatchers.some((m) => {
+          try {
+            return m(origin);
+          } catch {
+            return false;
+          }
+        })
+      );
     }
 
     // On Vercel, default to allowing cross-origin for the demo unless configured otherwise.
@@ -177,11 +250,13 @@ app.use(
         : {}),
     },
     USE_LOCAL_FACILITATOR
-      ? createLocalFacilitator({
+      ? maybeCreateLocalFacilitator
+        ? maybeCreateLocalFacilitator({
           rpcUrl: process.env.RPC_URL || "http://localhost:8545",
           usdcAddress: LOCAL_USDC_ADDRESS,
           receiverPrivateKey: RECEIVER_PRIVATE_KEY,
         })
+        : facilitator
       : facilitator
   )
 );
