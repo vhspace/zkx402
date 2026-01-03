@@ -23,6 +23,9 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
       PREVIEW_DOMAIN: preview.zkx402.vhspace.org
+      # Ensure all Vercel commands run under the correct team scope for custom domains.
+      # This matches the scope shown in Vercel CLI output: "markballews-projects/<project>".
+      VERCEL_SCOPE: markballews-projects
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,7 +72,7 @@ jobs:
           set -euo pipefail
           URL="${{ steps.deploy_frontend.outputs.frontend_url }}"
           echo "Aliasing ${PREVIEW_DOMAIN} -> ${URL}"
-          if npx --yes vercel@latest alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}"; then
+          if npx --yes vercel@latest alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}" --scope="${VERCEL_SCOPE}" --cwd apps/demo/client; then
             echo "aliased=true" >> "$GITHUB_OUTPUT"
           else
             echo "aliased=false" >> "$GITHUB_OUTPUT"
@@ -112,5 +115,3 @@ jobs:
               log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               description: aliased ? 'Deployed + aliased preview domain' : 'Deployed (alias failed; using raw preview URL)',
             });
-
-
