@@ -209,3 +209,17 @@ This file tracks mistakes found during implementation and what we changed to pre
   - Vendored `packages/x402-zkx402` into `apps/demo/server/vendor/x402-zkx402` and imported it locally.
   - Made the local-chain facilitator import lazy/conditional so it’s never required in serverless deployments.
 - **Where**: `apps/demo/server/index.js`, `apps/demo/server/vendor/x402-zkx402/**`
+## 2026-01-01
+
+### GitHub CLI JSON field mismatch for issues
+
+- **Mistake**: Requested a non-existent `commentCount` field from `gh issue list --json ...`, which caused the command to fail and slowed down issue triage.
+- **Fix**: Use the supported `comments` field (or consult `gh issue list --json` available fields) before relying on a JSON shape.
+- **Where**: Repo issue prioritization pass.
+
+### Assumed an internal file path existed (`src/router.js`)
+
+- **Mistake**: Tried to read `packages/x402-zkx402/src/router.js`, but the proof router actually lives at `packages/x402-zkx402/src/proofs/router.js`.
+- **Fix**: Search (`rg`) before assuming file locations, especially in packages with nested submodules like `src/proofs/*`.
+- **Where**: Proof-gated access control implementation prep.
+

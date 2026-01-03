@@ -72,6 +72,41 @@ Security note:
 
 - If `X-PAYMENT` is **not** present, the middleware will **avoid vendor API calls** and treat `X-Proof-Claims` as an *intent signal* (quote mode). Actual enforcement still occurs when the client submits payment + claims.
 
+## 1.7.3 Route-level hard access control (deny unless claims verify)
+
+Discounts (`variableAmountRequired`) are optional. If you need **hard-gated access** (deny the request unless claims verify), configure required claims on the route.
+
+Two supported shapes:
+
+### Shortcut form
+
+Set:
+
+- `config.extra.requiredClaims: [{ "type": "human" }]`
+
+This implies `mode: "deny"` and will return **403** on paid requests if the claim(s) fail verification.
+
+### Explicit (preferred for dashboards/UIs)
+
+Set:
+
+```json
+{
+  "accessControl": {
+    "mode": "deny",
+    "statusCode": 403,
+    "requiredClaims": [{ "type": "human" }]
+  }
+}
+```
+
+Semantics:
+
+- **Quote mode**: still returns `402` with `accepts[]` (and includes `accessControl` metadata under `accepts[].extra`).
+- **Paid mode**: verifies required claims after payment verification; if any fail, returns:
+  - HTTP `403`
+  - JSON error body with which claim(s) failed and why.
+
 Request body shape sent to `SELF_API_URL`:
 
 ```json

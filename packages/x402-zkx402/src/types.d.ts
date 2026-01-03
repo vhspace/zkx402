@@ -9,6 +9,22 @@ export interface ProofClaim {
   [key: string]: any;
 }
 
+export interface AccessControlConfig {
+  /**
+   * Hard-gate access: deny unless these claims verify.
+   */
+  requiredClaims: ProofClaim[];
+  /**
+   * Enforcement mode. "deny" means deny access when required claims fail.
+   * "off"/"none" disables enforcement.
+   */
+  mode?: "deny" | "off" | "none" | string;
+  /**
+   * HTTP status code for denied access (default 403).
+   */
+  statusCode?: number;
+}
+
 export interface ProofPolicy {
   version: number;
   scope: string;
@@ -93,6 +109,19 @@ export interface ZkProofExtraConfig {
   proofPolicy?: ProofPolicy;
 
   /**
+   * Hard-gate access: deny the request unless required claims verify.
+   *
+   * Shortcut form supported for backward-compatibility:
+   * - `requiredClaims: [...]` (implies `accessControl.mode = "deny"`)
+   */
+  requiredClaims?: ProofClaim[];
+
+  /**
+   * Explicit access control config (preferred for UI/dashboards).
+   */
+  accessControl?: AccessControlConfig;
+
+  /**
    * Proof verification cost schedule (separate from proofPolicy).
    */
   proofCosts?: ProofCosts;
@@ -136,6 +165,16 @@ export interface ProofVerificationDetail {
    * Optional error details if verification failed
    */
   errorDetails?: any;
+
+  /**
+   * Provider attempts (useful for debugging/UX without leaking secrets)
+   */
+  attempts?: Array<{
+    provider: string;
+    ok: boolean;
+    status: string;
+    reason?: string;
+  }>;
 }
 
 /**
@@ -230,6 +269,15 @@ export interface ZkProofRequest extends Request {
    * Verification metadata set by middleware after zkproof verification
    */
   verificationMetadata?: VerificationMetadata | null;
+
+  /**
+   * Access-control metadata set by middleware (hard-gating).
+   */
+  accessControlMetadata?: {
+    mode: string;
+    requiredClaims: ProofClaim[];
+    verificationResult: ProofVerificationResult;
+  } | null;
 }
 
 /**

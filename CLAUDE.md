@@ -42,6 +42,7 @@ pkill -f anvil
 
 - The `X-PAYMENT` header must match the **`x402`** npm package schema (not `@coinbase/x402/*`).
 - Avoid hardcoded absolute paths like `/workspaces/...` (CI checkout paths differ).
+- **Hard proof-gating**: use `config.extra.requiredClaims` (or `config.extra.accessControl`) + `proofPolicy`. Quote mode still returns `402`; paid requests return `403` when required claims fail.
 
 ## AI-only pointers (keep these discoverable)
 
