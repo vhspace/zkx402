@@ -1,10 +1,5 @@
 import express from "express";
 import cors from "cors";
-import {
-  loadProofPolicyFile,
-  loadProofCostFile,
-  paymentMiddleware,
-} from "./vendor/x402-zkx402/src/index.js";
 import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
@@ -23,6 +18,19 @@ const ENABLE_PROOF_COSTS = process.env.ENABLE_PROOF_COSTS === "true";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// IMPORTANT:
+// - In CI/local dev, the monorepo contains `packages/x402-zkx402`, so import it directly
+//   to ensure the demo server uses the latest middleware behavior (incl. access control).
+// - In Vercel serverless deployments, the project root is `apps/demo/server`, so the monorepo
+//   package is not present. In that environment we fall back to the vendored copy.
+const {
+  loadProofPolicyFile,
+  loadProofCostFile,
+  paymentMiddleware,
+} = await (process.env.VERCEL
+  ? import("./vendor/x402-zkx402/src/index.js")
+  : import("../../../packages/x402-zkx402/src/index.js"));
 
 function loadProofPolicy() {
   try {
