@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     # Avoid running in forks (forks won't have the required secrets).
     if: github.repository == 'vhspace/zkx402'
+    outputs:
+      frontend_url: ${{ steps.deploy_frontend.outputs.frontend_url }}
+      aliased: ${{ steps.alias_preview.outputs.aliased }}
     permissions:
       contents: read
       deployments: write
@@ -117,3 +120,66 @@ jobs:
               log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               description: aliased ? 'Deployed + aliased preview domain' : 'Deployed (alias failed; using raw preview URL)',
             });
+
+  e2e-preview:
+    needs: deploy-and-alias
+    runs-on: ubuntu-latest
+    if: github.repository == 'vhspace/zkx402'
+    permissions:
+      contents: read
+    env:
+      FRONTEND_URL: ${{ needs.deploy-and-alias.outputs.frontend_url }}
+      ALIASED: ${{ needs.deploy-and-alias.outputs.aliased }}
+      PREVIEW_DOMAIN: preview.zkx402.vhspace.org
+      MAILSLURP_API_KEY: ${{ secrets.MAILSLURP_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify required secrets
+        shell: bash
+        run: |
+          if [ -z "${MAILSLURP_API_KEY}" ]; then
+            echo "Missing required secret: MAILSLURP_API_KEY"
+            exit 1
+          fi
+
+      - name: Resolve PLAYWRIGHT_BASE_URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${ALIASED}" = "true" ]; then
+            BASE="https://${PREVIEW_DOMAIN}"
+          else
+            BASE="${FRONTEND_URL}"
+          fi
+          echo "PLAYWRIGHT_BASE_URL=${BASE}" >> "$GITHUB_ENV"
+          echo "Resolved PLAYWRIGHT_BASE_URL=${BASE}"
+
+      - name: Install dependencies
+        shell: bash
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ms-playwright-
+
+      - name: Install Playwright (chromium)
+        shell: bash
+        run: npx playwright install chromium
+
+      - name: Run Playwright E2E (preview)
+        shell: bash
+        env:
+          CI: true
+        run: npm run test:e2e

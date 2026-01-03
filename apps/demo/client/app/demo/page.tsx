@@ -361,6 +361,46 @@ function DemoPageInner() {
     }
   };
 
+  // call the proof-gated x402 endpoint (expected to fail without proof-of-humanity)
+  const handleCallProofGatedApi = async () => {
+    if (!address || !currentUser) return;
+
+    setLoading(true);
+    setError('');
+    setQuote('');
+    setPaymentInfo(null);
+
+    try {
+      const response = await fetchWithPayment(`${API_URL}/motivate-gated`, {
+        method: 'GET',
+        headers: {
+          ...(address ? { 'X-Wallet-Address': address } : {}),
+          // Intentionally omit "human" claim to reflect the no-proof demo scenario.
+          'X-Proof-Claims': JSON.stringify([]),
+        },
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const msg =
+          body?.error && body?.message
+            ? `${body.error}: ${body.message}`
+            : body?.error
+              ? String(body.error)
+              : `API request failed: ${response.status}`;
+        throw new Error(msg);
+      }
+
+      const data: ApiResponse = await response.json();
+      setQuote(data.quote);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to call proof-gated API');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="demo-page">
       <div className="container">
@@ -638,6 +678,14 @@ function DemoPageInner() {
                   disabled={loading || parseFloat(balance) < purchasePrice}
                 >
                   {loading ? 'processing...' : 'access sensitive content'}
+                </button>
+                <button
+                  className="button button-secondary"
+                  onClick={handleCallProofGatedApi}
+                  disabled={loading || parseFloat(balance) < purchasePrice}
+                  style={{ marginTop: 12 }}
+                >
+                  {loading ? 'processing...' : 'access proof-gated content'}
                 </button>
                 {parseFloat(balance) < purchasePrice && (
                   <p
