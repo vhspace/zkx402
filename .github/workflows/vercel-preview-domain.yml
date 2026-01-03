@@ -61,13 +61,20 @@ jobs:
           fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
 
-      - name: Alias preview domain to this deployment
+      - name: Alias preview domain to this deployment (best-effort)
+        id: alias_preview
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           URL="${{ steps.deploy_frontend.outputs.frontend_url }}"
           echo "Aliasing ${PREVIEW_DOMAIN} -> ${URL}"
-          npx --yes vercel@latest alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}"
+          if npx --yes vercel@latest alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}"; then
+            echo "aliased=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "aliased=false" >> "$GITHUB_OUTPUT"
+            echo "WARN: Failed to alias ${PREVIEW_DOMAIN}. This usually means the CI VERCEL_TOKEN does not have permission to manage that domain."
+          fi
 
       - name: Report GitHub deployment (preview-domain)
         if: always()
@@ -75,13 +82,15 @@ jobs:
         env:
           FRONTEND_URL: ${{ steps.deploy_frontend.outputs.frontend_url }}
           PREVIEW_DOMAIN: ${{ env.PREVIEW_DOMAIN }}
+          ALIASED: ${{ steps.alias_preview.outputs.aliased }}
         with:
           script: |
             const sha = context.sha;
             const envName = 'preview-domain';
             const url = process.env.FRONTEND_URL;
             const domain = process.env.PREVIEW_DOMAIN;
-            const envUrl = domain ? `https://${domain}` : url;
+            const aliased = process.env.ALIASED === 'true';
+            const envUrl = aliased && domain ? `https://${domain}` : url;
 
             const { data: deployment } = await github.rest.repos.createDeployment({
               owner: context.repo.owner,
@@ -101,7 +110,7 @@ jobs:
               environment: envName,
               environment_url: envUrl || undefined,
               log_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              description: envUrl ? 'Deployed + aliased preview domain' : 'Deploy/alias failed',
+              description: aliased ? 'Deployed + aliased preview domain' : 'Deployed (alias failed; using raw preview URL)',
             });
 
 
