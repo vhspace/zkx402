@@ -18,6 +18,7 @@
     "vercel:env": "node scripts/vercel-env.mjs",
     "test:tools": "node --test scripts/test/*.test.mjs",
     "test:e2e": "playwright test",
+    "build": "npm run build --workspace=apps/demo/client",
     "dev:server": "npm run dev --workspace=apps/demo/server",
     "dev:client": "npm run dev --workspace=apps/demo/client",
     "dev:replit": "concurrently -k -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\""
@@ -33,5 +34,8 @@
     "verification"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": ">=22 <23"
+  }
 }
