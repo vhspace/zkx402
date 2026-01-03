@@ -53,7 +53,9 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
-          OUT="$(npx --yes vercel@latest deploy --yes --token="${VERCEL_TOKEN}" --cwd apps/demo/client 2>&1)"
+          # NOTE: `--cwd` is a *global* Vercel CLI flag. Put it BEFORE the subcommand,
+          # otherwise it may be ignored and Vercel will try to build from repo root.
+          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
           echo "$OUT"
           URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
           if [ -z "$URL" ]; then
@@ -72,7 +74,7 @@ jobs:
           set -euo pipefail
           URL="${{ steps.deploy_frontend.outputs.frontend_url }}"
           echo "Aliasing ${PREVIEW_DOMAIN} -> ${URL}"
-          if npx --yes vercel@latest alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}" --scope="${VERCEL_SCOPE}" --cwd apps/demo/client; then
+          if npx --yes vercel@latest --cwd apps/demo/client --scope="${VERCEL_SCOPE}" alias set "$URL" "$PREVIEW_DOMAIN" --token="${VERCEL_TOKEN}"; then
             echo "aliased=true" >> "$GITHUB_OUTPUT"
           else
             echo "aliased=false" >> "$GITHUB_OUTPUT"
