@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build --workspace=apps/demo/client",
+  "outputDirectory": "apps/demo/client/.next"
+}
+
+

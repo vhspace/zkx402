@@ -223,3 +223,14 @@ This file tracks mistakes found during implementation and what we changed to pre
 - **Fix**: Search (`rg`) before assuming file locations, especially in packages with nested submodules like `src/proofs/*`.
 - **Where**: Proof-gated access control implementation prep.
 
+## 2026-01-03
+
+### Preview CI failure: `npm ci` lockfile drift + slow installs
+
+- **Mistake**: Ran `npm ci` in GitHub Actions with a `package-lock.json` that drifted from `package.json`, causing `npm ci` to fail with `EUSAGE`. Also re-downloaded Playwright browsers each run.
+- **Fix**:
+  - Commit a synced `package-lock.json`.
+  - Use `npm ci --prefer-offline --no-audit --no-fund`.
+  - Cache `~/.cache/ms-playwright` in the preview E2E job.
+- **Where**: `.github/workflows/vercel-preview-domain.yml`, root `package-lock.json`
+
