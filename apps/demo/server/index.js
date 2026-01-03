@@ -9,9 +9,9 @@ import { facilitator } from "@coinbase/x402";
 import dotenv from "dotenv";
 import { requestFaucet } from "./faucet.js";
 import { getTokenBalances } from "./balances.js";
-import { createLocalFacilitator } from "../local-chain/local-facilitator.js";
 import { join, dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+import { createRequire } from "module";
 
 dotenv.config({ path: ".env" });
 dotenv.config({ path: ".env.local", override: true });
@@ -60,6 +60,24 @@ const RECEIVER_WALLET = process.env.RECEIVER_WALLET || "0xYourWalletAddress";
 const USE_LOCAL_FACILITATOR = process.env.USE_LOCAL_FACILITATOR === "true";
 const LOCAL_USDC_ADDRESS = process.env.USDC_ADDRESS;
 const RECEIVER_PRIVATE_KEY = process.env.RECEIVER_PRIVATE_KEY;
+
+// The local-chain facilitator is for local development only and is not shipped in the
+// Vercel serverless bundle (apps/demo/server deploys independently). Import it lazily.
+const require = createRequire(import.meta.url);
+const maybeCreateLocalFacilitator = (() => {
+  if (!USE_LOCAL_FACILITATOR) return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require("../local-chain/local-facilitator.js");
+    return mod?.createLocalFacilitator ?? null;
+  } catch (e) {
+    console.warn(
+      "USE_LOCAL_FACILITATOR=true but local facilitator module not found; falling back to hosted facilitator.",
+      e?.message || e
+    );
+    return null;
+  }
+})();
 
 // enable CORS for local development and production
 function compileOriginMatchers(raw) {
@@ -193,11 +211,13 @@ app.use(
       },
     },
     USE_LOCAL_FACILITATOR
-      ? createLocalFacilitator({
+      ? maybeCreateLocalFacilitator
+        ? maybeCreateLocalFacilitator({
           rpcUrl: process.env.RPC_URL || "http://localhost:8545",
           usdcAddress: LOCAL_USDC_ADDRESS,
           receiverPrivateKey: RECEIVER_PRIVATE_KEY,
         })
+        : facilitator
       : facilitator
   )
 );
