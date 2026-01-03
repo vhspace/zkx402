@@ -271,6 +271,37 @@ cd ../client
 vercel --prod
 ```
 
+## Stable Preview Domain (recommended for CDP social login)
+
+Vercel Preview deployment URLs are **not predictable** (they include a unique hash per deploy). For Coinbase CDP Embedded Wallets social login, it’s much easier to operate with a **single stable preview origin** (so you can add it once to CDP “Allowed Origins”).
+
+### Approach: alias a stable preview domain to the latest branch deployment
+
+1. **Pick a stable preview domain** (example used in this repo setup):
+   - `https://preview.zkx402.vhspace.org`
+2. **Add that domain to your Vercel frontend project** (Project → Settings → Domains) and create the required DNS records.
+3. **Add the same domain to CDP Allowed Origins** (in the CDP Portal) so OAuth redirects are allowed.
+4. **Automate aliasing in CI** so the domain always points at the latest non-`main` branch deployment:
+   - See `.github/workflows/vercel-preview-domain.yml`
+
+### Common CI failure: “You don't have access to the domain … under <scope>”
+
+If CI can deploy to Vercel but fails on `vercel alias set` with an error like:
+
+> `You don't have access to the domain preview.<...> under <team>`
+
+This is often because the alias command is running under the wrong Vercel **scope/team**, even if the token is “broad”.
+
+**Fix**:
+- Pass `--scope <your-team-slug>` (and optionally `--cwd apps/demo/client`) to `vercel alias set`.
+- In this repo we set:
+  - `VERCEL_SCOPE=markballews-projects`
+  - and run: `vercel alias set ... --scope="$VERCEL_SCOPE" --cwd apps/demo/client`
+
+### Best-effort aliasing (so tests don’t fail when alias is blocked)
+
+If you want CI to remain green even when aliasing is temporarily blocked (e.g., domain not yet added/verified), make the alias step `continue-on-error: true` and report the raw preview URL as a fallback. The shipped workflow already does this.
+
 ## Node “no-shell” helpers (recommended)
 
 Instead of bash scripts, use the Node helpers shipped in this repo:
