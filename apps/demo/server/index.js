@@ -330,6 +330,18 @@ app.get("/balance/:address", async (req, res) => {
       return res.status(400).json({ error: "address required" });
     }
 
+    // E2E/Preview mode: make the demo deterministic even when the server isn't configured
+    // with CDP credentials (e.g. preview deployments in CI).
+    if (process.env.E2E_FAUCET_MOCK === "true") {
+      return res.json({
+        balance: 1.0,
+        address,
+        network: "base-sepolia",
+        token: "USDC",
+        mocked: true,
+      });
+    }
+
     const apiKeyId = process.env.CDP_API_KEY_ID;
     const privateKey = process.env.CDP_API_KEY_SECRET;
 
@@ -367,6 +379,16 @@ app.post("/faucet", async (req, res) => {
 
     if (!address) {
       return res.status(400).json({ error: "address required" });
+    }
+
+    // E2E/Preview mode: return a deterministic success response without hitting CDP.
+    if (process.env.E2E_FAUCET_MOCK === "true") {
+      return res.json({
+        success: true,
+        transactionHash: "0xE2E_FAUCET_MOCK",
+        message: "USDC will arrive shortly (mocked)",
+        mocked: true,
+      });
     }
 
     const apiKeyId = process.env.CDP_API_KEY_ID;
