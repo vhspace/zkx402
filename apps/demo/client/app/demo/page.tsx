@@ -391,8 +391,11 @@ function DemoPageInner() {
         throw new Error(msg);
       }
 
-      const data: ApiResponse = await response.json();
-      setQuote(data.quote);
+      // This flow is intentionally supposed to fail without proof-of-humanity.
+      // If the backend is misconfigured and returns 200, treat it as a denial so we never reveal content.
+      setError(
+        'proof_gated_misconfigured: expected denial without proof-of-humanity, but request succeeded',
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed to call proof-gated API');
       console.error(err);

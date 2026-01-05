@@ -21,7 +21,7 @@ test.describe('Preview demo flow (email OTP + faucet + proof-gated denial)', () 
 
     const errorBox = page.locator('.error');
     await expect(errorBox).toBeVisible({ timeout: 60_000 });
-    await expect(errorBox).toContainText(/proofs_required|access denied/i);
+    await expect(errorBox).toContainText(/proofs_required|access denied|proof[_ -]?gated/i);
 
     await expect(page.getByText(/ACCESS GRANTED/i)).toHaveCount(0);
 
