@@ -225,11 +225,6 @@ export default function VerifyPage() {
       return;
     }
 
-    if (CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000') {
-      setError('Contract not deployed yet. Deploy contracts first!');
-      return;
-    }
-
     setError('');
 
     try {
@@ -238,11 +233,17 @@ export default function VerifyPage() {
       // Pass real CDP wallet in userDefinedData
       const { ethers } = await import('ethers');
 
+      const endpoint =
+        CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000'
+          ? '0x0000000000000000000000000000000000000000'
+          : CELO_BRIDGE_ADDRESS;
+
       const app = new SelfAppBuilder({
         version: 2,
         appName: 'CDP Agent Verification',
         scope: 'zkx402', // MUST match contract deployment scope
-        endpoint: CELO_BRIDGE_ADDRESS.toLowerCase(), // MUST be lowercase!
+        // In Preview environments the contract may not be deployed; use a zero-address endpoint so the QR still renders.
+        endpoint: endpoint.toLowerCase(), // MUST be lowercase!
         logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
         userId: address.toLowerCase(), // Real CDP wallet address!
         endpointType: 'staging_celo', // Testnet on Celo
@@ -268,8 +269,13 @@ export default function VerifyPage() {
       setShowQR(true);
       setVerificationStatus('pending');
 
-      // Start polling for verification
-      startPolling();
+      // Only poll when the contracts are configured.
+      if (
+        CELO_BRIDGE_ADDRESS !== '0x0000000000000000000000000000000000000000' &&
+        BASE_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000'
+      ) {
+        startPolling();
+      }
     } catch (err) {
       console.error('Error generating QR code:', err);
       setError('Failed to generate QR code. Check console for details.');
@@ -1047,6 +1053,24 @@ export default function VerifyPage() {
               }}
             >
               {error}
+            </div>
+          )}
+
+          {!showQR && (
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+              <button
+                onClick={generateQRCode}
+                style={{
+                  padding: '10px 20px',
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                }}
+              >
+                generate qr code
+              </button>
             </div>
           )}
 

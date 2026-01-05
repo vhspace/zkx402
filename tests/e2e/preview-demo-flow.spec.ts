@@ -26,6 +26,11 @@ test.describe('Preview demo flow (email OTP + faucet + proof-gated denial)', () 
     await expect(page.getByText(/ACCESS GRANTED/i)).toHaveCount(0);
 
     await page.getByRole('button', { name: /^verify$/i }).click();
+    // QR may require manual generation in Preview if contracts aren't configured.
+    const genBtn = page.getByRole('button', { name: /generate qr code/i });
+    if (await genBtn.isVisible().catch(() => false)) {
+      await genBtn.click();
+    }
     await expect(page.getByRole('heading', { name: /scan with self app/i })).toBeVisible({
       timeout: 60_000,
     });
