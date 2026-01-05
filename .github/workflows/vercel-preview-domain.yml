@@ -162,7 +162,22 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: npm ci --prefer-offline --no-audit --no-fund
+        env:
+          npm_config_fetch_retries: 5
+          npm_config_fetch_retry_factor: 2
+          npm_config_fetch_retry_mintimeout: 10000
+          npm_config_fetch_retry_maxtimeout: 120000
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            if npm ci --prefer-offline --no-audit --no-fund; then
+              exit 0
+            fi
+            echo "npm ci failed (attempt $i/3). Retrying..."
+            sleep $((i * 10))
+          done
+          echo "npm ci failed after 3 attempts."
+          exit 1
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
