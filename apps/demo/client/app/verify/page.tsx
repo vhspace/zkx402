@@ -220,11 +220,6 @@ export default function VerifyPage() {
   };
 
   const generateQRCode = async () => {
-    if (!address) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
     setError('');
 
     try {
@@ -233,11 +228,14 @@ export default function VerifyPage() {
       // Pass real CDP wallet in userDefinedData
       const { ethers } = await import('ethers');
 
+      const userAddress =
+        address || '0x0000000000000000000000000000000000000000';
+
       // In Preview environments the bridge contract may not be deployed yet.
       // Still generate a QR by using a non-zero endpoint (fallback to the user's address).
       const endpoint =
         CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000'
-          ? address
+          ? userAddress
           : CELO_BRIDGE_ADDRESS;
 
       const app = new SelfAppBuilder({
@@ -247,7 +245,8 @@ export default function VerifyPage() {
         // In Preview environments the contract may not be deployed; use a zero-address endpoint so the QR still renders.
         endpoint: endpoint.toLowerCase(), // MUST be lowercase!
         logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
-        userId: address.toLowerCase(), // Real CDP wallet address!
+        // If the wallet address isn't available yet in Preview, still render a QR with a neutral placeholder.
+        userId: userAddress.toLowerCase(),
         endpointType: 'staging_celo', // Testnet on Celo
         userIdType: 'hex', // Ethereum address format
         userDefinedData: 'CDP Agent Verification', // Just text
@@ -263,7 +262,7 @@ export default function VerifyPage() {
       console.log('=== QR Code Generated ===');
       console.log('Contract Address:', CELO_BRIDGE_ADDRESS);
       console.log('Scope:', 'zkx402');
-      console.log('User ID (CDP Wallet):', address);
+      console.log('User ID (CDP Wallet):', userAddress);
       console.log('Endpoint Type:', 'staging_celo');
       console.log('Self App Object:', app);
 
@@ -273,6 +272,7 @@ export default function VerifyPage() {
 
       // Only poll when the contracts are configured.
       if (
+        address &&
         CELO_BRIDGE_ADDRESS !== '0x0000000000000000000000000000000000000000' &&
         BASE_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000'
       ) {
