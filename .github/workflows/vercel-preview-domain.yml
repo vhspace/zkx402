@@ -58,13 +58,16 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           # NOTE: `--cwd` is a *global* Vercel CLI flag. Put it BEFORE the subcommand,
           # otherwise it may be ignored and Vercel will try to build from repo root.
-          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
-          echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
+          # Vercel CLI supports writing the deployment URL to a file reliably.
+          npx --yes vercel@latest --no-color --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" > deployment-url.txt
+          cat deployment-url.txt
+          URL="$(cat deployment-url.txt | tr -d '\r\n')"
           if [ -z "$URL" ]; then
             echo "Failed to parse frontend preview URL from vercel output"
-            echo "=== Full Vercel Output ==="
-            echo "$OUT"
+            exit 1
+          fi
+          if ! echo "$URL" | grep -qE '^https?://'; then
+            echo "Unexpected deployment URL: $URL"
             exit 1
           fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
