@@ -233,9 +233,11 @@ export default function VerifyPage() {
       // Pass real CDP wallet in userDefinedData
       const { ethers } = await import('ethers');
 
+      // In Preview environments the bridge contract may not be deployed yet.
+      // Still generate a QR by using a non-zero endpoint (fallback to the user's address).
       const endpoint =
         CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000'
-          ? '0x0000000000000000000000000000000000000000'
+          ? address
           : CELO_BRIDGE_ADDRESS;
 
       const app = new SelfAppBuilder({
