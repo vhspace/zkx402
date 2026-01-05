@@ -26,8 +26,6 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID_SERVER: ${{ secrets.VERCEL_PROJECT_ID_SERVER }}
       VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
-      CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
-      CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
       PREVIEW_DOMAIN: preview.zkx402.vhspace.org
       # Ensure all Vercel commands run under the correct team scope for custom domains.
       # This matches the scope shown in Vercel CLI output: "markballews-projects/<project>".
@@ -55,14 +53,6 @@ jobs:
             echo "Missing required secret: VERCEL_PROJECT_ID_CLIENT"
             exit 1
           fi
-          if [ -z "${CDP_API_KEY_ID}" ]; then
-            echo "Missing required secret: CDP_API_KEY_ID"
-            exit 1
-          fi
-          if [ -z "${CDP_API_KEY_SECRET}" ]; then
-            echo "Missing required secret: CDP_API_KEY_SECRET"
-            exit 1
-          fi
 
       - name: Deploy backend preview (apps/demo/server)
         id: deploy_backend
@@ -72,8 +62,6 @@ jobs:
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           npx --yes vercel@latest --no-color --cwd apps/demo/server deploy --yes \
-            -e CDP_API_KEY_ID="${CDP_API_KEY_ID}" \
-            -e CDP_API_KEY_SECRET="${CDP_API_KEY_SECRET}" \
             --token="${VERCEL_TOKEN}" 2>&1 | tee vercel-backend.out
           URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel-backend.out | tail -n 1 || true)"
           if [ -z "$URL" ]; then
