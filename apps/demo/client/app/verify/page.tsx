@@ -226,8 +226,6 @@ export default function VerifyPage() {
       // Build Self QR code using workaround for cross-chain detection
       // Use ZeroAddress as userId (neutral, no chain association)
       // Pass real CDP wallet in userDefinedData
-      const { ethers } = await import('ethers');
-
       const userAddress =
         address || '0x0000000000000000000000000000000000000000';
 
