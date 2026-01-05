@@ -25,7 +25,8 @@ test.describe('Preview demo flow (email OTP + faucet + proof-gated denial)', () 
 
     await expect(page.getByText(/ACCESS GRANTED/i)).toHaveCount(0);
 
-    await page.getByRole('button', { name: /^verify$/i }).click();
+    await page.goto('/verify', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle').catch(() => {});
     // QR may require manual generation in Preview if contracts aren't configured.
     const genBtn = page.getByRole('button', { name: /generate qr code/i });
     if (await genBtn.isVisible().catch(() => false)) {
