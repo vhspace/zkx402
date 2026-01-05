@@ -209,10 +209,13 @@ function DemoPageInner() {
         }),
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      const data = raw ? (JSON.parse(raw) as any) : null;
 
       if (!response.ok) {
-        throw new Error(data.error || 'Faucet request failed');
+        const detail =
+          data && typeof data === 'object' && 'error' in data ? String(data.error) : raw;
+        throw new Error(detail || `Faucet request failed: ${response.status}`);
       }
 
       setFaucetSuccess(data.transactionHash);
@@ -222,10 +225,15 @@ function DemoPageInner() {
       setTimeout(fetchBalance, 5000);
       setTimeout(fetchBalance, 10000);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'failed to request faucet funds';
+      const isNetworky =
+        /load failed|failed to fetch|networkerror|cors|mixed content/i.test(message);
       setError(
-        err instanceof Error ? err.message : 'failed to request faucet funds'
+        isNetworky
+          ? `Network error calling faucet at ${API_URL}/faucet. Check NEXT_PUBLIC_API_URL and backend CORS (ALLOWED_ORIGINS). Details: ${message}`
+          : message,
       );
-      console.error(err);
+      console.error('faucet error', err, { apiUrl: API_URL });
     } finally {
       setLoading(false);
     }
