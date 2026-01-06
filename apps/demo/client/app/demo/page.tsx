@@ -369,7 +369,7 @@ function DemoPageInner() {
     }
   };
 
-  // call the proof-gated x402 endpoint (expected to fail without proof-of-humanity)
+  // call the proof-gated x402 endpoint (requires proof-of-humanity)
   const handleCallProofGatedApi = async () => {
     if (!address || !currentUser) return;
 
@@ -379,14 +379,30 @@ function DemoPageInner() {
     setPaymentInfo(null);
 
     try {
+      const isHumanVerified =
+        typeof window !== 'undefined' &&
+        localStorage.getItem(`verified_${address}`) === 'true';
+
+      if (!isHumanVerified) {
+        throw new Error(
+          'verification required: go to /verify and complete proof-of-humanity before accessing classified content',
+        );
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25_000);
+
       const response = await fetchWithPayment(`${API_URL}/motivate-gated`, {
         method: 'GET',
+        // @ts-expect-error - fetch-compatible options
+        signal: controller.signal,
         headers: {
           ...(address ? { 'X-Wallet-Address': address } : {}),
-          // Intentionally omit "human" claim to reflect the no-proof demo scenario.
-          'X-Proof-Claims': JSON.stringify([]),
+          // For this example we now require proof-of-humanity.
+          'X-Proof-Claims': JSON.stringify([{ type: 'human' }]),
         },
       });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -399,13 +415,11 @@ function DemoPageInner() {
         throw new Error(msg);
       }
 
-      // This flow is intentionally supposed to fail without proof-of-humanity.
-      // If the backend is misconfigured and returns 200, treat it as a denial so we never reveal content.
-      setError(
-        'proof_gated_misconfigured: expected denial without proof-of-humanity, but request succeeded',
-      );
+      const data: ApiResponse = await response.json();
+      setQuote(data.quote);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to call proof-gated API');
+      const msg = err instanceof Error ? err.message : 'failed to call proof-gated API';
+      setError(msg);
       console.error(err);
     } finally {
       setLoading(false);

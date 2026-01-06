@@ -1063,6 +1063,7 @@ export default function VerifyPage() {
                 style={{
                   padding: '10px 20px',
                   background: 'white',
+                  color: '#111',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   cursor: 'pointer',
@@ -1081,6 +1082,7 @@ export default function VerifyPage() {
               <div
                 style={{
                   background: 'white',
+                  color: '#111',
                   padding: '20px',
                   borderRadius: '12px',
                   display: 'inline-block',
@@ -1138,6 +1140,7 @@ export default function VerifyPage() {
                   marginTop: '20px',
                   padding: '10px 20px',
                   background: 'white',
+                  color: '#111',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   cursor: 'pointer',
