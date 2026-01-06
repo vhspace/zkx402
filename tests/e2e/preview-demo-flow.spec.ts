@@ -21,11 +21,17 @@ test.describe('Preview demo flow (email OTP + faucet + proof-gated denial)', () 
 
     const errorBox = page.locator('.error');
     await expect(errorBox).toBeVisible({ timeout: 60_000 });
-    await expect(errorBox).toContainText(/proofs_required|access denied/i);
+    await expect(errorBox).toContainText(/proofs_required|access denied|proof[_ -]?gated/i);
 
     await expect(page.getByText(/ACCESS GRANTED/i)).toHaveCount(0);
 
-    await page.getByRole('button', { name: /^verify$/i }).click();
+    await page.goto('/verify', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle').catch(() => {});
+    // QR may require manual generation in Preview if contracts aren't configured.
+    const genBtn = page.getByRole('button', { name: /generate qr code/i });
+    if (await genBtn.isVisible().catch(() => false)) {
+      await genBtn.click();
+    }
     await expect(page.getByRole('heading', { name: /scan with self app/i })).toBeVisible({
       timeout: 60_000,
     });

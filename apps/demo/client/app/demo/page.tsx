@@ -209,10 +209,13 @@ function DemoPageInner() {
         }),
       });
 
-      const data = await response.json();
+      const raw = await response.text();
+      const data = raw ? (JSON.parse(raw) as any) : null;
 
       if (!response.ok) {
-        throw new Error(data.error || 'Faucet request failed');
+        const detail =
+          data && typeof data === 'object' && 'error' in data ? String(data.error) : raw;
+        throw new Error(detail || `Faucet request failed: ${response.status}`);
       }
 
       setFaucetSuccess(data.transactionHash);
@@ -222,10 +225,15 @@ function DemoPageInner() {
       setTimeout(fetchBalance, 5000);
       setTimeout(fetchBalance, 10000);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'failed to request faucet funds';
+      const isNetworky =
+        /load failed|failed to fetch|networkerror|cors|mixed content/i.test(message);
       setError(
-        err instanceof Error ? err.message : 'failed to request faucet funds'
+        isNetworky
+          ? `Network error calling faucet at ${API_URL}/faucet. Check NEXT_PUBLIC_API_URL and backend CORS (ALLOWED_ORIGINS). Details: ${message}`
+          : message,
       );
-      console.error(err);
+      console.error('faucet error', err, { apiUrl: API_URL });
     } finally {
       setLoading(false);
     }
@@ -361,7 +369,7 @@ function DemoPageInner() {
     }
   };
 
-  // call the proof-gated x402 endpoint (expected to fail without proof-of-humanity)
+  // call the proof-gated x402 endpoint (requires proof-of-humanity)
   const handleCallProofGatedApi = async () => {
     if (!address || !currentUser) return;
 
@@ -371,14 +379,30 @@ function DemoPageInner() {
     setPaymentInfo(null);
 
     try {
+      const isHumanVerified =
+        typeof window !== 'undefined' &&
+        localStorage.getItem(`verified_${address}`) === 'true';
+
+      if (!isHumanVerified) {
+        throw new Error(
+          'verification required: go to /verify and complete proof-of-humanity before accessing classified content',
+        );
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25_000);
+
       const response = await fetchWithPayment(`${API_URL}/motivate-gated`, {
         method: 'GET',
+        // @ts-expect-error - fetch-compatible options
+        signal: controller.signal,
         headers: {
           ...(address ? { 'X-Wallet-Address': address } : {}),
-          // Intentionally omit "human" claim to reflect the no-proof demo scenario.
-          'X-Proof-Claims': JSON.stringify([]),
+          // For this example we now require proof-of-humanity.
+          'X-Proof-Claims': JSON.stringify([{ type: 'human' }]),
         },
       });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -394,7 +418,8 @@ function DemoPageInner() {
       const data: ApiResponse = await response.json();
       setQuote(data.quote);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to call proof-gated API');
+      const msg = err instanceof Error ? err.message : 'failed to call proof-gated API';
+      setError(msg);
       console.error(err);
     } finally {
       setLoading(false);

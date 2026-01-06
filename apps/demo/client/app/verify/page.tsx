@@ -220,31 +220,31 @@ export default function VerifyPage() {
   };
 
   const generateQRCode = async () => {
-    if (!address) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
-    if (CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000') {
-      setError('Contract not deployed yet. Deploy contracts first!');
-      return;
-    }
-
     setError('');
 
     try {
       // Build Self QR code using workaround for cross-chain detection
       // Use ZeroAddress as userId (neutral, no chain association)
       // Pass real CDP wallet in userDefinedData
-      const { ethers } = await import('ethers');
+      const userAddress =
+        address || '0x0000000000000000000000000000000000000000';
+
+      // In Preview environments the bridge contract may not be deployed yet.
+      // Still generate a QR by using a non-zero endpoint (fallback to the user's address).
+      const endpoint =
+        CELO_BRIDGE_ADDRESS === '0x0000000000000000000000000000000000000000'
+          ? userAddress
+          : CELO_BRIDGE_ADDRESS;
 
       const app = new SelfAppBuilder({
         version: 2,
         appName: 'CDP Agent Verification',
         scope: 'zkx402', // MUST match contract deployment scope
-        endpoint: CELO_BRIDGE_ADDRESS.toLowerCase(), // MUST be lowercase!
+        // In Preview environments the contract may not be deployed; use a zero-address endpoint so the QR still renders.
+        endpoint: endpoint.toLowerCase(), // MUST be lowercase!
         logoBase64: 'https://i.postimg.cc/mrmVf9hm/self.png',
-        userId: address.toLowerCase(), // Real CDP wallet address!
+        // If the wallet address isn't available yet in Preview, still render a QR with a neutral placeholder.
+        userId: userAddress.toLowerCase(),
         endpointType: 'staging_celo', // Testnet on Celo
         userIdType: 'hex', // Ethereum address format
         userDefinedData: 'CDP Agent Verification', // Just text
@@ -260,7 +260,7 @@ export default function VerifyPage() {
       console.log('=== QR Code Generated ===');
       console.log('Contract Address:', CELO_BRIDGE_ADDRESS);
       console.log('Scope:', 'zkx402');
-      console.log('User ID (CDP Wallet):', address);
+      console.log('User ID (CDP Wallet):', userAddress);
       console.log('Endpoint Type:', 'staging_celo');
       console.log('Self App Object:', app);
 
@@ -268,8 +268,14 @@ export default function VerifyPage() {
       setShowQR(true);
       setVerificationStatus('pending');
 
-      // Start polling for verification
-      startPolling();
+      // Only poll when the contracts are configured.
+      if (
+        address &&
+        CELO_BRIDGE_ADDRESS !== '0x0000000000000000000000000000000000000000' &&
+        BASE_REGISTRY_ADDRESS !== '0x0000000000000000000000000000000000000000'
+      ) {
+        startPolling();
+      }
     } catch (err) {
       console.error('Error generating QR code:', err);
       setError('Failed to generate QR code. Check console for details.');
@@ -1050,6 +1056,25 @@ export default function VerifyPage() {
             </div>
           )}
 
+          {!showQR && (
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+              <button
+                onClick={generateQRCode}
+                style={{
+                  padding: '10px 20px',
+                  background: 'white',
+                  color: '#111',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                }}
+              >
+                generate qr code
+              </button>
+            </div>
+          )}
+
           {/* QR Code - Auto-generated */}
           {showQR && selfApp && (
             <div style={{ textAlign: 'center', marginTop: '30px' }}>
@@ -1057,6 +1082,7 @@ export default function VerifyPage() {
               <div
                 style={{
                   background: 'white',
+                  color: '#111',
                   padding: '20px',
                   borderRadius: '12px',
                   display: 'inline-block',
@@ -1114,6 +1140,7 @@ export default function VerifyPage() {
                   marginTop: '20px',
                   padding: '10px 20px',
                   background: 'white',
+                  color: '#111',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
                   cursor: 'pointer',

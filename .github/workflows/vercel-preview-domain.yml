@@ -24,6 +24,7 @@ jobs:
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID_SERVER: ${{ secrets.VERCEL_PROJECT_ID_SERVER }}
       VERCEL_PROJECT_ID_CLIENT: ${{ secrets.VERCEL_PROJECT_ID_CLIENT }}
       PREVIEW_DOMAIN: preview.zkx402.vhspace.org
       # Ensure all Vercel commands run under the correct team scope for custom domains.
@@ -44,10 +45,31 @@ jobs:
             echo "Missing required secret: VERCEL_ORG_ID"
             exit 1
           fi
+          if [ -z "${VERCEL_PROJECT_ID_SERVER}" ]; then
+            echo "Missing required secret: VERCEL_PROJECT_ID_SERVER"
+            exit 1
+          fi
           if [ -z "${VERCEL_PROJECT_ID_CLIENT}" ]; then
             echo "Missing required secret: VERCEL_PROJECT_ID_CLIENT"
             exit 1
           fi
+
+      - name: Deploy backend preview (apps/demo/server)
+        id: deploy_backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
+          export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          npx --yes vercel@latest --no-color --cwd apps/demo/server deploy --yes \
+            -e E2E_FAUCET_MOCK="true" \
+            --token="${VERCEL_TOKEN}" 2>&1 | tee vercel-backend.out
+          URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel-backend.out | tail -n 1 || true)"
+          if [ -z "$URL" ]; then
+            echo "Failed to parse backend preview URL from vercel output"
+            exit 1
+          fi
+          echo "backend_url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Deploy frontend preview (apps/demo/client)
         id: deploy_frontend
@@ -56,15 +78,15 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          BACKEND_URL="${{ steps.deploy_backend.outputs.backend_url }}"
           # NOTE: `--cwd` is a *global* Vercel CLI flag. Put it BEFORE the subcommand,
           # otherwise it may be ignored and Vercel will try to build from repo root.
-          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
-          echo "$OUT"
-          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
+          # Avoid capturing huge output into a bash variable (can truncate and lose the URL).
+          # Inject backend API URL at build time so preview E2E can hit /faucet et al.
+          npx --yes vercel@latest --no-color --cwd apps/demo/client deploy --yes -b NEXT_PUBLIC_API_URL="${BACKEND_URL}" --token="${VERCEL_TOKEN}" 2>&1 | tee vercel.out
+          URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel.out | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse frontend preview URL from vercel output"
-            echo "=== Full Vercel Output ==="
-            echo "$OUT"
             exit 1
           fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
@@ -164,7 +186,22 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: npm ci --prefer-offline --no-audit --no-fund
+        env:
+          npm_config_fetch_retries: 5
+          npm_config_fetch_retry_factor: 2
+          npm_config_fetch_retry_mintimeout: 10000
+          npm_config_fetch_retry_maxtimeout: 120000
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            if npm ci --prefer-offline --no-audit --no-fund; then
+              exit 0
+            fi
+            echo "npm ci failed (attempt $i/3). Retrying..."
+            sleep $((i * 10))
+          done
+          echo "npm ci failed after 3 attempts."
+          exit 1
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

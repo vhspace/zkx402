@@ -234,3 +234,11 @@ This file tracks mistakes found during implementation and what we changed to pre
   - Cache `~/.cache/ms-playwright` in the preview E2E job.
 - **Where**: `.github/workflows/vercel-preview-domain.yml`, root `package-lock.json`
 
+### Preview E2E fragility: faucet/balance require CDP credentials
+
+- **Mistake**: The preview Playwright demo-flow test assumed `/faucet` + `/balance` always work, but the demo server requires `CDP_API_KEY_ID`/`CDP_API_KEY_SECRET`. In Preview CI we can’t assume those credentials exist, and rate limits make the faucet flaky even when they do.
+- **Fix**: Added an explicit `E2E_FAUCET_MOCK=true` mode for preview deployments so `/faucet` returns a deterministic 200 and `/balance/:address` returns a deterministic balance for CI E2E.
+- **Where**:
+  - `apps/demo/server/index.js` (`/faucet`, `/balance/:address`)
+  - `.github/workflows/vercel-preview-domain.yml` (backend deploy injects `E2E_FAUCET_MOCK=true`)
+
