@@ -305,6 +305,7 @@ jobs:
       - name: Run Playwright against frontend preview
         env:
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.frontend_url }}
+          MAILSLURP_API_KEY: ${{ secrets.MAILSLURP_API_KEY }}
         run: npm run test:e2e
       - name: Upload Playwright artifacts
         if: always()
