@@ -394,7 +394,6 @@ function DemoPageInner() {
 
       const response = await fetchWithPayment(`${API_URL}/motivate-gated`, {
         method: 'GET',
-        // @ts-expect-error - fetch-compatible options
         signal: controller.signal,
         headers: {
           ...(address ? { 'X-Wallet-Address': address } : {}),
