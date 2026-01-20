@@ -83,7 +83,6 @@
       "extensions": [
         // Solidity & Smart Contract Development
         "NomicFoundation.hardhat-solidity",
-        "JuanBlanco.solidity",
 
         // Docker
         "ms-azuretools.vscode-docker",

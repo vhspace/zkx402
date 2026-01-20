@@ -8,6 +8,7 @@ This devcontainer provides a consistent development environment for the zkx402 p
 - **Node.js (LTS)** - For frontend and backend development
 - **npm & yarn** - Package managers (via devcontainer features)
 - **Foundry** - Ethereum development toolkit (forge, cast, anvil, chisel)
+- **1Password CLI (`op`)** - Secrets management (service account token recommended)
 - **Docker-in-Docker** - For building and running containers
 - **Git** - Version control
 - **GitHub CLI** - GitHub command-line tool
@@ -40,6 +41,44 @@ This devcontainer provides a consistent development environment for the zkx402 p
 3. **First Time Setup**
    - The container image includes Foundry (forge/cast/anvil) and Node via devcontainer features.
    - Install repo dependencies when you need them (some setups may prefer `npm install --ignore-scripts --legacy-peer-deps`).
+
+## 1Password (`op`) Setup (Recommended)
+
+This devcontainer installs the 1Password CLI (`op`) so you can pull secrets at runtime without committing them to the repo.
+
+### Service Account Token (best for CI-like workflows in devcontainers)
+
+1. Create a **1Password Service Account** with access to the vault/items you need.
+2. Rebuild the devcontainer ("Dev Containers: Rebuild Container") to ensure `op` is installed.
+3. Set `OP_SERVICE_ACCOUNT_TOKEN` **at runtime** (recommended), so it is **not baked into the image**.
+
+Because this devcontainer persists `/home/vscode` in a volume, you can set it once in a local-only shell file.
+
+Inside the container:
+
+```bash
+mkdir -p ~/.config/zkx402
+cat > ~/.config/zkx402/secrets.env <<'EOF'
+export OP_SERVICE_ACCOUNT_TOKEN="op_sa_..."
+EOF
+
+echo '\n# zkx402 local secrets (not in git)\n[ -f ~/.config/zkx402/secrets.env ] && source ~/.config/zkx402/secrets.env\n' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Usage examples
+
+- Run any command with secrets available:
+
+```bash
+op run -- <your command>
+```
+
+- Inject secrets into an env file from a template (common pattern):
+
+```bash
+op inject -i .env.tpl -o .env
+```
 
 ## Forwarded Ports
 
