@@ -25,6 +25,9 @@
       "nodeGypDependencies": true,
       "installYarnUsingApt": true
     },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest"
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {
       "version": "latest"
     }
@@ -115,9 +118,19 @@
   },
 
   "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/home/vscode/.foundry/bin",
-    "EDITOR": "code --wait"
+    "PATH": "${containerEnv:PATH}:/home/vscode/.foundry/bin:/home/vscode/go/bin:/home/vscode/.local/bin",
+    "EDITOR": "code --wait",
+    "TAVILY_API_KEY": "${localEnv:TAVILY_API_KEY}",
+    "ALCHEMY_API_KEY": "${localEnv:ALCHEMY_API_KEY}",
+    "ETHERSCAN_API_KEY": "${localEnv:ETHERSCAN_API_KEY}",
+    "ETHERSCAN_BEARER_TOKEN": "${localEnv:ETHERSCAN_BEARER_TOKEN}",
+    "TENDERLY_ACCOUNT_SLUG": "${localEnv:TENDERLY_ACCOUNT_SLUG}",
+    "TENDERLY_PROJECT_ID": "${localEnv:TENDERLY_PROJECT_ID}",
+    "TENDERLY_ACCESS_TOKEN": "${localEnv:TENDERLY_ACCESS_TOKEN}",
+    "ENS_PROVIDER_URL": "${localEnv:ENS_PROVIDER_URL}"
   },
+
+  "postCreateCommand": "bash -lc \"echo '[postCreate] installing hackmoney tool deps' && npm install --no-package-lock --prefix .devcontainer/hackmoney-tools\"",
 
   "mounts": [
     {
