@@ -1,0 +1,86 @@
+{
+  "mcpServers": {
+    "blockscout": {
+      "url": "https://mcp.blockscout.com/mcp",
+      "transport": "http",
+      "headers": {}
+    },
+    "Context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "transport": "http",
+      "headers": {}
+    },
+    "etherscan": {
+      "command": "etherscan-mcp-server",
+      "args": [],
+      "env": {
+        "ETHERSCAN_API_KEY": "${env:ETHERSCAN_API_KEY}"
+      }
+    },
+    "alchemy": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@alchemy/mcp-server"
+      ],
+      "env": {
+        "ALCHEMY_API_KEY": "${env:ALCHEMY_API_KEY}"
+      }
+    },
+    "self-mcp": {
+      "command": "python3",
+      "args": [
+        "-m",
+        "self_mcp.server"
+      ]
+    },
+    "circle": {
+      "url": "https://api.circle.com/v1/codegen/mcp",
+      "transport": "http",
+      "headers": {}
+    },
+    "ens": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-ens"
+      ],
+      "env": {
+        "PROVIDER_URL": "${env:ENS_PROVIDER_URL}"
+      }
+    },
+    "sui-tools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "sui-mcp@latest"
+      ]
+    },
+    "lifi": {
+      "command": "lifi-mcp",
+      "args": []
+    },
+    "tavily-remote-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.tavily.com/mcp/?tavilyApiKey=${env:TAVILY_API_KEY}"
+      ],
+      "env": {
+        "TAVILY_API_KEY": "${env:TAVILY_API_KEY}"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    "Coinbase Developer": {
+      "name": "Coinbase Developer",
+      "url": "https://docs.cdp.coinbase.com/mcp",
+      "headers": {}
+    }
+  }
+}
