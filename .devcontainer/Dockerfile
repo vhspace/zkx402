@@ -17,9 +17,23 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     ca-certificates \
     build-essential \
     curl \
+    git \
+    golang-go \
     gnupg \
+    python3 \
+    python3-pip \
+    python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install binaries / python libs used by MCP servers (test-wallet only).
+# - lifi-mcp: https://github.com/lifinance/lifi-mcp
+# - self-mcp: https://github.com/selfxyz/self-mcp
+# - etherscan-mcp-server: https://github.com/huahuayu/etherscan-mcp-server
+RUN GOBIN=/usr/local/bin go install github.com/lifinance/lifi-mcp@latest
+RUN GOBIN=/usr/local/bin go install github.com/huahuayu/etherscan-mcp-server/cmd/etherscan-mcp-server@latest
+RUN pip3 install --no-cache-dir --break-system-packages \
+    "git+https://github.com/selfxyz/self-mcp.git"
 
 RUN install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor -o /etc/apt/keyrings/1password-archive-keyring.gpg \
