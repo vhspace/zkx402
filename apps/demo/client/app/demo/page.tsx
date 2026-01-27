@@ -15,10 +15,18 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+type VerificationSummary = {
+  qualified: boolean;
+  discountApplied: boolean;
+  discountedPrice: string;
+};
+
 interface ApiResponse {
   quote: string;
   timestamp: string;
   paid: boolean;
+  // Set by the server (middleware policy outcome). This is NOT client-side cryptographic verification.
+  verification?: VerificationSummary | null;
 }
 
 interface PaymentResponse {
@@ -42,6 +50,9 @@ function DemoPageInner() {
 
   const [quote, setQuote] = useState<string>('');
   const [paymentInfo, setPaymentInfo] = useState<PaymentResponse | null>(null);
+  const [verification, setVerification] = useState<VerificationSummary | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [balance, setBalance] = useState<string>('0');
@@ -252,6 +263,7 @@ function DemoPageInner() {
     setError('');
     setQuote('');
     setPaymentInfo(null);
+    setVerification(null);
 
     try {
       console.log(
@@ -273,49 +285,13 @@ function DemoPageInner() {
       const variableAmountRequired =
         paymentRequirement?.extra?.variableAmountRequired;
       console.log('paymentRequirement:', paymentRequirement);
-      console.log('contentMetadata:', contentMetadata);
-      console.log('variableAmountRequired:', variableAmountRequired);
-
-      // Verify metadata zkproofs and decide whether to proceed with payment
-      // Hard coded contentMetadata requirement we require
-      const requiredProof = 'zkproof(human)';
-
-      // Check if the required proof exists in contentMetadata
-      const hasRequiredProof = contentMetadata?.some(
-        (item: any) => item.proof === requiredProof
-      );
-
-      console.log(`Required proof: ${requiredProof}`);
-      console.log(`Has required proof: ${hasRequiredProof}`);
-
-      // Dummy function to verify the proof
-      const verifyProof = async (proof: string): Promise<boolean> => {
-        // TODO: Implement actual ZK proof verification
-        // For now, just check if proof exists in contentMetadata
-        const exists = contentMetadata?.some(
-          (item: any) => item.proof === proof
-        );
-
-        // Dummy verification logic - in real implementation, this would:
-        // 1. Verify the ZK proof cryptographically
-        // 2. Check proof validity and expiration
-        // 3. Validate proof against requirements
-
-        if (exists) {
-          console.log(`✓ Proof verified: ${proof}`);
-          return true;
-        } else {
-          console.log(`✗ Proof not found: ${proof}`);
-          return false;
-        }
-      };
-
-      // Verify the required proof
-      const isVerified = await verifyProof(requiredProof);
-
-      if (!isVerified) {
-        throw new Error(`Required proof not found: ${requiredProof}`);
-      }
+      // Note:
+      // - `contentMetadata` and `variableAmountRequired` are server-advertised metadata about
+      //   potential proof/claim tiers.
+      // - This client does NOT cryptographically verify any proof based on `contentMetadata`.
+      // - Proof verification (chain/API provider) and pricing policy evaluation happen on the server.
+      console.log('contentMetadata (advertised):', contentMetadata);
+      console.log('variableAmountRequired (tiers):', variableAmountRequired);
 
       // Claim intent (for discounts)
       const myClaims = [{ type: 'human' }];
@@ -325,8 +301,8 @@ function DemoPageInner() {
         `${API_URL}/motivate`
       );
 
-      // make paid request using CDP's new useX402 hook
-      // Pass proofs in header for server-side verification and dynamic pricing
+      // Make paid request using CDP's useX402 hook.
+      // We pass claim intent in headers; the server evaluates policy + verifies proofs (if configured).
       const response = await fetchWithPayment(`${API_URL}/motivate`, {
         method: 'GET',
         headers: {
@@ -344,6 +320,7 @@ function DemoPageInner() {
       const data: ApiResponse = await response.json();
       console.log('received data:', data);
       setQuote(data.quote);
+      setVerification(data.verification ?? null);
 
       // parse payment response header - need this if we wanna show txn hash
       const paymentResponseHeader = response.headers.get('x-payment-response');
@@ -764,6 +741,35 @@ function DemoPageInner() {
                     >
                       CLASSIFIED CONTENT UNLOCKED • PAYMENT VERIFIED
                     </div>
+
+                    {verification && (
+                      <div
+                        style={{
+                          marginTop: '12px',
+                          display: 'inline-block',
+                          textAlign: 'left',
+                          background: 'rgba(0, 255, 0, 0.08)',
+                          border: '1px solid rgba(0, 255, 0, 0.35)',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          color: '#C9FFD2',
+                          maxWidth: '680px',
+                        }}
+                      >
+                        <div style={{ fontWeight: 'bold', color: '#00ff00' }}>
+                          server policy outcome
+                        </div>
+                        <div>qualified: {String(verification.qualified)}</div>
+                        <div>
+                          discountApplied: {String(verification.discountApplied)}
+                        </div>
+                        <div>
+                          discountedPrice: {String(verification.discountedPrice)}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div
@@ -915,11 +921,8 @@ Content-Type: application/json
 
                 <li>
                   <strong>
-                    client{' '}
-                    <span style={{ color: '#C9FFD2' }}>
-                      verifies contentMetadata
-                    </span>{' '}
-                    then creates and signs payment transaction
+                    client sends claim intent (no client-side “proof verification”)
+                    and creates/signs the payment transaction
                   </strong>
                   <details style={{ marginTop: '8px' }}>
                     <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
@@ -932,6 +935,14 @@ Content-Type: application/json
                         lineHeight: '1.6',
                       }}
                     >
+                      <p>
+                        The server may advertise optional metadata (like{' '}
+                        <code>contentMetadata</code> and tiered pricing). The demo
+                        client does <strong>not</strong> cryptographically verify
+                        ZK proofs in the browser — verification and pricing
+                        policy evaluation happen on the server (chain/API
+                        provider via middleware policy).
+                      </p>
                       <p>
                         Uses <strong>EIP-3009 transferWithAuthorization</strong>
                         :
@@ -1120,7 +1131,12 @@ X-PAYMENT-RESPONSE: base64_encoded_json
 {
   "quote": "ACCESS GRANTED - Classified content unlocked",
   "timestamp": "2025-11-11T21:45:00.000Z",
-  "paid": true
+  "paid": true,
+  "verification": {
+    "qualified": true,
+    "discountApplied": true,
+    "discountedPrice": "5000"
+  }
 }
 
 Decoded X-PAYMENT-RESPONSE:

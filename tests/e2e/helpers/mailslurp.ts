@@ -38,7 +38,12 @@ export async function mailslurpCreateInbox(opts?: {
     body: JSON.stringify(expiresAt ? { expiresAt } : {}),
   });
   if (!res.ok) {
-    throw new Error(`MailSlurp createInbox failed: ${res.status} ${await res.text()}`);
+    const bodyText = await res.text().catch(() => '');
+    // MailSlurp free accounts have strict monthly CreateInbox limits; CI can exceed them.
+    if (res.status === 426) {
+      throw new Error(`MAILSLURP_CREATE_INBOX_QUOTA_EXCEEDED: ${bodyText}`);
+    }
+    throw new Error(`MailSlurp createInbox failed: ${res.status} ${bodyText}`);
   }
   const data = (await res.json()) as MailSlurpInbox;
   if (!data?.id || !data?.emailAddress) {
