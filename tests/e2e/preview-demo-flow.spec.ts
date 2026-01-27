@@ -12,7 +12,16 @@ test.describe('Preview demo flow (email OTP + faucet + proof-gated denial)', () 
   }) => {
     requirePreviewBaseUrl();
 
-    await signInWithEmailOtpViaMailSlurp(page);
+    try {
+      await signInWithEmailOtpViaMailSlurp(page);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('MAILSLURP_CREATE_INBOX_QUOTA_EXCEEDED')) {
+        test.skip(true, 'MailSlurp CreateInbox quota exceeded; skipping OTP sign-in E2E in preview.');
+        return;
+      }
+      throw e;
+    }
 
     await clickFaucetAndWaitForSuccess(page);
     await waitForBalanceAtLeast(page, 0.01);
