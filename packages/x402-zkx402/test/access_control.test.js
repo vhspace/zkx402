@@ -138,7 +138,7 @@ test("access control: quote-mode returns 402 (not 403)", async () => {
     });
     assert.equal(res.status, 402);
     const body = await res.json();
-    assert.equal(body.error, "X-PAYMENT header is required");
+    assert.equal(body.error, "Payment Required");
   } finally {
     await close();
     await new Promise((r) => rpcServer.close(r));

@@ -71,14 +71,42 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
   const auditEnabled = process.env.ZKX402_AUDIT_LOG === "true";
   const debugEnabled = process.env.ZKX402_DEBUG_LOG === "true";
 
-  // Initialize v2 Resource Server
-  const facilitatorUrl = facilitator?.url || "https://x402.org/facilitator";
-  const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
-  const resourceServer = new x402ResourceServer(facilitatorClient)
-    .register("eip155:8453", new ExactEvmScheme())
-    .register("eip155:84532", new ExactEvmScheme())
-    .register("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", new ExactSvmScheme())
-    .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme());
+  function buildResourceServer() {
+    // Support legacy test facilitators (verify/settle) to keep unit tests offline.
+    if (facilitator && typeof facilitator.verify === "function" && typeof facilitator.settle === "function") {
+      return {
+        createPaymentRequiredResponse(requirements, resource) {
+          return {
+            x402Version,
+            error: "Payment Required",
+            resource,
+            accepts: requirements,
+          };
+        },
+        async verifyPayment(paymentPayload, requirement) {
+          const response = await facilitator.verify(paymentPayload, requirement);
+          if (response && typeof response === "object") return response;
+          return { isValid: Boolean(response) };
+        },
+        async settlePayment(paymentPayload, requirement) {
+          const response = await facilitator.settle(paymentPayload, requirement);
+          if (response && typeof response === "object") return response;
+          return { success: Boolean(response) };
+        },
+      };
+    }
+
+    // Initialize v2 Resource Server
+    const facilitatorUrl = facilitator?.url || "https://x402.org/facilitator";
+    const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+    return new x402ResourceServer(facilitatorClient)
+      .register("eip155:8453", new ExactEvmScheme())
+      .register("eip155:84532", new ExactEvmScheme())
+      .register("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", new ExactSvmScheme())
+      .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme());
+  }
+
+  const resourceServer = buildResourceServer();
 
   const paywallProvider =
     paywall && typeof paywall.generateHtml === "function"
