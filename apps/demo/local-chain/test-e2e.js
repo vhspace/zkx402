@@ -39,6 +39,10 @@ const erc20Abi = [
   "function version() view returns (string)",
 ];
 
+function getRequirementAmount(requirement) {
+  return requirement?.amount ?? requirement?.maxAmountRequired;
+}
+
 async function main() {
   log(colors.blue, "\nStarting x402 End-to-End Test\n");
 
@@ -89,8 +93,8 @@ async function main() {
   log(colors.green, "  Received 402 Payment Required");
 
   const requirement = paymentRequirements.accepts[0];
-  const { maxAmountRequired, payTo, asset, network, maxTimeoutSeconds } =
-    requirement;
+  const maxAmountRequired = getRequirementAmount(requirement);
+  const { payTo, asset, network, maxTimeoutSeconds } = requirement;
 
   log(colors.blue, "\nStep 4: Create payment authorization");
 
@@ -221,6 +225,7 @@ async function main() {
   assert.equal(gatedInitial.status, 402);
   const gatedReqs = await gatedInitial.json();
   const gatedRequirement = gatedReqs.accepts[0];
+  const gatedAmountRequired = getRequirementAmount(gatedRequirement);
 
   const payerBalanceBeforeGate = await usdcContract.balanceOf(config.payerAddress);
   const receiverBalanceBeforeGate = await usdcContract.balanceOf(config.receiverAddress);
@@ -229,7 +234,7 @@ async function main() {
   const gatedAuthorization = {
     from: config.payerAddress,
     to: gatedRequirement.payTo,
-    value: gatedRequirement.maxAmountRequired,
+    value: gatedAmountRequired,
     validAfter,
     validBefore,
     nonce: ethers.hexlify(ethers.randomBytes(32)),
@@ -296,7 +301,7 @@ async function main() {
   const gatedAllowAuthorization = {
     from: config.payerAddress,
     to: gatedProofsRequirement.payTo,
-    value: gatedProofsRequirement.maxAmountRequired,
+    value: getRequirementAmount(gatedProofsRequirement),
     validAfter,
     validBefore,
     nonce: ethers.hexlify(ethers.randomBytes(32)),
@@ -340,11 +345,11 @@ async function main() {
 
   assert.equal(
     payerBalanceBeforeGateAllow - payerBalanceAfterGateAllow,
-    BigInt(gatedProofsRequirement.maxAmountRequired)
+    BigInt(getRequirementAmount(gatedProofsRequirement))
   );
   assert.equal(
     receiverBalanceAfterGateAllow - receiverBalanceBeforeGateAllow,
-    BigInt(gatedProofsRequirement.maxAmountRequired)
+    BigInt(getRequirementAmount(gatedProofsRequirement))
   );
 
   log(colors.blue, "\nStep 7: Test with zkproofs (dynamic pricing)");
@@ -369,7 +374,7 @@ async function main() {
     log(colors.green, "  Received requirements with proofs");
     log(
       colors.yellow,
-      `  Discounted price: ${ethers.formatUnits(proofsRequirement.maxAmountRequired, 6)} USDC`
+      `  Discounted price: ${ethers.formatUnits(getRequirementAmount(proofsRequirement), 6)} USDC`
     );
     log(
       colors.yellow,
@@ -377,7 +382,7 @@ async function main() {
     );
 
     const original = BigInt(maxAmountRequired);
-    const discounted = BigInt(proofsRequirement.maxAmountRequired);
+  const discounted = BigInt(getRequirementAmount(proofsRequirement));
     const discount = ((original - discounted) * 100n) / original;
     log(colors.green, `  Discount applied: ${discount}%`);
 
@@ -391,7 +396,7 @@ async function main() {
     const discountedAuthorization = {
       from: config.payerAddress,
       to: proofsRequirement.payTo,
-      value: proofsRequirement.maxAmountRequired,
+    value: getRequirementAmount(proofsRequirement),
       validAfter,
       validBefore,
       nonce: ethers.hexlify(ethers.randomBytes(32)),
@@ -447,8 +452,8 @@ async function main() {
     const receiverDiffDiscount =
       receiverBalanceAfterDiscount - receiverBalanceBeforeDiscount;
 
-    assert.equal(payerDiffDiscount, BigInt(proofsRequirement.maxAmountRequired));
-    assert.equal(receiverDiffDiscount, BigInt(proofsRequirement.maxAmountRequired));
+  assert.equal(payerDiffDiscount, BigInt(getRequirementAmount(proofsRequirement)));
+  assert.equal(receiverDiffDiscount, BigInt(getRequirementAmount(proofsRequirement)));
 
     log(
       colors.green,
@@ -476,11 +481,11 @@ async function main() {
   log(colors.green, "  Received requirements with vlayer_chain claim");
   log(
     colors.yellow,
-    `  Discounted price (vlayer): ${ethers.formatUnits(vlayerRequirement.maxAmountRequired, 6)} USDC`
+    `  Discounted price (vlayer): ${ethers.formatUnits(getRequirementAmount(vlayerRequirement), 6)} USDC`
   );
 
   // Expect the vlayer tier to be more discounted than the base price.
-  assert.ok(BigInt(vlayerRequirement.maxAmountRequired) < BigInt(maxAmountRequired));
+  assert.ok(BigInt(getRequirementAmount(vlayerRequirement)) < BigInt(maxAmountRequired));
 
   log(colors.blue, "\nStep 10: Pay vlayer discounted price (vlayer_chain provider path)");
 
@@ -490,7 +495,7 @@ async function main() {
   const vlayerAuthorization = {
     from: config.payerAddress,
     to: vlayerRequirement.payTo,
-    value: vlayerRequirement.maxAmountRequired,
+    value: getRequirementAmount(vlayerRequirement),
     validAfter,
     validBefore,
     nonce: ethers.hexlify(ethers.randomBytes(32)),
@@ -539,8 +544,8 @@ async function main() {
   const payerDiffVlayer = payerBalanceBeforeVlayer - payerBalanceAfterVlayer;
   const receiverDiffVlayer = receiverBalanceAfterVlayer - receiverBalanceBeforeVlayer;
 
-  assert.equal(payerDiffVlayer, BigInt(vlayerRequirement.maxAmountRequired));
-  assert.equal(receiverDiffVlayer, BigInt(vlayerRequirement.maxAmountRequired));
+  assert.equal(payerDiffVlayer, BigInt(getRequirementAmount(vlayerRequirement)));
+  assert.equal(receiverDiffVlayer, BigInt(getRequirementAmount(vlayerRequirement)));
 
   log(
     colors.green,
