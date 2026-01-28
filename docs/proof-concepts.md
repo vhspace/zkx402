@@ -85,10 +85,17 @@ The middleware behaves differently depending on whether the request includes pay
 
 - **Quote mode**: no `X-PAYMENT` header
   - The server responds `402` with `accepts[]` (payment requirements).
-  - **API providers are not called** (to avoid paid-request vendor calls during discovery).
-  - Metadata may mark some checks as `quoted: true` when computing prices/fees.
+  - **API providers are not called** (to avoid vendor/paid verifier calls during discovery and pricing negotiation).
+  - **Chain providers may still be called** (read-only RPC checks are allowed) to compute an accurate quote.
+  - If the route policy selects an **API provider** (e.g. `self_api`, `vlayer_api`), the middleware treats that claim as **"quoted"**:
+    - it is *assumed verified for quote calculation* (so clients can see discounted pricing and verification fees/commission),
+    - it is reported in metadata as `quoted: true`,
+    - it is **re-verified for real** once the client retries with payment.
 
 - **Paid mode**: includes `X-PAYMENT`
   - The server verifies payment and (if configured) performs proof verification via the configured providers.
   - The route handler can read `req.verificationMetadata`.
+  - Any **required claims** used for access control (`requiredClaims` / `accessControl`) are enforced **after payment verifies**:
+    - success → route handler runs
+    - failure → `403` (hard proof-gating)
 

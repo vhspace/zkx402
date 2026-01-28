@@ -145,6 +145,17 @@ Behavior:
 - In **quote mode** (no `X-PAYMENT`), the server still returns `402` with `accepts[]`.
 - In **paid mode**, after payment verifies, the server verifies required claims and returns **403** if they fail.
 
+#### Quote-mode vs paid-mode for API providers (important)
+
+When a route’s `proofPolicy` allows an **API provider** (e.g. `self_api`, `vlayer_api`):
+
+- **Quote mode** (no `X-PAYMENT`):
+  - the middleware **does not call** the vendor API
+  - the claim is treated as **quoted** (assumed verified for pricing) so the client can see the intended discount + any verification fees/commission
+- **Paid mode** (with `X-PAYMENT`):
+  - the middleware performs the real verification (including vendor API calls when configured)
+  - `requiredClaims` / `accessControl` are enforced *after* payment verification (returning `403` on failure)
+
 ### Content Metadata
 
 Attach zkproof-like strings as metadata (not enforced by this middleware):
