@@ -356,16 +356,6 @@ function DemoPageInner() {
     setPaymentInfo(null);
 
     try {
-      const isHumanVerified =
-        typeof window !== 'undefined' &&
-        localStorage.getItem(`verified_${address}`) === 'true';
-
-      if (!isHumanVerified) {
-        throw new Error(
-          'verification required: go to /verify and complete proof-of-humanity before accessing classified content',
-        );
-      }
-
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 25_000);
 
@@ -388,7 +378,11 @@ function DemoPageInner() {
             : body?.error
               ? String(body.error)
               : `API request failed: ${response.status}`;
-        throw new Error(msg);
+        throw new Error(
+          response.status === 403
+            ? `${msg}. If you haven’t verified yet, go to /verify and complete proof-of-humanity.`
+            : msg,
+        );
       }
 
       const data: ApiResponse = await response.json();
