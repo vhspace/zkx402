@@ -25,7 +25,7 @@ import { createVlayerChainProvider } from "./proofs/providers/vlayer_chain.js";
 import { createVlayerApiProvider } from "./proofs/providers/vlayer_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
-import { normalizeNetwork } from "./x402/networks.js";
+import { normalizeNetwork, toLegacyNetwork } from "./x402/networks.js";
 
 // Proof-gated pricing should be driven by `proofPolicy` + provider routing.
 
@@ -384,7 +384,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     }
 
     // v1 compat: processPriceToAtomicAmount still used for now
-    const baseAtomicAmountForAsset = processPriceToAtomicAmount(price, network);
+    const pricingNetwork = toLegacyNetwork(rawNetwork || network);
+    const baseAtomicAmountForAsset = processPriceToAtomicAmount(price, pricingNetwork);
     if ("error" in baseAtomicAmountForAsset) {
       throw new Error(baseAtomicAmountForAsset.error);
     }

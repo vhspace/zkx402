@@ -10,6 +10,14 @@ export const CAIP2_NETWORKS = {
   "solana-devnet": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
 };
 
+const LEGACY_NETWORKS = Object.entries(CAIP2_NETWORKS).reduce(
+  (acc, [legacy, caip2]) => {
+    acc[caip2.toLowerCase()] = legacy;
+    return acc;
+  },
+  {}
+);
+
 /**
  * Normalizes a network identifier to CAIP-2 format.
  * 
@@ -31,4 +39,21 @@ export function normalizeNetwork(network) {
   }
 
   return network;
+}
+
+/**
+ * Maps a CAIP-2 network identifier back to a legacy name (when possible).
+ *
+ * @param {string} network - The network identifier (e.g., "eip155:84532")
+ * @returns {string} The legacy network identifier
+ */
+export function toLegacyNetwork(network) {
+  if (!network) return network;
+
+  if (!network.includes(":")) {
+    return network;
+  }
+
+  const legacy = LEGACY_NETWORKS[String(network).toLowerCase()];
+  return legacy || network;
 }
