@@ -14,12 +14,14 @@ export function createLocalFacilitator(config) {
   ];
 
   async function verify(decodedPayment, paymentRequirements) {
-
     try {
       const { payload } = decodedPayment;
-      const { maxAmountRequired, amount: requirementAmount, payTo } = paymentRequirements;
+      const {
+        maxAmountRequired,
+        amount: requirementAmount,
+        payTo,
+      } = paymentRequirements;
       const requiredAmount = requirementAmount ?? maxAmountRequired;
-      const requiredAmount = amount ?? maxAmountRequired;
 
       const payer = payload?.authorization?.from;
       const amount = payload?.authorization?.value;
@@ -119,7 +121,7 @@ export function createLocalFacilitator(config) {
         validAfter,
         validBefore,
         nonce,
-        signature
+        signature,
       );
       const receipt = await tx.wait();
 
