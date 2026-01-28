@@ -99,6 +99,40 @@ test("router: honors preferenceOrder + allowedProviders", async () => {
   assert.equal(res.provider, "self");
 });
 
+test("router: tries next provider if earlier provider returns verified=false", async () => {
+  const calls = [];
+  const providers = [
+    {
+      name: "first",
+      verifyHuman: async () => {
+        calls.push("first");
+        return { ok: true, verified: false };
+      },
+    },
+    {
+      name: "second",
+      verifyHuman: async () => {
+        calls.push("second");
+        return { ok: true, verified: true };
+      },
+    },
+  ];
+
+  const res = await verifyClaimWithPolicy({
+    claim: { type: ClaimType.HUMAN },
+    policy: {
+      allowedProviders: ["first", "second"],
+      preferenceOrder: ["first", "second"],
+    },
+    providers,
+    context: { walletAddress: "0x0000000000000000000000000000000000000001" },
+  });
+
+  assert.deepEqual(calls, ["first", "second"]);
+  assert.equal(res.status, VerifyStatus.VERIFIED);
+  assert.equal(res.provider, "second");
+});
+
 test("router: tries next provider if earlier provider errors", async () => {
   const calls = [];
   const providers = [

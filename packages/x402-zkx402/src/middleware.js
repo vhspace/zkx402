@@ -291,7 +291,15 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           const ck = claimKey(claim);
           const presentedByClient = presentedKeys.has(ck);
           if (requirePresentation && !presentedByClient) {
-            return { claimKey: ck, claim, verified: false, reason: "not_presented" };
+            return {
+              claimKey: ck,
+              claim,
+              verified: false,
+              status: VerifyStatus.NOT_VERIFIED,
+              reason: "not_presented",
+              quoted: false,
+              attempts: [],
+            };
           }
 
           // Client can optionally constrain which provider to use (soft checks).
@@ -328,7 +336,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           const isApiProvider = providerObj?.kind === "api";
 
           if (quoteOnly && isApiProvider) {
-            routed = { status: VerifyStatus.VERIFIED, provider: selectedProvider, quoted: true };
+            routed = {
+              status: VerifyStatus.VERIFIED,
+              provider: selectedProvider,
+              quoted: true,
+              attempts: [
+                {
+                  provider: selectedProvider,
+                  ok: true,
+                  status: VerifyStatus.VERIFIED,
+                  reason: "quoted",
+                },
+              ],
+            };
           } else {
             const startedAt = Date.now();
             routed = await verifyClaimWithPolicy({
@@ -373,7 +393,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               claimKey: ck,
               claim,
               verified: false,
+              status: VerifyStatus.NOT_IMPLEMENTED,
               reason: "not_implemented",
+              attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
+            };
+          }
+          if (routed.status === VerifyStatus.NOT_CONFIGURED) {
+            return {
+              claimKey: ck,
+              claim,
+              verified: false,
+              status: VerifyStatus.NOT_CONFIGURED,
+              reason: routed.reason || "not_configured",
+              attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
             };
           }
           if (routed.status === VerifyStatus.ERROR) {
@@ -381,6 +413,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               claimKey: ck,
               claim,
               verified: false,
+              status: VerifyStatus.ERROR,
               reason: routed.reason || "verification_error",
               attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
             };
@@ -399,6 +432,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             claimKey: ck,
             claim,
             verified: routed.status === VerifyStatus.VERIFIED,
+            status: routed.status,
             provider: routed.provider,
             verificationCost,
             quoted: Boolean(routed.quoted),

@@ -317,7 +317,17 @@ app.get("/api/data", (req, res) => {
   //     isValid: true,
   //     verifiedCount: 1,
   //     totalRequired: 1,
-  //     verificationDetails: [...]
+  //     verificationDetails: [
+  //       {
+  //         claimKey: "human",
+  //         claim: { type: "human" },
+  //         verified: true,
+  //         status: "verified",
+  //         provider: "self",
+  //         quoted: false,
+  //         attempts: [{ provider: "self", ok: true, status: "verified" }]
+  //       }
+  //     ]
   //   }
   // }
 });
