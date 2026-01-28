@@ -152,9 +152,36 @@ export interface ProofVerificationDetail {
   verified: boolean;
 
   /**
+   * Machine-readable per-claim status.
+   *
+   * Expected values:
+   * - "verified"
+   * - "not_verified"
+   * - "not_implemented"
+   * - "not_configured"
+   * - "error"
+   */
+  status: string;
+
+  /**
    * Optional reason if verification failed
    */
   reason?: string;
+
+  /**
+   * Provider selected by routing (when available).
+   */
+  provider?: string;
+
+  /**
+   * Whether the claim was treated as "quoted" (e.g., API provider skipped in quote-mode).
+   */
+  quoted?: boolean;
+
+  /**
+   * Optional pricing breakdown for verification fees (USD micros).
+   */
+  verificationCost?: any;
 
   /**
    * Optional API verification result (for API-backed providers like `self_api`, `vlayer_api`)
