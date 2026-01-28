@@ -17,7 +17,9 @@ export function createLocalFacilitator(config) {
 
     try {
       const { payload } = decodedPayment;
-      const { maxAmountRequired, payTo } = paymentRequirements;
+      const { maxAmountRequired, amount: requirementAmount, payTo } = paymentRequirements;
+      const requiredAmount = requirementAmount ?? maxAmountRequired;
+      const requiredAmount = amount ?? maxAmountRequired;
 
       const payer = payload?.authorization?.from;
       const amount = payload?.authorization?.value;
@@ -33,10 +35,18 @@ export function createLocalFacilitator(config) {
         };
       }
 
-      if (BigInt(amount) < BigInt(maxAmountRequired)) {
+      if (requiredAmount == null) {
         return {
           isValid: false,
-          invalidReason: `Insufficient payment amount. Required: ${maxAmountRequired}, Provided: ${amount}`,
+          invalidReason: "Missing payment requirement amount",
+          payer,
+        };
+      }
+
+      if (BigInt(amount) < BigInt(requiredAmount)) {
+        return {
+          isValid: false,
+          invalidReason: `Insufficient payment amount. Required: ${requiredAmount}, Provided: ${amount}`,
           payer,
         };
       }
