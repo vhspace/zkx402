@@ -132,6 +132,12 @@ RECEIVER_WALLET=0xYourWalletAddressHere
 CDP_API_KEY_ID=your-api-key-id
 CDP_API_KEY_SECRET=your-api-key-secret
 PORT=3001
+# Recommended: explicit CORS allow-list for the frontend
+ALLOWED_ORIGINS=http://localhost:3000
+# Optional: used for verification redirect links in 403 responses
+CLIENT_URL=http://localhost:3000
+# Optional (preview/CI): make faucet + balance deterministic without CDP credentials
+# E2E_FAUCET_MOCK=true
 ```
 
 **get CDP API credentials:**
