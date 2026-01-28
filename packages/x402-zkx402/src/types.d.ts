@@ -222,6 +222,11 @@ export interface ProofVerificationResult {
   verificationDetails: ProofVerificationDetail[];
 
   /**
+   * Payment requirements associated with this result (v2)
+   */
+  requirements?: any[];
+
+  /**
    * Optional machine-readable reason when verification is skipped/disabled.
    */
   reason?: string;
@@ -287,12 +292,17 @@ export interface ZkProofRouteConfig {
   /**
    * Price in dollar format (e.g., "$0.01")
    */
-  price: string;
+  price?: string;
 
   /**
-   * Network to use (e.g., "base-sepolia", "base")
+   * Network to use (e.g., "base-sepolia", "eip155:84532")
    */
-  network: string;
+  network?: string;
+
+  /**
+   * v2: Array of accepted payment options
+   */
+  accepts?: any[];
 
   /**
    * Additional configuration
