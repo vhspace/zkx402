@@ -19,6 +19,7 @@ import {
 import { ethers } from 'ethers';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { isHumanVerifiedOnBase } from '@/lib/verification';
 
 // Contract addresses (you'll update these after deployment)
 const CELO_BRIDGE_ADDRESS =
@@ -200,18 +201,14 @@ export default function VerifyPage() {
     if (!address) return;
 
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const registry = new ethers.Contract(
-        BASE_REGISTRY_ADDRESS,
-        ['function isVerified(address) view returns (bool)'],
-        provider
-      );
-
-      const verified = await registry.isVerified(address);
+      const verified = await isHumanVerifiedOnBase({
+        walletAddress: address,
+        baseRegistryAddress: BASE_REGISTRY_ADDRESS,
+      });
       setIsVerified(verified);
       if (verified) {
         setVerificationStatus('verified');
-        // Store verification status in localStorage
+        // Convenience only (not a proof): persist UI state.
         localStorage.setItem(`verified_${address}`, 'true');
       }
     } catch (err) {

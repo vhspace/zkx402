@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useCurrentUser, useIsSignedIn } from '@coinbase/cdp-hooks';
+import { isHumanVerifiedOnBase } from '@/lib/verification';
 
 function ConsumerPageInner() {
   const { isSignedIn } = useIsSignedIn();
@@ -16,12 +17,19 @@ function ConsumerPageInner() {
 
   const address = currentUser?.evmAccounts?.[0];
 
-  // Check verification status from localStorage
   useEffect(() => {
-    if (address) {
-      const verified = localStorage.getItem(`verified_${address}`) === 'true';
-      setIsVerified(verified);
-    }
+    let cancelled = false;
+    (async () => {
+      if (!address) return;
+      const verified = await isHumanVerifiedOnBase({
+        walletAddress: address,
+        baseRegistryAddress: process.env.NEXT_PUBLIC_BASE_REGISTRY_ADDRESS,
+      });
+      if (!cancelled) setIsVerified(verified);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [address]);
 
   return (
