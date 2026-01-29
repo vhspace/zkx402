@@ -101,7 +101,7 @@ If you want “present a proof payload” verification instead of chain-attestat
 - `X-Vlayer-Proof: <stringified payload>`
 
 Notes:
-- In **quote mode** (no `X-PAYMENT`), API providers are not called; you’ll get a quote. Verification happens when you retry with payment.
+- In **quote mode** (no `PAYMENT-SIGNATURE`; legacy: `X-PAYMENT`), API providers are not called; you’ll get a quote. Verification happens when you retry with payment.
 
 ### future proofs: how to add one (high-level)
 
@@ -311,7 +311,7 @@ the **`useX402` hook** from CDP Embedded Wallet automatically:
      │     Transaction              │                                │
      │                              │                                │
      │  4. GET /motivate            │                                │
-     │     + X-PAYMENT header       │                                │
+     │     + PAYMENT-SIGNATURE      │                                │
      ├─────────────────────────────>│                                │
      │                              │  5. Verify Payment             │
      │                              ├───────────────────────────────>│
@@ -328,7 +328,7 @@ the **`useX402` hook** from CDP Embedded Wallet automatically:
      │                              │                                │
      │  9. 200 OK                   │                                │
      │     + Protected Content      │                                │
-     │     + X-PAYMENT-RESPONSE     │                                │
+     │     + PAYMENT-RESPONSE       │                                │
      │<─────────────────────────────┤                                │
      │                              │                                │
 ```
@@ -359,7 +359,7 @@ the **`useX402` hook** from CDP Embedded Wallet automatically:
 5. **explain what's happening**
    - first request got a 402 payment required from the API server
    - client created EIP-3009 payment, signed with CDP Embedded Wallet
-   - client retried request with X-PAYMENT header
+  - client retried request with PAYMENT-SIGNATURE header
    - server called **CDP x402 Facilitator** to verify payment
    - **CDP Facilitator** verified signature and settled payment onchain
    - server returned paid content with transaction details

@@ -972,7 +972,8 @@ Content-Type: application/json
 
                 <li>
                   <strong>
-                    client retries request with <code>X-PAYMENT</code> header
+                    client retries request with <code>PAYMENT-SIGNATURE</code>{' '}
+                    (legacy: <code>X-PAYMENT</code>)
                   </strong>
                   <details style={{ marginTop: '8px' }}>
                     <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
@@ -989,9 +990,9 @@ Content-Type: application/json
                       }}
                     >
                       {`GET http://localhost:3001/motivate
-X-PAYMENT: base64_encoded_json
+PAYMENT-SIGNATURE: base64_encoded_json
 
-Decoded X-PAYMENT:
+Decoded PAYMENT-SIGNATURE:
 {
   "x402Version": 1,
   "scheme": "exact",
@@ -1047,7 +1048,7 @@ Content-Type: application/json
 
 {
   "x402Version": 1,
-  "paymentPayload": { /* X-PAYMENT data */ },
+  "paymentPayload": { /* PAYMENT-SIGNATURE data */ },
   "paymentRequirements": { /* from 402 response */ }
 }
 
@@ -1120,7 +1121,7 @@ Response:
                     >
                       {`HTTP/1.1 200 OK
 Content-Type: application/json
-X-PAYMENT-RESPONSE: base64_encoded_json
+PAYMENT-RESPONSE: base64_encoded_json
 
 {
   "quote": "ACCESS GRANTED - Classified content unlocked",
@@ -1133,7 +1134,7 @@ X-PAYMENT-RESPONSE: base64_encoded_json
   }
 }
 
-Decoded X-PAYMENT-RESPONSE:
+Decoded PAYMENT-RESPONSE:
 {
   "success": true,
   "transaction": "0x789abc...",

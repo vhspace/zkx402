@@ -31,7 +31,7 @@ node run-e2e-test.js
 - Avoid hardcoded absolute paths like `/workspaces/...` (CI checkout paths differ).
 - Keep core logic changes in `packages/x402-zkx402/` focused and tested.
 - If you add UI that depends on env vars, Preview deployments must fail **gracefully** (visible error, not a crash).
-- `X-PAYMENT` header must match the **`x402`** npm package schema (not `@coinbase/x402/*`).
+- `PAYMENT-SIGNATURE` (legacy: `X-PAYMENT`) must match the **`x402`** npm package schema (not `@coinbase/x402/*`).
 
 ## AI pointers (important)
 

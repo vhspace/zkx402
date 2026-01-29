@@ -131,7 +131,7 @@ app.listen(PORT, () => {
  * });
  * 
  * // First request returns 402 with discounted price
- * // Client handles payment and retries with X-PAYMENT header
+ * // Client handles payment and retries with PAYMENT-SIGNATURE (legacy: X-PAYMENT) header
  */
 
 

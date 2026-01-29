@@ -35,8 +35,8 @@ If you want “proofs as access control” (not just discounts), configure **req
 
 Behavior:
 
-- **Quote mode** (no `X-PAYMENT`): still returns `402` with `accepts[]` (and includes `accessControl` metadata in `accepts[].extra`).
-- **Paid mode** (with `X-PAYMENT`): after payment verifies, the middleware verifies the required claims and returns **403** if any are missing/unverified.
+- **Quote mode** (no `PAYMENT-SIGNATURE`; legacy: `X-PAYMENT`): still returns `402` with `accepts[]` (and includes `accessControl` metadata in `accepts[].extra`).
+- **Paid mode** (with `PAYMENT-SIGNATURE`; legacy: `X-PAYMENT`): after payment verifies, the middleware verifies the required claims and returns **403** if any are missing/unverified.
 
 Notes:
 
@@ -83,7 +83,7 @@ Do not treat it as cryptographic proof.
 
 The middleware behaves differently depending on whether the request includes payment:
 
-- **Quote mode**: no `X-PAYMENT` header
+- **Quote mode**: no `PAYMENT-SIGNATURE` header (legacy: `X-PAYMENT`)
   - The server responds `402` with `accepts[]` (payment requirements).
   - **API providers are not called** (to avoid vendor/paid verifier calls during discovery and pricing negotiation).
   - **Chain providers may still be called** (read-only RPC checks are allowed) to compute an accurate quote.
@@ -92,7 +92,7 @@ The middleware behaves differently depending on whether the request includes pay
     - it is reported in metadata as `quoted: true`,
     - it is **re-verified for real** once the client retries with payment.
 
-- **Paid mode**: includes `X-PAYMENT`
+- **Paid mode**: includes `PAYMENT-SIGNATURE` (legacy: `X-PAYMENT`)
   - The server verifies payment and (if configured) performs proof verification via the configured providers.
   - The route handler can read `req.verificationMetadata`.
   - Any **required claims** used for access control (`requiredClaims` / `accessControl`) are enforced **after payment verifies**:

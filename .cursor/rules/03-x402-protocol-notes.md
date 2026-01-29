@@ -2,7 +2,7 @@
 
 ## Important header schema
 
-The `X-PAYMENT` header must match the `x402` npm package schema:
+The `PAYMENT-SIGNATURE` header (legacy: `X-PAYMENT`) must match the `x402` npm package schema:
 
 ```json
 {
