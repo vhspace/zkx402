@@ -271,6 +271,56 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       const required = Array.isArray(requiredClaims) ? requiredClaims : [];
       const presentedKeys = claimKeySet(presented);
 
+      function providerSupportsClaim(provider, claim) {
+        if (!provider || !claim) return false;
+        if (!Array.isArray(provider.supportsClaims)) return true;
+        return provider.supportsClaims.includes(claim.type);
+      }
+
+      function filterProvidersForClaim(providers, policy, claim) {
+        const allowed = Array.isArray(policy?.allowedProviders)
+          ? new Set(policy.allowedProviders)
+          : null;
+        return (providers || []).filter((p) => {
+          if (allowed && !allowed.has(p.name)) return false;
+          return providerSupportsClaim(p, claim);
+        });
+      }
+
+      function filterPolicyForProviders(policy, providers) {
+        const names = (providers || []).map((p) => p.name);
+        return {
+          ...policy,
+          allowedProviders: names,
+          preferenceOrder: (policy?.preferenceOrder || []).filter((n) => names.includes(n)),
+        };
+      }
+
+      function pickPreferredProvider(policy, providers) {
+        const names = (providers || []).map((p) => p.name);
+        const preferred =
+          (policy?.preferenceOrder || []).find((n) => names.includes(n)) || null;
+        return preferred || names[0] || null;
+      }
+
+      function buildQuotedResult(providerName) {
+        return {
+          status: VerifyStatus.VERIFIED,
+          provider: providerName || undefined,
+          quoted: true,
+          attempts: providerName
+            ? [
+                {
+                  provider: providerName,
+                  ok: true,
+                  status: VerifyStatus.VERIFIED,
+                  reason: "quoted",
+                },
+              ]
+            : [],
+        };
+      }
+
       const normalizedPolicy = normalizeProofPolicy(extraConfig?.proofPolicy);
       const pHash = policyHash(normalizedPolicy);
       const costs = extraConfig?.proofCosts || null;
@@ -315,31 +365,54 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           let routed = null;
           let durationMs = 0;
           const quoteOnly = !payment;
-          const providerObj = selectedProvider
-            ? proofProviders.find((p) => p.name === selectedProvider)
-            : null;
-          const isApiProvider = providerObj?.kind === "api";
+          const eligibleProviders = filterProvidersForClaim(
+            proofProviders,
+            routedPolicy,
+            claim
+          );
+          const chainProviders = eligibleProviders.filter((p) => p.kind !== "api");
+          const apiProviders = eligibleProviders.filter((p) => p.kind === "api");
 
-          if (quoteOnly && isApiProvider) {
-            routed = {
-              status: VerifyStatus.VERIFIED,
-              provider: selectedProvider,
-              quoted: true,
-              attempts: [
-                {
-                  provider: selectedProvider,
-                  ok: true,
-                  status: VerifyStatus.VERIFIED,
-                  reason: "quoted",
-                },
-              ],
-            };
+          if (quoteOnly) {
+            if (chainProviders.length > 0) {
+              const startedAt = Date.now();
+              routed = await verifyClaimWithPolicy({
+                claim,
+                policy: filterPolicyForProviders(routedPolicy, chainProviders),
+                providers: chainProviders,
+                context: { walletAddress, selfProof, vlayerProof, correlationId },
+              });
+              durationMs = Date.now() - startedAt;
+
+              if (
+                (routed.status === VerifyStatus.NOT_CONFIGURED ||
+                  routed.status === VerifyStatus.NOT_IMPLEMENTED) &&
+                apiProviders.length > 0
+              ) {
+                routed = buildQuotedResult(
+                  pickPreferredProvider(routedPolicy, apiProviders)
+                );
+              }
+            } else if (apiProviders.length > 0) {
+              routed = buildQuotedResult(
+                pickPreferredProvider(routedPolicy, apiProviders)
+              );
+            } else {
+              const startedAt = Date.now();
+              routed = await verifyClaimWithPolicy({
+                claim,
+                policy: routedPolicy,
+                providers: eligibleProviders,
+                context: { walletAddress, selfProof, vlayerProof, correlationId },
+              });
+              durationMs = Date.now() - startedAt;
+            }
           } else {
             const startedAt = Date.now();
             routed = await verifyClaimWithPolicy({
               claim,
               policy: routedPolicy,
-              providers: proofProviders,
+              providers: eligibleProviders,
               context: { walletAddress, selfProof, vlayerProof, correlationId },
             });
             durationMs = Date.now() - startedAt;
