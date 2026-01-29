@@ -93,6 +93,37 @@ app.get("/api/data", (req, res) => {
 app.listen(3001);
 ```
 
+### v2 `accepts[]` route config
+
+You can provide v2 payment requirements directly:
+
+```js
+"GET /api/data": {
+  accepts: [
+    {
+      scheme: "exact",
+      network: "base-sepolia",
+      amount: "10000",
+      payTo: "0xYourWallet",
+      asset: "0xUSDC",
+      extra: { name: "USDC", version: "2" },
+    },
+  ],
+  config: {
+    extra: {
+      proofPolicy: { /* ... */ },
+      variableAmountRequired: [ /* ... */ ],
+    },
+  },
+},
+```
+
+Notes:
+
+- `config.extra` (proofPolicy, proofCosts, accessControl, etc.) is applied to **every** entry in `accepts[]`.
+- If an `accept.extra` field is present, it is merged first; route-level `config.extra` then overrides conflicting keys.
+- Discounts from `variableAmountRequired` are applied uniformly to all `accepts[]` entries.
+
 ## Configuration
 
 ### Variable Amount Required (Discounts)

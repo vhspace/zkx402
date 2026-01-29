@@ -24,7 +24,10 @@ import { createSelfApiProvider } from "./proofs/providers/self_api.js";
 import { createVlayerChainProvider } from "./proofs/providers/vlayer_chain.js";
 import { createVlayerApiProvider } from "./proofs/providers/vlayer_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
-import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
+import {
+  computeVerificationCostUsdMicros,
+  proofCostsHash,
+} from "./proofs/costs.js";
 import { normalizeNetwork, toLegacyNetwork } from "./x402/networks.js";
 
 // Proof-gated pricing should be driven by `proofPolicy` + provider routing.
@@ -43,8 +46,13 @@ function safeBigInt(v) {
 }
 
 function formatAtomicToFixedDecimalString(amountAtomic, decimals) {
-  const a = typeof amountAtomic === "bigint" ? amountAtomic : safeBigInt(amountAtomic) ?? 0n;
-  const d = Number.isFinite(Number(decimals)) ? Math.max(0, Math.trunc(Number(decimals))) : 0;
+  const a =
+    typeof amountAtomic === "bigint"
+      ? amountAtomic
+      : (safeBigInt(amountAtomic) ?? 0n);
+  const d = Number.isFinite(Number(decimals))
+    ? Math.max(0, Math.trunc(Number(decimals)))
+    : 0;
   const base = 10n ** BigInt(d);
   const i = a / base;
   const f = a % base;
@@ -73,7 +81,11 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
   function buildResourceServer() {
     // Support legacy test facilitators (verify/settle) to keep unit tests offline.
-    if (facilitator && typeof facilitator.verify === "function" && typeof facilitator.settle === "function") {
+    if (
+      facilitator &&
+      typeof facilitator.verify === "function" &&
+      typeof facilitator.settle === "function"
+    ) {
       return {
         createPaymentRequiredResponse(requirements, resource) {
           return {
@@ -84,12 +96,18 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           };
         },
         async verifyPayment(paymentPayload, requirement) {
-          const response = await facilitator.verify(paymentPayload, requirement);
+          const response = await facilitator.verify(
+            paymentPayload,
+            requirement,
+          );
           if (response && typeof response === "object") return response;
           return { isValid: Boolean(response) };
         },
         async settlePayment(paymentPayload, requirement) {
-          const response = await facilitator.settle(paymentPayload, requirement);
+          const response = await facilitator.settle(
+            paymentPayload,
+            requirement,
+          );
           if (response && typeof response === "object") return response;
           return { success: Boolean(response) };
         },
@@ -98,12 +116,17 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     // Initialize v2 Resource Server
     const facilitatorUrl = facilitator?.url || "https://x402.org/facilitator";
-    const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+    const facilitatorClient = new HTTPFacilitatorClient({
+      url: facilitatorUrl,
+    });
     return new x402ResourceServer(facilitatorClient)
       .register("eip155:8453", new ExactEvmScheme())
       .register("eip155:84532", new ExactEvmScheme())
       .register("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", new ExactSvmScheme())
-      .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme());
+      .register(
+        "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        new ExactSvmScheme(),
+      );
   }
 
   const resourceServer = buildResourceServer();
@@ -114,9 +137,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       : createPaywall()
           .withNetwork(evmPaywall)
           .withNetwork(svmPaywall)
-          .withConfig(
-            paywall && typeof paywall === "object" ? paywall : {}
-          )
+          .withConfig(paywall && typeof paywall === "object" ? paywall : {})
           .build();
 
   const proofProviders = [
@@ -135,15 +156,23 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     const matchingRoute = findMatchingRoute(
       routePatterns,
       req.path,
-      req.method.toUpperCase()
+      req.method.toUpperCase(),
     );
 
     if (!matchingRoute) {
       return next();
     }
 
-    const { price, network: rawNetwork, config = {} } = matchingRoute.config;
-    const network = normalizeNetwork(rawNetwork);
+    const {
+      price,
+      network: rawNetwork,
+      accepts: acceptsConfig,
+      config = {},
+    } = matchingRoute.config;
+    const primaryAccept = Array.isArray(acceptsConfig)
+      ? acceptsConfig[0]
+      : null;
+    const network = normalizeNetwork(rawNetwork || primaryAccept?.network);
     const {
       description,
       mimeType,
@@ -246,7 +275,10 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     function resolveAccessControl(extra) {
       const accessControl =
-        extra && typeof extra === "object" && extra.accessControl && typeof extra.accessControl === "object"
+        extra &&
+        typeof extra === "object" &&
+        extra.accessControl &&
+        typeof extra.accessControl === "object"
           ? extra.accessControl
           : null;
 
@@ -256,7 +288,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           : normalizeRequiredClaims(extra?.requiredClaims);
 
       const mode = String(accessControl?.mode ?? "deny");
-      const enabled = requiredClaims.length > 0 && mode !== "off" && mode !== "none";
+      const enabled =
+        requiredClaims.length > 0 && mode !== "off" && mode !== "none";
       const statusCode = Number(accessControl?.statusCode ?? 403);
 
       return { enabled, mode, statusCode, requiredClaims };
@@ -265,7 +298,11 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     const accessControl = resolveAccessControl(extraConfig);
 
     // Custom function to verify claims (discount tiers and hard-gating)
-    async function verifyClaimsForTier(presentedClaims, requiredClaims, options = {}) {
+    async function verifyClaimsForTier(
+      presentedClaims,
+      requiredClaims,
+      options = {},
+    ) {
       const requirePresentation = options?.requirePresentation !== false;
       const presented = Array.isArray(presentedClaims) ? presentedClaims : [];
       const required = Array.isArray(requiredClaims) ? requiredClaims : [];
@@ -292,14 +329,17 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         return {
           ...policy,
           allowedProviders: names,
-          preferenceOrder: (policy?.preferenceOrder || []).filter((n) => names.includes(n)),
+          preferenceOrder: (policy?.preferenceOrder || []).filter((n) =>
+            names.includes(n),
+          ),
         };
       }
 
       function pickPreferredProvider(policy, providers) {
         const names = (providers || []).map((p) => p.name);
         const preferred =
-          (policy?.preferenceOrder || []).find((n) => names.includes(n)) || null;
+          (policy?.preferenceOrder || []).find((n) => names.includes(n)) ||
+          null;
         return preferred || names[0] || null;
       }
 
@@ -368,10 +408,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           const eligibleProviders = filterProvidersForClaim(
             proofProviders,
             routedPolicy,
-            claim
+            claim,
           );
-          const chainProviders = eligibleProviders.filter((p) => p.kind !== "api");
-          const apiProviders = eligibleProviders.filter((p) => p.kind === "api");
+          const chainProviders = eligibleProviders.filter(
+            (p) => p.kind !== "api",
+          );
+          const apiProviders = eligibleProviders.filter(
+            (p) => p.kind === "api",
+          );
 
           if (quoteOnly) {
             if (chainProviders.length > 0) {
@@ -380,7 +424,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 claim,
                 policy: filterPolicyForProviders(routedPolicy, chainProviders),
                 providers: chainProviders,
-                context: { walletAddress, selfProof, vlayerProof, correlationId },
+                context: {
+                  walletAddress,
+                  selfProof,
+                  vlayerProof,
+                  correlationId,
+                },
               });
               durationMs = Date.now() - startedAt;
 
@@ -390,12 +439,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 apiProviders.length > 0
               ) {
                 routed = buildQuotedResult(
-                  pickPreferredProvider(routedPolicy, apiProviders)
+                  pickPreferredProvider(routedPolicy, apiProviders),
                 );
               }
             } else if (apiProviders.length > 0) {
               routed = buildQuotedResult(
-                pickPreferredProvider(routedPolicy, apiProviders)
+                pickPreferredProvider(routedPolicy, apiProviders),
               );
             } else {
               const startedAt = Date.now();
@@ -403,7 +452,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                 claim,
                 policy: routedPolicy,
                 providers: eligibleProviders,
-                context: { walletAddress, selfProof, vlayerProof, correlationId },
+                context: {
+                  walletAddress,
+                  selfProof,
+                  vlayerProof,
+                  correlationId,
+                },
               });
               durationMs = Date.now() - startedAt;
             }
@@ -428,7 +482,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               durationMs,
               policyHash: pHash,
             },
-            { enabled: debugEnabled }
+            { enabled: debugEnabled },
           );
 
           logAuditEvent(
@@ -443,7 +497,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               status: routed.status,
               durationMs,
             },
-            { enabled: auditEnabled }
+            { enabled: auditEnabled },
           );
 
           if (routed.status === VerifyStatus.NOT_IMPLEMENTED) {
@@ -453,7 +507,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               verified: false,
               status: VerifyStatus.NOT_IMPLEMENTED,
               reason: "not_implemented",
-              attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
+              attempts: Array.isArray(routed.attempts)
+                ? routed.attempts
+                : undefined,
             };
           }
           if (routed.status === VerifyStatus.NOT_CONFIGURED) {
@@ -463,7 +519,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               verified: false,
               status: VerifyStatus.NOT_CONFIGURED,
               reason: routed.reason || "not_configured",
-              attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
+              attempts: Array.isArray(routed.attempts)
+                ? routed.attempts
+                : undefined,
             };
           }
           if (routed.status === VerifyStatus.ERROR) {
@@ -473,7 +531,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               verified: false,
               status: VerifyStatus.ERROR,
               reason: routed.reason || "verification_error",
-              attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
+              attempts: Array.isArray(routed.attempts)
+                ? routed.attempts
+                : undefined,
             };
           }
 
@@ -494,13 +554,15 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             provider: routed.provider,
             verificationCost,
             quoted: Boolean(routed.quoted),
-            attempts: Array.isArray(routed.attempts) ? routed.attempts : undefined,
+            attempts: Array.isArray(routed.attempts)
+              ? routed.attempts
+              : undefined,
           };
-        })
+        }),
       );
 
       const allVerified = verificationResults.every(
-        (result) => result.verified
+        (result) => result.verified,
       );
       const missingClaims = verificationResults
         .filter((result) => !result.verified)
@@ -518,14 +580,58 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       };
     }
 
-    // v1 compat: processPriceToAtomicAmount still used for now
-    const pricingNetwork = toLegacyNetwork(rawNetwork || network);
-    const baseAtomicAmountForAsset = processPriceToAtomicAmount(price, pricingNetwork);
-    if ("error" in baseAtomicAmountForAsset) {
-      throw new Error(baseAtomicAmountForAsset.error);
+    const acceptsList =
+      Array.isArray(acceptsConfig) && acceptsConfig.length > 0
+        ? acceptsConfig
+        : null;
+    const primaryAcceptConfig = acceptsList ? acceptsList[0] : null;
+
+    let baseMaxAmountRequired = null;
+    let baseAsset = null;
+
+    if (
+      price ||
+      (!primaryAcceptConfig?.amount && !primaryAcceptConfig?.maxAmountRequired)
+    ) {
+      if (!price) {
+        throw new Error("Missing price for route without accepts amount");
+      }
+      // v1 compat: processPriceToAtomicAmount still used for now
+      const pricingNetwork = toLegacyNetwork(rawNetwork || network);
+      const baseAtomicAmountForAsset = processPriceToAtomicAmount(
+        price,
+        pricingNetwork,
+      );
+      if ("error" in baseAtomicAmountForAsset) {
+        throw new Error(baseAtomicAmountForAsset.error);
+      }
+      baseMaxAmountRequired = baseAtomicAmountForAsset.maxAmountRequired;
+      baseAsset = baseAtomicAmountForAsset.asset;
+    } else {
+      baseMaxAmountRequired = String(
+        primaryAcceptConfig.amount ?? primaryAcceptConfig.maxAmountRequired,
+      );
+      const acceptAsset = primaryAcceptConfig.asset || assetOverride || null;
+      if (acceptAsset) {
+        baseAsset = {
+          address: acceptAsset,
+          decimals: primaryAcceptConfig.extra?.decimals ?? 6,
+          eip712: primaryAcceptConfig.extra?.eip712 ?? {},
+        };
+      }
     }
-    const baseMaxAmountRequired = baseAtomicAmountForAsset.maxAmountRequired;
-    const baseAsset = baseAtomicAmountForAsset.asset;
+
+    if (!baseMaxAmountRequired) {
+      throw new Error("Missing amount in accepts[] configuration");
+    }
+
+    if (primaryAcceptConfig?.asset && baseAsset) {
+      baseAsset = {
+        ...baseAsset,
+        address: primaryAcceptConfig.asset,
+        eip712: primaryAcceptConfig.extra?.eip712 ?? baseAsset.eip712,
+      };
+    }
 
     let finalMaxAmountRequired = baseMaxAmountRequired;
     let verificationMetadata = null;
@@ -555,7 +661,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           const requiredClaims = Array.isArray(discountOption.requiredClaims)
             ? discountOption.requiredClaims
             : [];
-          const discountedAmountAtomic = safeBigInt(discountOption.amountRequired);
+          const discountedAmountAtomic = safeBigInt(
+            discountOption.amountRequired,
+          );
           if (discountedAmountAtomic === null) {
             dbg("discount_amount_invalid", {
               correlationId,
@@ -566,7 +674,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
           const verificationResult = await verifyClaimsForTier(
             presentedClaims,
-            requiredClaims
+            requiredClaims,
           );
 
           if (verificationResult.isValid) {
@@ -584,7 +692,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               verificationFeeAtomic = 0n;
             }
 
-            const discountedTotalAtomic = discountedAmountAtomic + verificationFeeAtomic;
+            const discountedTotalAtomic =
+              discountedAmountAtomic + verificationFeeAtomic;
             finalMaxAmountRequired = discountedTotalAtomic.toString();
 
             verificationMetadata = {
@@ -594,13 +703,13 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               discountedAmount: discountedAmountAtomic.toString(),
               discountedPrice: formatUsdLikePriceFromAtomic(
                 discountedTotalAtomic,
-                baseAsset?.decimals ?? 6
+                baseAsset?.decimals ?? 6,
               ),
               verificationFeeAtomic: verificationFeeAtomic.toString(),
               presentedClaims,
               verificationResult: verificationResult,
             };
-            break; 
+            break;
           }
         }
 
@@ -623,41 +732,75 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     const proto = req.header("X-Forwarded-Proto") || req.protocol;
     const host = req.header("X-Forwarded-Host") || req.headers.host;
     const resourceUrl = resource || `${proto}://${host}${req.originalUrl}`;
-
-    // Build v2 PaymentRequirements
-    const paymentRequirement = {
-      scheme: "exact",
-      network,
-      amount: maxAmountRequired, // v2: amount instead of maxAmountRequired
-      payTo: getAddress(payTo),
-      asset: getAddress(assetOverride || asset.address),
-      maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
-      extra: {
-        ...asset.eip712,
-        ...extraConfig,
-        ...(accessControl?.enabled
-          ? {
-              accessControl: {
-                mode: accessControl.mode,
-                statusCode: accessControl.statusCode,
-                requiredClaims: accessControl.requiredClaims,
-              },
-            }
-          : {}),
-        ...(extraConfig?.proofCosts
-          ? {
-              proofCostsHash: proofCostsHash(extraConfig.proofCosts),
-              proofCostsCurrency: extraConfig.proofCosts.currency || "usd_micros",
-              proofCostsDefaultCommissionBps:
-                extraConfig.proofCosts.defaultCommissionBps ?? 0,
-            }
-          : {}),
-        ...(proofPlan ? { proofPlan } : {}),
-        ...(verificationMetadata?.verificationFeeAtomic
-          ? { proofVerificationFeeAtomic: verificationMetadata.verificationFeeAtomic }
-          : {}),
-      },
+    const extraBase = {
+      ...extraConfig,
+      ...(accessControl?.enabled
+        ? {
+            accessControl: {
+              mode: accessControl.mode,
+              statusCode: accessControl.statusCode,
+              requiredClaims: accessControl.requiredClaims,
+            },
+          }
+        : {}),
+      ...(extraConfig?.proofCosts
+        ? {
+            proofCostsHash: proofCostsHash(extraConfig.proofCosts),
+            proofCostsCurrency: extraConfig.proofCosts.currency || "usd_micros",
+            proofCostsDefaultCommissionBps:
+              extraConfig.proofCosts.defaultCommissionBps ?? 0,
+          }
+        : {}),
+      ...(proofPlan ? { proofPlan } : {}),
+      ...(verificationMetadata?.verificationFeeAtomic
+        ? {
+            proofVerificationFeeAtomic:
+              verificationMetadata.verificationFeeAtomic,
+          }
+        : {}),
     };
+
+    function buildPaymentRequirement(accept = {}) {
+      const requirementAmount = String(
+        accept.amount ?? accept.maxAmountRequired ?? maxAmountRequired,
+      );
+      const requirementAsset =
+        accept.asset || assetOverride || baseAsset?.address;
+      if (!requirementAsset) {
+        throw new Error("Missing asset for payment requirement");
+      }
+      const requirementExtra = {
+        ...(accept.extra?.eip712 ?? baseAsset?.eip712 ?? {}),
+        ...(accept.extra || {}),
+        ...extraBase,
+      };
+      return {
+        scheme: accept.scheme || "exact",
+        network: normalizeNetwork(accept.network || network),
+        amount: requirementAmount,
+        payTo: getAddress(accept.payTo || payTo),
+        asset: getAddress(requirementAsset),
+        maxTimeoutSeconds: accept.maxTimeoutSeconds ?? maxTimeoutSeconds ?? 60,
+        extra: requirementExtra,
+      };
+    }
+
+    const paymentRequirements = acceptsList
+      ? acceptsList.map((accept) => buildPaymentRequirement(accept))
+      : [buildPaymentRequirement()];
+
+    function selectPaymentRequirement(requirements, paymentPayload) {
+      if (!Array.isArray(requirements) || requirements.length === 0)
+        return null;
+      const paymentNetwork = normalizeNetwork(paymentPayload?.network);
+      if (paymentNetwork) {
+        const match = requirements.find((r) => r.network === paymentNetwork);
+        if (match) return match;
+      }
+      return requirements[0];
+    }
+
+    let paymentRequirement = paymentRequirements[0];
 
     const userAgent = req.header("User-Agent") || "";
     const acceptHeader = req.header("Accept") || "";
@@ -667,12 +810,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     if (!payment) {
       // v2: createPaymentRequiredResponse + PAYMENT-REQUIRED header
       const paymentRequired = resourceServer.createPaymentRequiredResponse(
-        [paymentRequirement],
+        paymentRequirements,
         {
           url: resourceUrl,
           description: description ?? "",
           mimeType: mimeType ?? "",
-        }
+        },
       );
 
       if (isWebBrowser) {
@@ -688,7 +831,9 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         return;
       }
 
-      const requirementsHeader = Buffer.from(JSON.stringify(paymentRequired)).toString("base64");
+      const requirementsHeader = Buffer.from(
+        JSON.stringify(paymentRequired),
+      ).toString("base64");
 
       res.status(402);
       res.set("PAYMENT-REQUIRED", requirementsHeader);
@@ -696,7 +841,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         x402Version,
         error: "Payment Required",
         message: "This endpoint requires payment",
-        accepts: [paymentRequirement], // v1 compat
+        accepts: paymentRequirements, // v1 compat
       });
       return;
     }
@@ -704,13 +849,18 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     let decodedPayment;
     try {
       // v2: base64 decode payment signature
-      decodedPayment = JSON.parse(Buffer.from(payment, "base64").toString("utf-8"));
+      decodedPayment = JSON.parse(
+        Buffer.from(payment, "base64").toString("utf-8"),
+      );
       decodedPayment.x402Version = x402Version;
+      paymentRequirement =
+        selectPaymentRequirement(paymentRequirements, decodedPayment) ||
+        paymentRequirement;
     } catch (error) {
       res.status(402).json({
         x402Version,
         error: "Invalid or malformed payment header",
-        accepts: [paymentRequirement],
+        accepts: paymentRequirements,
       });
       return;
     }
@@ -719,13 +869,13 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       // v2: resourceServer.verifyPayment
       const response = await resourceServer.verifyPayment(
         decodedPayment,
-        paymentRequirement
+        paymentRequirement,
       );
       if (!response.isValid) {
         res.status(402).json({
           x402Version,
           error: response.invalidReason,
-          accepts: [paymentRequirement],
+          accepts: paymentRequirements,
           payer: response.payer,
         });
         return;
@@ -734,7 +884,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       res.status(402).json({
         x402Version,
         error: error?.message || String(error),
-        accepts: [paymentRequirement],
+        accepts: paymentRequirements,
       });
       return;
     }
@@ -744,7 +894,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       const accessVerification = await verifyClaimsForTier(
         presentedClaims,
         accessControl.requiredClaims,
-        { requirePresentation: false }
+        { requirePresentation: false },
       );
 
       req.accessControlMetadata = {
@@ -828,10 +978,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       // v2: resourceServer.settlePayment
       const settleResponse = await resourceServer.settlePayment(
         decodedPayment,
-        paymentRequirement
+        paymentRequirement,
       );
-      
-      const responseHeader = Buffer.from(JSON.stringify(settleResponse)).toString("base64");
+
+      const responseHeader = Buffer.from(
+        JSON.stringify(settleResponse),
+      ).toString("base64");
       res.setHeader("PAYMENT-RESPONSE", responseHeader);
       res.setHeader("X-PAYMENT-RESPONSE", responseHeader); // v1 compat
 
@@ -840,7 +992,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         res.status(402).json({
           x402Version,
           error: settleResponse.errorReason,
-          accepts: [paymentRequirement],
+          accepts: paymentRequirements,
         });
         return;
       }
@@ -850,7 +1002,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         res.status(402).json({
           x402Version,
           error: error?.message || String(error),
-          accepts: [paymentRequirement],
+          accepts: paymentRequirements,
         });
         return;
       }
