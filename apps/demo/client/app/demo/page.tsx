@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCurrentUser,
   useIsSignedIn,
@@ -11,9 +11,9 @@ import {
   useVerifySmsOTP,
   useSignOut,
   useX402,
-} from '@coinbase/cdp-hooks';
+} from "@coinbase/cdp-hooks";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 type VerificationSummary = {
   qualified: boolean;
@@ -48,23 +48,23 @@ function DemoPageInner() {
   const { signOut } = useSignOut();
   const { fetchWithPayment } = useX402();
 
-  const [quote, setQuote] = useState<string>('');
+  const [quote, setQuote] = useState<string>("");
   const [paymentInfo, setPaymentInfo] = useState<PaymentResponse | null>(null);
   const [verification, setVerification] = useState<VerificationSummary | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [balance, setBalance] = useState<string>('0');
+  const [error, setError] = useState<string>("");
+  const [balance, setBalance] = useState<string>("0");
   const [showAuthMethods, setShowAuthMethods] = useState(false);
-  const [authStep, setAuthStep] = useState<'method' | 'email' | 'sms' | 'otp'>(
-    'method'
+  const [authStep, setAuthStep] = useState<"method" | "email" | "sms" | "otp">(
+    "method",
   );
-  const [emailOrPhone, setEmailOrPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [flowId, setFlowId] = useState('');
-  const [authType, setAuthType] = useState<'email' | 'sms'>('email');
-  const [faucetSuccess, setFaucetSuccess] = useState<string>('');
+  const [emailOrPhone, setEmailOrPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [flowId, setFlowId] = useState("");
+  const [authType, setAuthType] = useState<"email" | "sms">("email");
+  const [faucetSuccess, setFaucetSuccess] = useState<string>("");
   const [showExplanation, setShowExplanation] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -79,11 +79,11 @@ function DemoPageInner() {
       result?.data?.flow_id ??
       result?.data?.id ??
       null;
-    return typeof id === 'string' && id.trim() ? id.trim() : null;
+    return typeof id === "string" && id.trim() ? id.trim() : null;
   }
 
   // Get price from URL parameter, default to 0.01 if not provided
-  const priceParam = searchParams.get('price');
+  const priceParam = searchParams.get("price");
   const purchasePrice = priceParam ? parseFloat(priceParam) : 0.01;
 
   // fetch balance when connected
@@ -100,14 +100,14 @@ function DemoPageInner() {
       const response = await fetch(`${API_URL}/balance/${address}`);
 
       if (!response.ok) {
-        throw new Error('failed to fetch balance');
+        throw new Error("failed to fetch balance");
       }
 
       const data = await response.json();
       setBalance(data.balance);
       console.log(`balance updated: ${data.balance} USDC for ${address}`);
     } catch (err) {
-      console.error('error fetching balance:', err);
+      console.error("error fetching balance:", err);
     }
   };
 
@@ -116,22 +116,22 @@ function DemoPageInner() {
     if (!emailOrPhone) return;
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const result = await signInWithEmail({ email: emailOrPhone });
       const id = extractFlowId(result);
       if (!id) {
-        console.error('signInWithEmail returned unexpected result:', result);
+        console.error("signInWithEmail returned unexpected result:", result);
         throw new Error(
-          'OTP request sent, but missing flow id. Check your CDP project configuration + browser console.'
+          "OTP request sent, but missing flow id. Check your CDP project configuration + browser console.",
         );
       }
       setFlowId(id);
-      setAuthType('email');
-      setAuthStep('otp');
+      setAuthType("email");
+      setAuthStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to send email');
+      setError(err instanceof Error ? err.message : "failed to send email");
       console.error(err);
     } finally {
       setLoading(false);
@@ -143,22 +143,22 @@ function DemoPageInner() {
     if (!emailOrPhone) return;
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const result = await signInWithSms({ phoneNumber: emailOrPhone });
       const id = extractFlowId(result);
       if (!id) {
-        console.error('signInWithSms returned unexpected result:', result);
+        console.error("signInWithSms returned unexpected result:", result);
         throw new Error(
-          'OTP request sent, but missing flow id. Check your CDP project configuration + browser console.'
+          "OTP request sent, but missing flow id. Check your CDP project configuration + browser console.",
         );
       }
       setFlowId(id);
-      setAuthType('sms');
-      setAuthStep('otp');
+      setAuthType("sms");
+      setAuthStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to send SMS');
+      setError(err instanceof Error ? err.message : "failed to send SMS");
       console.error(err);
     } finally {
       setLoading(false);
@@ -169,26 +169,26 @@ function DemoPageInner() {
   const handleVerifyOtp = async () => {
     if (!otp) return;
     if (!flowId) {
-      setError('Missing flow id. Please resend OTP.');
+      setError("Missing flow id. Please resend OTP.");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      if (authType === 'email') {
+      if (authType === "email") {
         await verifyEmailOTP({ flowId, otp });
       } else {
         await verifySmsOTP({ flowId, otp });
       }
       // user now authenticated; reset state
       setShowAuthMethods(false);
-      setAuthStep('method');
-      setEmailOrPhone('');
-      setOtp('');
+      setAuthStep("method");
+      setEmailOrPhone("");
+      setOtp("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to verify OTP');
+      setError(err instanceof Error ? err.message : "failed to verify OTP");
       console.error(err);
     } finally {
       setLoading(false);
@@ -196,9 +196,11 @@ function DemoPageInner() {
   };
 
   // handle OAuth sign in
-  const handleOAuthSignIn = async (provider: 'google' | 'x') => {
+  const handleOAuthSignIn = async (provider: "google" | "x") => {
     // Route through a dedicated OAuth page so the redirect/callback URL is stable.
-    router.push(`/oauth?provider=${provider}&next=${encodeURIComponent('/demo')}`);
+    router.push(
+      `/oauth?provider=${provider}&next=${encodeURIComponent("/demo")}`,
+    );
   };
 
   // Faucet USDC using backend endpoint
@@ -206,14 +208,14 @@ function DemoPageInner() {
     if (!address) return;
 
     setLoading(true);
-    setError('');
-    setFaucetSuccess('');
+    setError("");
+    setFaucetSuccess("");
 
     try {
       const response = await fetch(`${API_URL}/faucet`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           address: address,
@@ -225,7 +227,9 @@ function DemoPageInner() {
 
       if (!response.ok) {
         const detail =
-          data && typeof data === 'object' && 'error' in data ? String(data.error) : raw;
+          data && typeof data === "object" && "error" in data
+            ? String(data.error)
+            : raw;
         throw new Error(detail || `Faucet request failed: ${response.status}`);
       }
 
@@ -236,15 +240,18 @@ function DemoPageInner() {
       setTimeout(fetchBalance, 5000);
       setTimeout(fetchBalance, 10000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'failed to request faucet funds';
+      const message =
+        err instanceof Error ? err.message : "failed to request faucet funds";
       const isNetworky =
-        /load failed|failed to fetch|networkerror|cors|mixed content/i.test(message);
+        /load failed|failed to fetch|networkerror|cors|mixed content/i.test(
+          message,
+        );
       setError(
         isNetworky
           ? `Network error calling faucet at ${API_URL}/faucet. Check NEXT_PUBLIC_API_URL and backend CORS (ALLOWED_ORIGINS). Details: ${message}`
           : message,
       );
-      console.error('faucet error', err, { apiUrl: API_URL });
+      console.error("faucet error", err, { apiUrl: API_URL });
     } finally {
       setLoading(false);
     }
@@ -252,7 +259,7 @@ function DemoPageInner() {
 
   // navigate to verify route
   const handleVerify = () => {
-    router.push('/verify');
+    router.push("/verify");
   };
 
   // call the x402-enabled API endpoint
@@ -260,22 +267,22 @@ function DemoPageInner() {
     if (!address || !currentUser) return;
 
     setLoading(true);
-    setError('');
-    setQuote('');
+    setError("");
+    setQuote("");
     setPaymentInfo(null);
     setVerification(null);
 
     try {
       console.log(
-        'make request to check zkx402 support',
-        `${API_URL}/motivate`
+        "make request to check zkx402 support",
+        `${API_URL}/motivate`,
       );
       const response0 = await fetch(`${API_URL}/motivate`, {
-        method: 'GET',
+        method: "GET",
       });
       if (!response0.ok && response0.status !== 402) {
         throw new Error(
-          `Expected 402 Payment Required, got: ${response0.status}`
+          `Expected 402 Payment Required, got: ${response0.status}`,
         );
       }
       // Extract contentMetadata and variableAmountRequired from payment requirements
@@ -284,62 +291,62 @@ function DemoPageInner() {
       const contentMetadata = paymentRequirement?.extra?.contentMetadata;
       const variableAmountRequired =
         paymentRequirement?.extra?.variableAmountRequired;
-      console.log('paymentRequirement:', paymentRequirement);
+      console.log("paymentRequirement:", paymentRequirement);
       // Note:
       // - `contentMetadata` and `variableAmountRequired` are server-advertised metadata about
       //   potential proof/claim tiers.
       // - This client does NOT cryptographically verify any proof based on `contentMetadata`.
       // - Proof verification (chain/API provider) and pricing policy evaluation happen on the server.
-      console.log('contentMetadata (advertised):', contentMetadata);
-      console.log('variableAmountRequired (tiers):', variableAmountRequired);
+      console.log("contentMetadata (advertised):", contentMetadata);
+      console.log("variableAmountRequired (tiers):", variableAmountRequired);
 
       // Claim intent (for discounts)
-      const myClaims = [{ type: 'human' }];
+      const myClaims = [{ type: "human" }];
 
       console.log(
-        'using CDP x402 hook to make paid request to',
-        `${API_URL}/motivate`
+        "using CDP x402 hook to make paid request to",
+        `${API_URL}/motivate`,
       );
 
       // Make paid request using CDP's useX402 hook.
       // We pass claim intent in headers; the server evaluates policy + verifies proofs (if configured).
       const response = await fetchWithPayment(`${API_URL}/motivate`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          ...(address ? { 'X-Wallet-Address': address } : {}),
-          'X-Proof-Claims': JSON.stringify(myClaims),
+          ...(address ? { "X-Wallet-Address": address } : {}),
+          "X-Proof-Claims": JSON.stringify(myClaims),
         },
       });
 
-      console.log('response status:', response.status);
+      console.log("response status:", response.status);
 
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status}`);
       }
 
       const data: ApiResponse = await response.json();
-      console.log('received data:', data);
+      console.log("received data:", data);
       setQuote(data.quote);
       setVerification(data.verification ?? null);
 
       // parse payment response header - need this if we wanna show txn hash
-      const paymentResponseHeader = response.headers.get('x-payment-response');
-      console.log('payment response header:', paymentResponseHeader);
+      const paymentResponseHeader = response.headers.get("x-payment-response");
+      console.log("payment response header:", paymentResponseHeader);
 
       if (paymentResponseHeader) {
         try {
           const paymentResponse = JSON.parse(atob(paymentResponseHeader));
-          console.log('payment info:', paymentResponse);
+          console.log("payment info:", paymentResponse);
           setPaymentInfo(paymentResponse);
         } catch (e) {
-          console.error('failed to parse payment response:', e);
+          console.error("failed to parse payment response:", e);
         }
       }
 
-      console.log('payment flow complete');
+      console.log("payment flow complete");
       setTimeout(fetchBalance, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'failed to call API');
+      setError(err instanceof Error ? err.message : "failed to call API");
       console.error(err);
     } finally {
       setLoading(false);
@@ -351,8 +358,8 @@ function DemoPageInner() {
     if (!address || !currentUser) return;
 
     setLoading(true);
-    setError('');
-    setQuote('');
+    setError("");
+    setQuote("");
     setPaymentInfo(null);
 
     try {
@@ -360,12 +367,12 @@ function DemoPageInner() {
       const timeout = setTimeout(() => controller.abort(), 25_000);
 
       const response = await fetchWithPayment(`${API_URL}/motivate-gated`, {
-        method: 'GET',
+        method: "GET",
         signal: controller.signal,
         headers: {
-          ...(address ? { 'X-Wallet-Address': address } : {}),
+          ...(address ? { "X-Wallet-Address": address } : {}),
           // For this example we now require proof-of-humanity.
-          'X-Proof-Claims': JSON.stringify([{ type: 'human' }]),
+          "X-Proof-Claims": JSON.stringify([{ type: "human" }]),
         },
       });
       clearTimeout(timeout);
@@ -388,7 +395,8 @@ function DemoPageInner() {
       const data: ApiResponse = await response.json();
       setQuote(data.quote);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'failed to call proof-gated API';
+      const msg =
+        err instanceof Error ? err.message : "failed to call proof-gated API";
       setError(msg);
       console.error(err);
     } finally {
@@ -403,7 +411,7 @@ function DemoPageInner() {
         <div className="top-nav">
           <div className="nav-left">
             <h1>
-              <span style={{ color: '#33FF33' }}>zk</span>x402 demo
+              <span style={{ color: "#33FF33" }}>zk</span>x402 demo
             </h1>
             <p>pay for APIs with crypto</p>
           </div>
@@ -435,16 +443,16 @@ function DemoPageInner() {
                       setTimeout(() => setCopied(false), 2000);
                     }}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: copied ? '#00ff00' : '#00ffff',
-                      cursor: 'pointer',
+                      background: "none",
+                      border: "none",
+                      color: copied ? "#00ff00" : "#00ffff",
+                      cursor: "pointer",
                       padding: 0,
-                      fontSize: '16px',
-                      marginLeft: '8px',
+                      fontSize: "16px",
+                      marginLeft: "8px",
                     }}
                   >
-                    {copied ? '✓' : '📋'}
+                    {copied ? "✓" : "📋"}
                   </button>
                 </div>
                 <div className="balance-badge">{balance} USDC</div>
@@ -470,7 +478,7 @@ function DemoPageInner() {
               <h2>sign in to get started</h2>
               <p>authenticate with email, SMS, Google, or X</p>
               {error && (
-                <div className="error" style={{ marginTop: '16px' }}>
+                <div className="error" style={{ marginTop: "16px" }}>
                   <strong>error:</strong> {error}
                 </div>
               )}
@@ -482,38 +490,38 @@ function DemoPageInner() {
                 >
                   sign in
                 </button>
-              ) : authStep === 'method' ? (
+              ) : authStep === "method" ? (
                 <div
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
                   }}
                 >
                   <button
                     className="button button-primary"
-                    onClick={() => setAuthStep('email')}
+                    onClick={() => setAuthStep("email")}
                     disabled={loading}
                   >
                     email
                   </button>
                   <button
                     className="button button-primary"
-                    onClick={() => setAuthStep('sms')}
+                    onClick={() => setAuthStep("sms")}
                     disabled={loading}
                   >
                     mobile
                   </button>
                   <button
                     className="button button-primary"
-                    onClick={() => handleOAuthSignIn('google')}
+                    onClick={() => handleOAuthSignIn("google")}
                     disabled={loading}
                   >
                     google
                   </button>
                   <button
                     className="button button-primary"
-                    onClick={() => handleOAuthSignIn('x')}
+                    onClick={() => handleOAuthSignIn("x")}
                     disabled={loading}
                   >
                     X
@@ -526,12 +534,12 @@ function DemoPageInner() {
                     cancel
                   </button>
                 </div>
-              ) : authStep === 'email' ? (
+              ) : authStep === "email" ? (
                 <div
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
                   }}
                 >
                   <input
@@ -540,11 +548,11 @@ function DemoPageInner() {
                     value={emailOrPhone}
                     onChange={(e) => setEmailOrPhone(e.target.value)}
                     style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      color: '#333',
-                      backgroundColor: '#fff',
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #ddd",
+                      color: "#333",
+                      backgroundColor: "#fff",
                     }}
                   />
                   <button
@@ -552,25 +560,25 @@ function DemoPageInner() {
                     onClick={handleEmailSignIn}
                     disabled={loading || !emailOrPhone}
                   >
-                    {loading ? 'sending...' : 'send OTP'}
+                    {loading ? "sending..." : "send OTP"}
                   </button>
                   <button
                     className="button button-secondary"
                     onClick={() => {
-                      setAuthStep('method');
-                      setEmailOrPhone('');
+                      setAuthStep("method");
+                      setEmailOrPhone("");
                     }}
                     disabled={loading}
                   >
                     back
                   </button>
                 </div>
-              ) : authStep === 'sms' ? (
+              ) : authStep === "sms" ? (
                 <div
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
                   }}
                 >
                   <input
@@ -579,11 +587,11 @@ function DemoPageInner() {
                     value={emailOrPhone}
                     onChange={(e) => setEmailOrPhone(e.target.value)}
                     style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      color: '#333',
-                      backgroundColor: '#fff',
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #ddd",
+                      color: "#333",
+                      backgroundColor: "#fff",
                     }}
                   />
                   <button
@@ -591,13 +599,13 @@ function DemoPageInner() {
                     onClick={handleSmsSignIn}
                     disabled={loading || !emailOrPhone}
                   >
-                    {loading ? 'sending...' : 'send OTP'}
+                    {loading ? "sending..." : "send OTP"}
                   </button>
                   <button
                     className="button button-secondary"
                     onClick={() => {
-                      setAuthStep('method');
-                      setEmailOrPhone('');
+                      setAuthStep("method");
+                      setEmailOrPhone("");
                     }}
                     disabled={loading}
                   >
@@ -607,22 +615,22 @@ function DemoPageInner() {
               ) : (
                 <div
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
                   }}
                 >
                   <p
                     style={{
-                      fontSize: '14px',
-                      color: '#666',
-                      marginBottom: '8px',
+                      fontSize: "14px",
+                      color: "#666",
+                      marginBottom: "8px",
                     }}
                   >
                     enter the 6-digit code sent to {emailOrPhone}
                   </p>
                   {!flowId && (
-                    <p style={{ fontSize: '12px', color: '#c62828' }}>
+                    <p style={{ fontSize: "12px", color: "#c62828" }}>
                       Missing flow id — please go back and resend OTP.
                     </p>
                   )}
@@ -633,11 +641,11 @@ function DemoPageInner() {
                     onChange={(e) => setOtp(e.target.value)}
                     maxLength={6}
                     style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      color: '#333',
-                      backgroundColor: '#fff',
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #ddd",
+                      color: "#333",
+                      backgroundColor: "#fff",
                     }}
                   />
                   <button
@@ -645,14 +653,14 @@ function DemoPageInner() {
                     onClick={handleVerifyOtp}
                     disabled={loading || !otp || !flowId}
                   >
-                    {loading ? 'verifying...' : 'verify OTP'}
+                    {loading ? "verifying..." : "verify OTP"}
                   </button>
                   <button
                     className="button button-secondary"
                     onClick={() => {
-                      setAuthStep('method');
-                      setEmailOrPhone('');
-                      setOtp('');
+                      setAuthStep("method");
+                      setEmailOrPhone("");
+                      setOtp("");
                     }}
                     disabled={loading}
                   >
@@ -672,7 +680,7 @@ function DemoPageInner() {
                   onClick={handleCallApi}
                   disabled={loading || parseFloat(balance) < purchasePrice}
                 >
-                  {loading ? 'processing...' : 'access sensitive content'}
+                  {loading ? "processing..." : "access sensitive content"}
                 </button>
                 <button
                   className="button button-secondary"
@@ -680,17 +688,18 @@ function DemoPageInner() {
                   disabled={loading || parseFloat(balance) < purchasePrice}
                   style={{ marginTop: 12 }}
                 >
-                  {loading ? 'processing...' : 'access proof-gated content'}
+                  {loading ? "processing..." : "access proof-gated content"}
                 </button>
                 {parseFloat(balance) < purchasePrice && (
                   <p
                     style={{
-                      fontSize: '14px',
-                      color: '#ff00ff',
-                      marginTop: '16px',
+                      fontSize: "14px",
+                      color: "#ff00ff",
+                      marginTop: "16px",
                     }}
                   >
-                    ⚠️ need at least {purchasePrice} USDC - use faucet button above
+                    ⚠️ need at least {purchasePrice} USDC - use faucet button
+                    above
                   </p>
                 )}
               </div>
@@ -705,32 +714,32 @@ function DemoPageInner() {
                 <div className="response-section">
                   <div
                     style={{
-                      textAlign: 'center',
-                      marginBottom: '24px',
+                      textAlign: "center",
+                      marginBottom: "24px",
                     }}
                   >
                     <div
                       style={{
-                        display: 'inline-block',
-                        padding: '12px 32px',
-                        background: 'linear-gradient(135deg, #00ff00, #00cc00)',
-                        color: '#000',
-                        fontWeight: 'bold',
-                        fontSize: '20px',
-                        borderRadius: '8px',
-                        marginBottom: '16px',
-                        boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
-                        letterSpacing: '2px',
+                        display: "inline-block",
+                        padding: "12px 32px",
+                        background: "linear-gradient(135deg, #00ff00, #00cc00)",
+                        color: "#000",
+                        fontWeight: "bold",
+                        fontSize: "20px",
+                        borderRadius: "8px",
+                        marginBottom: "16px",
+                        boxShadow: "0 0 20px rgba(0, 255, 0, 0.5)",
+                        letterSpacing: "2px",
                       }}
                     >
                       🔓 ACCESS GRANTED
                     </div>
                     <div
                       style={{
-                        color: '#00ff00',
-                        fontSize: '14px',
-                        fontFamily: 'monospace',
-                        marginTop: '8px',
+                        color: "#00ff00",
+                        fontSize: "14px",
+                        fontFamily: "monospace",
+                        marginTop: "8px",
                       }}
                     >
                       CLASSIFIED CONTENT UNLOCKED • PAYMENT VERIFIED
@@ -739,28 +748,30 @@ function DemoPageInner() {
                     {verification && (
                       <div
                         style={{
-                          marginTop: '12px',
-                          display: 'inline-block',
-                          textAlign: 'left',
-                          background: 'rgba(0, 255, 0, 0.08)',
-                          border: '1px solid rgba(0, 255, 0, 0.35)',
-                          borderRadius: '8px',
-                          padding: '10px 12px',
-                          fontFamily: 'monospace',
-                          fontSize: '12px',
-                          color: '#C9FFD2',
-                          maxWidth: '680px',
+                          marginTop: "12px",
+                          display: "inline-block",
+                          textAlign: "left",
+                          background: "rgba(0, 255, 0, 0.08)",
+                          border: "1px solid rgba(0, 255, 0, 0.35)",
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          fontFamily: "monospace",
+                          fontSize: "12px",
+                          color: "#C9FFD2",
+                          maxWidth: "680px",
                         }}
                       >
-                        <div style={{ fontWeight: 'bold', color: '#00ff00' }}>
+                        <div style={{ fontWeight: "bold", color: "#00ff00" }}>
                           server policy outcome
                         </div>
                         <div>qualified: {String(verification.qualified)}</div>
                         <div>
-                          discountApplied: {String(verification.discountApplied)}
+                          discountApplied:{" "}
+                          {String(verification.discountApplied)}
                         </div>
                         <div>
-                          discountedPrice: {String(verification.discountedPrice)}
+                          discountedPrice:{" "}
+                          {String(verification.discountedPrice)}
                         </div>
                       </div>
                     )}
@@ -768,47 +779,47 @@ function DemoPageInner() {
 
                   <div
                     style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      marginBottom: '24px',
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "24px",
                     }}
                   >
                     <img
                       src="/assets/leak_cat.jpg"
                       alt="Classified Leak"
                       style={{
-                        maxWidth: '600px',
-                        width: '100%',
-                        borderRadius: '12px',
-                        border: '3px solid #00ff00',
-                        boxShadow: '0 0 30px rgba(0, 255, 0, 0.3)',
+                        maxWidth: "600px",
+                        width: "100%",
+                        borderRadius: "12px",
+                        border: "3px solid #00ff00",
+                        boxShadow: "0 0 30px rgba(0, 255, 0, 0.3)",
                       }}
                     />
                   </div>
 
                   <div
                     style={{
-                      textAlign: 'center',
-                      color: '#00ff00',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                      marginBottom: '16px',
-                      letterSpacing: '1px',
+                      textAlign: "center",
+                      color: "#00ff00",
+                      fontFamily: "monospace",
+                      fontSize: "12px",
+                      marginBottom: "16px",
+                      letterSpacing: "1px",
                     }}
                   >
                     [ TOP SECRET - WHISTLEBLOWER PRESS CARD ]
                   </div>
 
                   {paymentInfo && paymentInfo.transaction && (
-                    <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <div style={{ marginTop: "16px", textAlign: "center" }}>
                       <a
                         href={`https://sepolia.basescan.org/tx/${paymentInfo.transaction}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="button button-secondary"
                         style={{
-                          display: 'inline-block',
-                          textDecoration: 'none',
+                          display: "inline-block",
+                          textDecoration: "none",
                         }}
                       >
                         view transaction on basescan →
@@ -828,10 +839,10 @@ function DemoPageInner() {
             onClick={() => setShowExplanation(!showExplanation)}
           >
             {showExplanation ? (
-              '▼ hide details'
+              "▼ hide details"
             ) : (
               <>
-                ▶ how <span style={{ color: '#33FF33' }}>zk</span>x402 works
+                ▶ how <span style={{ color: "#33FF33" }}>zk</span>x402 works
               </>
             )}
           </button>
@@ -839,11 +850,13 @@ function DemoPageInner() {
           {showExplanation && (
             <div className="expanded-content">
               <h3>
-                how <span style={{ color: '#33FF33' }}>zk</span>x402 works:
+                how <span style={{ color: "#33FF33" }}>zk</span>x402 works:
               </h3>
               <ol>
                 <li>
-                  <strong>user clicks &quot;Access Sensitive Content&quot;</strong>
+                  <strong>
+                    user clicks &quot;Access Sensitive Content&quot;
+                  </strong>
                 </li>
 
                 <li>
@@ -852,12 +865,12 @@ function DemoPageInner() {
                   </strong>
                   <pre
                     style={{
-                      fontSize: '12px',
-                      background: 'white',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      marginTop: '8px',
-                      overflow: 'auto',
+                      fontSize: "12px",
+                      background: "white",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      marginTop: "8px",
+                      overflow: "auto",
                     }}
                   >
                     {`GET http://localhost:3001/motivate`}
@@ -868,18 +881,18 @@ function DemoPageInner() {
                   <strong>
                     server responds with <code>402 Payment Required</code>
                   </strong>
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", color: "#0052ff" }}>
                       view 402 response →
                     </summary>
                     <pre
                       style={{
-                        fontSize: '11px',
-                        background: 'white',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        marginTop: '8px',
-                        overflow: 'auto',
+                        fontSize: "11px",
+                        background: "white",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        marginTop: "8px",
+                        overflow: "auto",
                       }}
                     >
                       {`HTTP/1.1 402 Payment Required
@@ -915,43 +928,43 @@ Content-Type: application/json
 
                 <li>
                   <strong>
-                    client sends claim intent (no client-side “proof verification”)
-                    and creates/signs the payment transaction
+                    client sends claim intent (no client-side “proof
+                    verification”) and creates/signs the payment transaction
                   </strong>
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", color: "#0052ff" }}>
                       view technical details →
                     </summary>
                     <div
                       style={{
-                        fontSize: '13px',
-                        marginTop: '8px',
-                        lineHeight: '1.6',
+                        fontSize: "13px",
+                        marginTop: "8px",
+                        lineHeight: "1.6",
                       }}
                     >
                       <p>
-                        The server may advertise optional metadata (like{' '}
-                        <code>contentMetadata</code> and tiered pricing). The demo
-                        client does <strong>not</strong> cryptographically verify
-                        ZK proofs in the browser — verification and pricing
-                        policy evaluation happen on the server (chain/API
-                        provider via middleware policy).
+                        The server may advertise optional metadata (like{" "}
+                        <code>contentMetadata</code> and tiered pricing). The
+                        demo client does <strong>not</strong> cryptographically
+                        verify ZK proofs in the browser — verification and
+                        pricing policy evaluation happen on the server
+                        (chain/API provider via middleware policy).
                       </p>
                       <p>
                         Uses <strong>EIP-3009 transferWithAuthorization</strong>
                         :
                       </p>
-                      <ul style={{ marginLeft: '20px', marginTop: '8px' }}>
-                        <li style={{ textDecoration: 'line-through' }}>
+                      <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
+                        <li style={{ textDecoration: "line-through" }}>
                           creates USDC transfer authorization (0.01 USDC =
                           10,000 units)
                         </li>
-                        <li style={{ color: '#33FF33' }}>
+                        <li style={{ color: "#33FF33" }}>
                           creates USDC transfer authorization (0.005 USDC =
                           5,000 units)
                         </li>
                         <li>
-                          sets <code>from</code> (your wallet) and{' '}
+                          sets <code>from</code> (your wallet) and{" "}
                           <code>to</code> (receiver)
                         </li>
                         <li>
@@ -972,26 +985,27 @@ Content-Type: application/json
 
                 <li>
                   <strong>
-                    client retries request with <code>X-PAYMENT</code> header
+                    client retries request with <code>PAYMENT-SIGNATURE</code>{" "}
+                    (legacy: <code>X-PAYMENT</code>)
                   </strong>
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", color: "#0052ff" }}>
                       view payment header →
                     </summary>
                     <pre
                       style={{
-                        fontSize: '11px',
-                        background: 'white',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        marginTop: '8px',
-                        overflow: 'auto',
+                        fontSize: "11px",
+                        background: "white",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        marginTop: "8px",
+                        overflow: "auto",
                       }}
                     >
                       {`GET http://localhost:3001/motivate
-X-PAYMENT: base64_encoded_json
+PAYMENT-SIGNATURE: base64_encoded_json
 
-Decoded X-PAYMENT:
+Decoded PAYMENT-SIGNATURE:
 {
   "x402Version": 1,
   "scheme": "exact",
@@ -1002,16 +1016,17 @@ Decoded X-PAYMENT:
       "from": "0xYourWalletAddress",
       "to": "0x036CbD...USDC",
       "value": "`}
-                      <span style={{ color: '#33FF33' }}>5000</span>
+                      <span style={{ color: "#33FF33" }}>5000</span>
                       {`",
       "validAfter": "0",
       "validBefore": "1731362400",
       "nonce": "0xdef456..."`}
-                      <span style={{ color: '#33FF33' }}>,</span>
+                      <span style={{ color: "#33FF33" }}>,</span>
                       {`
       `}
-                      <span style={{ color: '#33FF33' }}>
-                        &quot;zkproofs&quot;: &quot;zkproof(abc), zkproof(def)&quot;
+                      <span style={{ color: "#33FF33" }}>
+                        &quot;zkproofs&quot;: &quot;zkproof(abc),
+                        zkproof(def)&quot;
                       </span>
                       {`
     }
@@ -1023,22 +1038,22 @@ Decoded X-PAYMENT:
 
                 <li>
                   <strong>
-                    server{' '}
-                    <span style={{ color: '#33FF33' }}>verifies zkproofs</span>{' '}
+                    server{" "}
+                    <span style={{ color: "#33FF33" }}>verifies zkproofs</span>{" "}
                     then verifies payment using CDP facilitator
                   </strong>
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", color: "#0052ff" }}>
                       view facilitator call →
                     </summary>
                     <pre
                       style={{
-                        fontSize: '11px',
-                        background: 'white',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        marginTop: '8px',
-                        overflow: 'auto',
+                        fontSize: "11px",
+                        background: "white",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        marginTop: "8px",
+                        overflow: "auto",
                       }}
                     >
                       {`POST https://api.cdp.coinbase.com/platform/v2/x402/verify
@@ -1047,7 +1062,7 @@ Content-Type: application/json
 
 {
   "x402Version": 1,
-  "paymentPayload": { /* X-PAYMENT data */ },
+  "paymentPayload": { /* PAYMENT-SIGNATURE data */ },
   "paymentRequirements": { /* from 402 response */ }
 }
 
@@ -1055,16 +1070,16 @@ Response:
 {
   "isValid": true,
   "payer": "0xYourWalletAddress"`}
-                      <span style={{ color: '#33FF33' }}>,</span>
+                      <span style={{ color: "#33FF33" }}>,</span>
                       {`
   `}
-                      <span style={{ color: '#33FF33' }}>
+                      <span style={{ color: "#33FF33" }}>
                         &quot;isVerified&quot;: true
                       </span>
                       {`
 }`}
                     </pre>
-                    <p style={{ fontSize: '13px', marginTop: '8px' }}>
+                    <p style={{ fontSize: "13px", marginTop: "8px" }}>
                       the server uses its CDP API key to authenticate with the
                       facilitator, which verifies the signature and checks that
                       the payment matches requirements
@@ -1074,22 +1089,22 @@ Response:
 
                 <li>
                   <strong>Facilitator settles payment on Base Sepolia</strong>
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", color: "#0052ff" }}>
                       view settlement →
                     </summary>
                     <div
                       style={{
-                        fontSize: '13px',
-                        marginTop: '8px',
-                        lineHeight: '1.6',
+                        fontSize: "13px",
+                        marginTop: "8px",
+                        lineHeight: "1.6",
                       }}
                     >
                       <p>
-                        Facilitator calls USDC contract&apos;s{' '}
+                        Facilitator calls USDC contract&apos;s{" "}
                         <code>transferWithAuthorization</code>:
                       </p>
-                      <ul style={{ marginLeft: '20px', marginTop: '8px' }}>
+                      <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
                         <li>
                           submits your signed authorization to the blockchain
                         </li>
@@ -1104,23 +1119,23 @@ Response:
 
                 <li>
                   <strong>server returns the x402-gated content</strong>
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#0052ff' }}>
+                  <details style={{ marginTop: "8px" }}>
+                    <summary style={{ cursor: "pointer", color: "#0052ff" }}>
                       view response →
                     </summary>
                     <pre
                       style={{
-                        fontSize: '11px',
-                        background: 'white',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        marginTop: '8px',
-                        overflow: 'auto',
+                        fontSize: "11px",
+                        background: "white",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        marginTop: "8px",
+                        overflow: "auto",
                       }}
                     >
                       {`HTTP/1.1 200 OK
 Content-Type: application/json
-X-PAYMENT-RESPONSE: base64_encoded_json
+PAYMENT-RESPONSE: base64_encoded_json
 
 {
   "quote": "ACCESS GRANTED - Classified content unlocked",
@@ -1133,7 +1148,7 @@ X-PAYMENT-RESPONSE: base64_encoded_json
   }
 }
 
-Decoded X-PAYMENT-RESPONSE:
+Decoded PAYMENT-RESPONSE:
 {
   "success": true,
   "transaction": "0x789abc...",
@@ -1148,7 +1163,7 @@ Decoded X-PAYMENT-RESPONSE:
                   <strong>
                     user sees classified content and payment confirmation
                   </strong>
-                  <p style={{ fontSize: '13px', marginTop: '8px' }}>
+                  <p style={{ fontSize: "13px", marginTop: "8px" }}>
                     the sensitive whistleblower image is revealed with access
                     granted status. click the transaction hash to view it on
                     Basescan and see the onchain payment
