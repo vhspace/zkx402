@@ -785,8 +785,18 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       };
     }
 
+    // When variable-amount discount applied, primary requirement must show discounted amount
+    const primaryAcceptOverride =
+      verificationMetadata?.discountApplied &&
+      acceptsList?.length > 0
+        ? { ...acceptsList[0], amount: maxAmountRequired }
+        : null;
     const paymentRequirements = acceptsList
-      ? acceptsList.map((accept) => buildPaymentRequirement(accept))
+      ? acceptsList.map((accept, i) =>
+          buildPaymentRequirement(
+            i === 0 && primaryAcceptOverride ? primaryAcceptOverride : accept,
+          ),
+        )
       : [buildPaymentRequirement()];
 
     function selectPaymentRequirement(requirements, paymentPayload) {
