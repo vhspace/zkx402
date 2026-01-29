@@ -1,19 +1,16 @@
 import { getAddress } from "viem";
-import { exact } from "x402/schemes";
+import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 import {
   computeRoutePatterns,
-  findMatchingPaymentRequirements,
   findMatchingRoute,
   processPriceToAtomicAmount,
   toJsonSafe,
-} from "x402/shared";
-import { getPaywallHtml } from "x402/paywall";
-import {
-  settleResponseHeader,
-  SupportedEVMNetworks,
-  SupportedSVMNetworks,
-} from "x402/types";
-import { useFacilitator } from "x402/verify";
+} from "x402/shared"; // TODO: these are still from v1, need to check if they moved
+import { createPaywall } from "@x402/paywall";
+import { evmPaywall } from "@x402/paywall/evm";
+import { svmPaywall } from "@x402/paywall/svm";
 import { claimKey } from "./proofs/claims.js";
 import { normalizeProofPolicy } from "./proofs/policy.js";
 import {
@@ -28,6 +25,7 @@ import { createVlayerChainProvider } from "./proofs/providers/vlayer_chain.js";
 import { createVlayerApiProvider } from "./proofs/providers/vlayer_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
+import { normalizeNetwork, toLegacyNetwork } from "./x402/networks.js";
 
 // Proof-gated pricing should be driven by `proofPolicy` + provider routing.
 
@@ -67,56 +65,59 @@ function formatUsdLikePriceFromAtomic(amountAtomic, decimals) {
  * @param facilitator - Optional configuration for the payment facilitator service
  * @param paywall - Optional configuration for the default paywall
  * @returns An Express middleware handler
- *
- * @example
- * ```javascript
- * // Simple configuration - All endpoints are protected by $0.01 of USDC on base-sepolia
- * app.use(paymentMiddleware(
- *   '0x123...', // payTo address
- *   {
- *     price: '$0.01', // USDC amount in dollars
- *     network: 'base-sepolia'
- *   },
- *   // Optional facilitator configuration. Defaults to x402.org/facilitator for testnet usage
- * ));
- *
- * // Advanced configuration - Endpoint-specific payment requirements & custom facilitator
- * app.use(paymentMiddleware('0x123...', // payTo: The address to receive payments*    {
- *   {
- *     '/weather/*': {
- *       price: '$0.001', // USDC amount in dollars
- *       network: 'base',
- *       config: {
- *         description: 'Access to weather data'
- *       }
- *     }
- *   },
- *   {
- *     url: 'https://facilitator.example.com',
- *     createAuthHeaders: async () => ({
- *       verify: { "Authorization": "Bearer token" },
- *       settle: { "Authorization": "Bearer token" }
- *     })
- *   },
- *   {
- *     cdpClientKey: 'your-cdp-client-key',
- *     appLogo: '/images/logo.svg',
- *     appName: 'My App',
- *   }
- * ));
- * ```
  */
 export function paymentMiddleware(payTo, routes, facilitator, paywall) {
-  const useLocalFacilitator =
-    facilitator &&
-    typeof facilitator.verify === "function" &&
-    typeof facilitator.settle === "function";
-  const { verify, settle, supported } = useLocalFacilitator
-    ? facilitator
-    : useFacilitator(facilitator);
-  const x402Version = 1;
+  const x402Version = 2;
   const auditEnabled = process.env.ZKX402_AUDIT_LOG === "true";
   const debugEnabled = process.env.ZKX402_DEBUG_LOG === "true";
+
+  function buildResourceServer() {
+    // Support legacy test facilitators (verify/settle) to keep unit tests offline.
+    if (facilitator && typeof facilitator.verify === "function" && typeof facilitator.settle === "function") {
+      return {
+        createPaymentRequiredResponse(requirements, resource) {
+          return {
+            x402Version,
+            error: "Payment Required",
+            resource,
+            accepts: requirements,
+          };
+        },
+        async verifyPayment(paymentPayload, requirement) {
+          const response = await facilitator.verify(paymentPayload, requirement);
+          if (response && typeof response === "object") return response;
+          return { isValid: Boolean(response) };
+        },
+        async settlePayment(paymentPayload, requirement) {
+          const response = await facilitator.settle(paymentPayload, requirement);
+          if (response && typeof response === "object") return response;
+          return { success: Boolean(response) };
+        },
+      };
+    }
+
+    // Initialize v2 Resource Server
+    const facilitatorUrl = facilitator?.url || "https://x402.org/facilitator";
+    const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+    return new x402ResourceServer(facilitatorClient)
+      .register("eip155:8453", new ExactEvmScheme())
+      .register("eip155:84532", new ExactEvmScheme())
+      .register("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", new ExactSvmScheme())
+      .register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", new ExactSvmScheme());
+  }
+
+  const resourceServer = buildResourceServer();
+
+  const paywallProvider =
+    paywall && typeof paywall.generateHtml === "function"
+      ? paywall
+      : createPaywall()
+          .withNetwork(evmPaywall)
+          .withNetwork(svmPaywall)
+          .withConfig(
+            paywall && typeof paywall === "object" ? paywall : {}
+          )
+          .build();
 
   const proofProviders = [
     createSelfChainProvider(),
@@ -141,7 +142,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       return next();
     }
 
-    const { price, network, config = {} } = matchingRoute.config;
+    const { price, network: rawNetwork, config = {} } = matchingRoute.config;
+    const network = normalizeNetwork(rawNetwork);
     const {
       description,
       mimeType,
@@ -157,10 +159,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     const correlationId = getCorrelationId(req);
 
-    // Presence of X-PAYMENT gates whether we should do potentially costly checks.
-    // NOTE: x402 itself supports a 402 negotiation step; when no payment is present we prefer
-    // to avoid vendor API calls and return a price quote instead (see proof verification below).
-    const payment = req.header("X-PAYMENT");
+    // v2: read PAYMENT-SIGNATURE or legacy X-PAYMENT
+    const payment = req.header("PAYMENT-SIGNATURE") || req.header("X-PAYMENT");
 
     // Read user proofs from header for verification and dynamic pricing
     let presentedClaims = [];
@@ -265,15 +265,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     const accessControl = resolveAccessControl(extraConfig);
 
     // Custom function to verify claims (discount tiers and hard-gating)
-    /**
-     * Verifies whether `requiredClaims` are verified under the route policy.
-     *
-     * @param {Array} presentedClaims - Array of canonical claim objects the user intends to use.
-     * @param {Array} requiredClaims - Array of canonical claim objects required by this tier.
-     * @param {Object} options
-     * @param {boolean} options.requirePresentation - If true, claims must be declared in `presentedClaims` (discount intent).
-     * @returns {Promise<Object>} Verification result with isValid flag and details
-     */
     async function verifyClaimsForTier(presentedClaims, requiredClaims, options = {}) {
       const requirePresentation = options?.requirePresentation !== false;
       const presented = Array.isArray(presentedClaims) ? presentedClaims : [];
@@ -302,10 +293,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
             };
           }
 
-          // Client can optionally constrain which provider to use (soft checks).
-          // Shape:
-          // - { provider: "self" } => applies to all claims
-          // - { providers: { "human": "self_api" } } => per-claim key
           const planProvider =
             typeof proofPlan?.provider === "string" ? proofPlan.provider : null;
           const planProviders =
@@ -325,8 +312,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               }
             : normalizedPolicy;
 
-          // Quote mode (no payment): avoid vendor API calls, but still allow the client
-          // to discover the *price* (including verification fees/commission).
           let routed = null;
           let durationMs = 0;
           const quoteOnly = !payment;
@@ -441,7 +426,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         })
       );
 
-      // Check if all claims are verified
       const allVerified = verificationResults.every(
         (result) => result.verified
       );
@@ -461,16 +445,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       };
     }
 
-    // Compute base amount once. From here on, prefer atomic units (no floats).
-    const baseAtomicAmountForAsset = processPriceToAtomicAmount(price, network);
+    // v1 compat: processPriceToAtomicAmount still used for now
+    const pricingNetwork = toLegacyNetwork(rawNetwork || network);
+    const baseAtomicAmountForAsset = processPriceToAtomicAmount(price, pricingNetwork);
     if ("error" in baseAtomicAmountForAsset) {
       throw new Error(baseAtomicAmountForAsset.error);
     }
     const baseMaxAmountRequired = baseAtomicAmountForAsset.maxAmountRequired;
     const baseAsset = baseAtomicAmountForAsset.asset;
-
-    // Verify claims against variableAmountRequired and adjust amount if qualified.
-    // SECURITY: discounts require `proofPolicy`.
 
     let finalMaxAmountRequired = baseMaxAmountRequired;
     let verificationMetadata = null;
@@ -496,196 +478,113 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
           },
         };
       } else {
-      // Check each discount option
-      for (const discountOption of variableAmountRequired) {
-        const requiredClaims = Array.isArray(discountOption.requiredClaims)
-          ? discountOption.requiredClaims
-          : [];
-        const discountedAmountAtomic = safeBigInt(discountOption.amountRequired);
-        if (discountedAmountAtomic === null) {
-          dbg("discount_amount_invalid", {
-            correlationId,
-            amountRequired: discountOption.amountRequired,
-          });
-          continue;
-        }
-
-        // Use custom verification function to verify claims (now async)
-        const verificationResult = await verifyClaimsForTier(
-          presentedClaims,
-          requiredClaims
-        );
-
-        dbg("claim_verification_result", {
-          requiredClaimKeys: verificationResult?.requiredClaimKeys,
-          isValid: verificationResult?.isValid,
-        });
-
-        // Check if user has all required proofs for this discount
-        if (verificationResult.isValid) {
-          dbg("discount_applied", {
-            requiredClaimKeys: verificationResult?.requiredClaimKeys,
-          });
-
-          // Compute verification fee (USD micros). In v1 we assume USDC (6 decimals),
-          // so USD micros map 1:1 to USDC atomic units.
-          let verificationFeeAtomic = 0n;
-          try {
-            const details = verificationResult?.verificationDetails || [];
-            for (const d of details) {
-              const totalUsdMicros =
-                d?.verificationCost?.totalUsdMicros ?? null;
-              if (totalUsdMicros != null) {
-                verificationFeeAtomic += BigInt(String(totalUsdMicros));
-              }
-            }
-          } catch (_) {
-            verificationFeeAtomic = 0n;
+        for (const discountOption of variableAmountRequired) {
+          const requiredClaims = Array.isArray(discountOption.requiredClaims)
+            ? discountOption.requiredClaims
+            : [];
+          const discountedAmountAtomic = safeBigInt(discountOption.amountRequired);
+          if (discountedAmountAtomic === null) {
+            dbg("discount_amount_invalid", {
+              correlationId,
+              amountRequired: discountOption.amountRequired,
+            });
+            continue;
           }
 
-          const discountedTotalAtomic = discountedAmountAtomic + verificationFeeAtomic;
-          finalMaxAmountRequired = discountedTotalAtomic.toString();
-
-          verificationMetadata = {
-            qualified: true,
-            discountApplied: true,
-            requiredClaims,
-            discountedAmount: discountedAmountAtomic.toString(),
-            discountedPrice: formatUsdLikePriceFromAtomic(
-              discountedTotalAtomic,
-              baseAsset?.decimals ?? 6
-            ),
-            verificationFeeAtomic: verificationFeeAtomic.toString(),
+          const verificationResult = await verifyClaimsForTier(
             presentedClaims,
-            verificationResult: verificationResult,
-          };
-          break; // Use first matching discount
-        }
-      }
+            requiredClaims
+          );
 
-      if (!verificationMetadata) {
-        dbg("discount_not_qualified", { correlationId });
-        verificationMetadata = {
-          qualified: false,
-          discountApplied: false,
-          presentedClaims,
-          verificationResult: null,
-        };
-      }
+          if (verificationResult.isValid) {
+            let verificationFeeAtomic = 0n;
+            try {
+              const details = verificationResult?.verificationDetails || [];
+              for (const d of details) {
+                const totalUsdMicros =
+                  d?.verificationCost?.totalUsdMicros ?? null;
+                if (totalUsdMicros != null) {
+                  verificationFeeAtomic += BigInt(String(totalUsdMicros));
+                }
+              }
+            } catch (_) {
+              verificationFeeAtomic = 0n;
+            }
+
+            const discountedTotalAtomic = discountedAmountAtomic + verificationFeeAtomic;
+            finalMaxAmountRequired = discountedTotalAtomic.toString();
+
+            verificationMetadata = {
+              qualified: true,
+              discountApplied: true,
+              requiredClaims,
+              discountedAmount: discountedAmountAtomic.toString(),
+              discountedPrice: formatUsdLikePriceFromAtomic(
+                discountedTotalAtomic,
+                baseAsset?.decimals ?? 6
+              ),
+              verificationFeeAtomic: verificationFeeAtomic.toString(),
+              presentedClaims,
+              verificationResult: verificationResult,
+            };
+            break; 
+          }
+        }
+
+        if (!verificationMetadata) {
+          verificationMetadata = {
+            qualified: false,
+            discountApplied: false,
+            presentedClaims,
+            verificationResult: null,
+          };
+        }
       }
     }
 
-    // Store verification metadata for use in route handler
     req.verificationMetadata = verificationMetadata;
     const maxAmountRequired = finalMaxAmountRequired;
     const asset = baseAsset;
 
-    const resourceUrl =
-      resource || `${req.protocol}://${req.headers.host}${req.path}`;
+    // v2: Respect proxy headers for resource URL
+    const proto = req.header("X-Forwarded-Proto") || req.protocol;
+    const host = req.header("X-Forwarded-Host") || req.headers.host;
+    const resourceUrl = resource || `${proto}://${host}${req.originalUrl}`;
 
-    let paymentRequirements = [];
-
-    // TODO: create a shared middleware function to build payment requirements
-    // evm networks
-    if (SupportedEVMNetworks.includes(network)) {
-      paymentRequirements.push({
-        scheme: "exact",
-        network,
-        maxAmountRequired,
-        resource: resourceUrl,
-        description: description ?? "",
-        mimeType: mimeType ?? "",
-        payTo: getAddress(payTo),
-        maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
-        asset: getAddress(assetOverride || asset.address),
-        // TODO: Rename outputSchema to requestStructure
-        outputSchema: {
-          input: {
-            type: "http",
-            method: req.method.toUpperCase(),
-            discoverable: discoverable ?? true,
-            ...inputSchema,
-          },
-          output: outputSchema,
-        },
-        extra: {
-          ...asset.eip712,
-          ...extraConfig,
-          ...(accessControl?.enabled
-            ? {
-                accessControl: {
-                  mode: accessControl.mode,
-                  statusCode: accessControl.statusCode,
-                  requiredClaims: accessControl.requiredClaims,
-                },
-              }
-            : {}),
-          // Proof cost metadata (never include secret API keys here).
-          ...(extraConfig?.proofCosts
-            ? {
-                proofCostsHash: proofCostsHash(extraConfig.proofCosts),
-                proofCostsCurrency: extraConfig.proofCosts.currency || "usd_micros",
-                proofCostsDefaultCommissionBps:
-                  extraConfig.proofCosts.defaultCommissionBps ?? 0,
-              }
-            : {}),
-          ...(proofPlan ? { proofPlan } : {}),
-          ...(verificationMetadata?.verificationFeeAtomic
-            ? { proofVerificationFeeAtomic: verificationMetadata.verificationFeeAtomic }
-            : {}),
-        },
-        // TODO: add zk requests here
-      });
-    }
-
-    // svm networks
-    else if (SupportedSVMNetworks.includes(network)) {
-      // get the supported payments from the facilitator
-      const paymentKinds = await supported();
-
-      // find the payment kind that matches the network and scheme
-      let feePayer;
-      for (const kind of paymentKinds.kinds) {
-        if (kind.network === network && kind.scheme === "exact") {
-          feePayer = kind?.extra?.feePayer;
-          break;
-        }
-      }
-
-      // if no fee payer is found, throw an error
-      if (!feePayer) {
-        throw new Error(
-          `The facilitator did not provide a fee payer for network: ${network}.`
-        );
-      }
-
-      paymentRequirements.push({
-        scheme: "exact",
-        network,
-        maxAmountRequired,
-        resource: resourceUrl,
-        description: description ?? "",
-        mimeType: mimeType ?? "",
-        payTo: payTo,
-        maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
-        asset: asset.address,
-        // TODO: Rename outputSchema to requestStructure
-        outputSchema: {
-          input: {
-            type: "http",
-            method: req.method.toUpperCase(),
-            discoverable: discoverable ?? true,
-            ...inputSchema,
-          },
-          output: outputSchema,
-        },
-        extra: {
-          feePayer,
-        },
-      });
-    } else {
-      throw new Error(`Unsupported network: ${network}`);
-    }
+    // Build v2 PaymentRequirements
+    const paymentRequirement = {
+      scheme: "exact",
+      network,
+      amount: maxAmountRequired, // v2: amount instead of maxAmountRequired
+      payTo: getAddress(payTo),
+      asset: getAddress(assetOverride || asset.address),
+      maxTimeoutSeconds: maxTimeoutSeconds ?? 60,
+      extra: {
+        ...asset.eip712,
+        ...extraConfig,
+        ...(accessControl?.enabled
+          ? {
+              accessControl: {
+                mode: accessControl.mode,
+                statusCode: accessControl.statusCode,
+                requiredClaims: accessControl.requiredClaims,
+              },
+            }
+          : {}),
+        ...(extraConfig?.proofCosts
+          ? {
+              proofCostsHash: proofCostsHash(extraConfig.proofCosts),
+              proofCostsCurrency: extraConfig.proofCosts.currency || "usd_micros",
+              proofCostsDefaultCommissionBps:
+                extraConfig.proofCosts.defaultCommissionBps ?? 0,
+            }
+          : {}),
+        ...(proofPlan ? { proofPlan } : {}),
+        ...(verificationMetadata?.verificationFeeAtomic
+          ? { proofVerificationFeeAtomic: verificationMetadata.verificationFeeAtomic }
+          : {}),
+      },
+    };
 
     const userAgent = req.header("User-Agent") || "";
     const acceptHeader = req.header("Accept") || "";
@@ -693,102 +592,82 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       acceptHeader.includes("text/html") && userAgent.includes("Mozilla");
 
     if (!payment) {
-      // TODO handle paywall html for solana
-      if (isWebBrowser) {
-        // Best-effort: use the computed atomic requirement for display, so the paywall
-        // reflects any proof-gated discounts. This is only UI and may lose precision.
-        const displayAmount = Number(
-          formatAtomicToFixedDecimalString(
-            safeBigInt(maxAmountRequired) ?? 0n,
-            asset?.decimals ?? 6
-          )
-        );
+      // v2: createPaymentRequiredResponse + PAYMENT-REQUIRED header
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        [paymentRequirement],
+        {
+          url: resourceUrl,
+          description: description ?? "",
+          mimeType: mimeType ?? "",
+        }
+      );
 
+      if (isWebBrowser) {
         const html =
           customPaywallHtml ||
-          getPaywallHtml({
-            amount: displayAmount,
-            paymentRequirements: toJsonSafe(paymentRequirements),
-            currentUrl: req.originalUrl,
-            testnet: network === "base-sepolia",
-            cdpClientKey: paywall?.cdpClientKey,
+          paywallProvider.generateHtml(paymentRequired, {
+            currentUrl: resourceUrl,
+            testnet: network.includes("sepolia") || network.includes("devnet"),
             appName: paywall?.appName,
             appLogo: paywall?.appLogo,
-            sessionTokenEndpoint: paywall?.sessionTokenEndpoint,
           });
         res.status(402).send(html);
         return;
       }
-      res.status(402).json({
+
+      const requirementsHeader = Buffer.from(JSON.stringify(paymentRequired)).toString("base64");
+
+      res.status(402);
+      res.set("PAYMENT-REQUIRED", requirementsHeader);
+      res.json({
         x402Version,
-        error: "X-PAYMENT header is required",
-        accepts: toJsonSafe(paymentRequirements),
+        error: "Payment Required",
+        message: "This endpoint requires payment",
+        accepts: [paymentRequirement], // v1 compat
       });
       return;
     }
 
     let decodedPayment;
     try {
-      decodedPayment = exact.evm.decodePayment(payment);
+      // v2: base64 decode payment signature
+      decodedPayment = JSON.parse(Buffer.from(payment, "base64").toString("utf-8"));
       decodedPayment.x402Version = x402Version;
     } catch (error) {
-      console.error(error);
       res.status(402).json({
         x402Version,
-        error: error || "Invalid or malformed payment header",
-        accepts: toJsonSafe(paymentRequirements),
-      });
-      return;
-    }
-
-    const selectedPaymentRequirements = findMatchingPaymentRequirements(
-      paymentRequirements,
-      decodedPayment
-    );
-    if (!selectedPaymentRequirements) {
-      res.status(402).json({
-        x402Version,
-        error: "Unable to find matching payment requirements",
-        accepts: toJsonSafe(paymentRequirements),
+        error: "Invalid or malformed payment header",
+        accepts: [paymentRequirement],
       });
       return;
     }
 
     try {
-      const response = await verify(
+      // v2: resourceServer.verifyPayment
+      const response = await resourceServer.verifyPayment(
         decodedPayment,
-        selectedPaymentRequirements
+        paymentRequirement
       );
       if (!response.isValid) {
         res.status(402).json({
           x402Version,
           error: response.invalidReason,
-          accepts: toJsonSafe(paymentRequirements),
+          accepts: [paymentRequirement],
           payer: response.payer,
         });
         return;
       }
     } catch (error) {
-      console.error(error);
       res.status(402).json({
         x402Version,
-        error,
-        accepts: toJsonSafe(paymentRequirements),
+        error: error?.message || String(error),
+        accepts: [paymentRequirement],
       });
       return;
     }
 
-    // Hard proof-gated access control: after payment is verified, deny access unless required claims verify.
+    // Access control check
     if (accessControl?.enabled) {
-      if (!extraConfig?.proofPolicy) {
-        dbg("access_control_missing_proof_policy", { correlationId });
-        res.status(500).json({
-          x402Version,
-          error: "proofPolicy_required_for_access_control",
-        });
-        return;
-      }
-
       const accessVerification = await verifyClaimsForTier(
         presentedClaims,
         accessControl.requiredClaims,
@@ -813,7 +692,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
     }
 
-    // Intercept and buffer all core methods that can commit response to client
+    // Intercept and buffer response
     const originalWriteHead = res.writeHead.bind(res);
     const originalWrite = res.write.bind(res);
     const originalEnd = res.end.bind(res);
@@ -854,17 +733,14 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       return originalFlushHeaders();
     };
 
-    // Proceed to the next middleware or route handler
     await next();
 
-    // If the response from the protected route is >= 400, do not settle payment
     if (res.statusCode >= 400) {
-      settled = true; // stop intercepting calls
+      settled = true;
       res.writeHead = originalWriteHead;
       res.write = originalWrite;
       res.end = originalEnd;
       res.flushHeaders = originalFlushHeaders;
-      // Replay all buffered calls in order
       for (const [method, args] of bufferedCalls) {
         if (method === "writeHead") originalWriteHead(...args);
         else if (method === "write") originalWrite(...args);
@@ -876,32 +752,32 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     }
 
     try {
-      const settleResponse = await settle(
+      // v2: resourceServer.settlePayment
+      const settleResponse = await resourceServer.settlePayment(
         decodedPayment,
-        selectedPaymentRequirements
+        paymentRequirement
       );
-      const responseHeader = settleResponseHeader(settleResponse);
-      res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
+      
+      const responseHeader = Buffer.from(JSON.stringify(settleResponse)).toString("base64");
+      res.setHeader("PAYMENT-RESPONSE", responseHeader);
+      res.setHeader("X-PAYMENT-RESPONSE", responseHeader); // v1 compat
 
-      // if the settle fails, return an error
       if (!settleResponse.success) {
         bufferedCalls = [];
         res.status(402).json({
           x402Version,
           error: settleResponse.errorReason,
-          accepts: toJsonSafe(paymentRequirements),
+          accepts: [paymentRequirement],
         });
         return;
       }
     } catch (error) {
-      console.error(error);
-      // If settlement fails and the response hasn't been sent yet, return an error
       if (!res.headersSent) {
         bufferedCalls = [];
         res.status(402).json({
           x402Version,
-          error,
-          accepts: toJsonSafe(paymentRequirements),
+          error: error?.message || String(error),
+          accepts: [paymentRequirement],
         });
         return;
       }
@@ -912,7 +788,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       res.end = originalEnd;
       res.flushHeaders = originalFlushHeaders;
 
-      // Replay all buffered calls in order
       for (const [method, args] of bufferedCalls) {
         if (method === "writeHead") originalWriteHead(...args);
         else if (method === "write") originalWrite(...args);
