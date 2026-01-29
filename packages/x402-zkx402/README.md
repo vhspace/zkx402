@@ -83,7 +83,7 @@ app.use(paymentMiddleware(
 // Protected endpoint
 app.get("/api/data", (req, res) => {
   const verification = req.verificationMetadata;
-  
+
   res.json({
     data: "Your protected data",
     discount: verification?.discountApplied ? "50% off" : "none"
@@ -303,7 +303,7 @@ Access verification results in your route handlers:
 ```javascript
 app.get("/api/data", (req, res) => {
   const metadata = req.verificationMetadata;
-  
+
   console.log(metadata);
   // {
   //   qualified: true,
@@ -429,10 +429,10 @@ variableAmountRequired: [
 Full TypeScript definitions included:
 
 ```typescript
-import type { 
+import type {
   ZkProofRequest,
   VerificationMetadata,
-  ZkProofRoutes 
+  ZkProofRoutes
 } from 'x402-zkx402';
 
 app.get("/api/data", (req: ZkProofRequest, res) => {

@@ -24,13 +24,10 @@ const __dirname = dirname(__filename);
 //   to ensure the demo server uses the latest middleware behavior (incl. access control).
 // - In Vercel serverless deployments, the project root is `apps/demo/server`, so the monorepo
 //   package is not present. In that environment we fall back to the vendored copy.
-const {
-  loadProofPolicyFile,
-  loadProofCostFile,
-  paymentMiddleware,
-} = await (process.env.VERCEL
-  ? import("./vendor/x402-zkx402/src/index.js")
-  : import("../../../packages/x402-zkx402/src/index.js"));
+const { loadProofPolicyFile, loadProofCostFile, paymentMiddleware } =
+  await (process.env.VERCEL
+    ? import("./vendor/x402-zkx402/src/index.js")
+    : import("../../../packages/x402-zkx402/src/index.js"));
 
 function loadProofPolicy() {
   try {
@@ -81,7 +78,7 @@ const maybeCreateLocalFacilitator = (() => {
   } catch (e) {
     console.warn(
       "USE_LOCAL_FACILITATOR=true but local facilitator module not found; falling back to hosted facilitator.",
-      e?.message || e
+      e?.message || e,
     );
     return null;
   }
@@ -143,7 +140,7 @@ const corsOptions = {
           } catch {
             return false;
           }
-        })
+        }),
       );
     }
 
@@ -226,7 +223,8 @@ app.use(
               price: "$0.01",
               network: "base-sepolia",
               config: {
-                description: "motivational quote (requires payment + verified human proof)",
+                description:
+                  "motivational quote (requires payment + verified human proof)",
                 asset:
                   USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS
                     ? LOCAL_USDC_ADDRESS
@@ -252,13 +250,13 @@ app.use(
     USE_LOCAL_FACILITATOR
       ? maybeCreateLocalFacilitator
         ? maybeCreateLocalFacilitator({
-          rpcUrl: process.env.RPC_URL || "http://localhost:8545",
-          usdcAddress: LOCAL_USDC_ADDRESS,
-          receiverPrivateKey: RECEIVER_PRIVATE_KEY,
-        })
+            rpcUrl: process.env.RPC_URL || "http://localhost:8545",
+            usdcAddress: LOCAL_USDC_ADDRESS,
+            receiverPrivateKey: RECEIVER_PRIVATE_KEY,
+          })
         : facilitator
-      : facilitator
-  )
+      : facilitator,
+  ),
 );
 
 // the x402-enabled endpoint - this is ALL the code you need!
@@ -284,8 +282,7 @@ app.get("/motivate", (req, res) => {
 // Hard-gated endpoint example (requires verified proofs; see middleware config above)
 app.get("/motivate-gated", (req, res) => {
   res.json({
-    quote:
-      "The best way to predict the future is to invent it. --Alan Kay",
+    quote: "The best way to predict the future is to invent it. --Alan Kay",
     timestamp: new Date().toISOString(),
     paid: true,
   });
@@ -355,7 +352,7 @@ app.get("/balance/:address", async (req, res) => {
       address,
       "base-sepolia",
       apiKeyId,
-      privateKey
+      privateKey,
     );
 
     res.json({
@@ -436,21 +433,23 @@ if (!process.env.VERCEL && isEntrypoint) {
     console.log(`\nEndpoints:`);
     console.log(`   • GET  /health           - health check (public)`);
     console.log(
-      `   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`
+      `   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`,
     );
     console.log(
-      `   • POST /faucet           - request test USDC via CDP Faucet API (public)`
+      `   • POST /faucet           - request test USDC via CDP Faucet API (public)`,
     );
     console.log(
-      `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`
+      `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`,
     );
     if (PROOF_POLICY) {
       console.log(
-        `   • GET  /motivate-gated   - motivational quote (requires payment + verified human proof)`
+        `   • GET  /motivate-gated   - motivational quote (requires payment + verified human proof)`,
       );
     }
     console.log(`\nCDP products in use:`);
-    console.log(`   • CDP x402 Facilitator - payment verification & settlement`);
+    console.log(
+      `   • CDP x402 Facilitator - payment verification & settlement`,
+    );
     console.log(`   • CDP Faucet API       - test USDC distribution`);
     console.log(`   • CDP Token Balances   - real-time balance checking`);
     console.log(`\nreceiving payments at: ${RECEIVER_WALLET}`);
