@@ -14,7 +14,7 @@
  *   {
  *     "GET /api/data": {
  *       price: "$0.01",
- *       network: "base-sepolia",
+ *       network: "eip155:84532",
  *       config: {
  *         description: "Access to verified data",
  *         extra: {

@@ -26,6 +26,10 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Ensure Yarn APT repo key is present (fixes NO_PUBKEY issues for install-deps).
+RUN curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg \
+    | gpg --dearmor -o /usr/share/keyrings/yarn-archive-keyring.gpg
+
 # Install binaries / python libs used by MCP servers (test-wallet only).
 # - lifi-mcp: https://github.com/lifinance/lifi-mcp
 # - self-mcp: https://github.com/selfxyz/self-mcp

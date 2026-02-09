@@ -65,6 +65,124 @@ function formatUsdLikePriceFromAtomic(amountAtomic, decimals) {
   return `$${formatAtomicToFixedDecimalString(amountAtomic, decimals)}`;
 }
 
+const ZKX402_PAYMENT_ERROR = {
+  INSUFFICIENT_FUNDS: "payment_insufficient_funds",
+  INVALID_SCHEME: "payment_invalid_scheme",
+  INVALID_NETWORK: "payment_invalid_network",
+  INVALID_VERSION: "payment_invalid_version",
+  INVALID_REQUIREMENTS: "payment_invalid_requirements",
+  INVALID_PAYLOAD: "payment_invalid_payload",
+  INVALID_AMOUNT: "payment_invalid_amount",
+  AMOUNT_TOO_LOW: "payment_amount_too_low",
+  TOO_EARLY: "payment_too_early",
+  EXPIRED: "payment_expired",
+  KYT_FAILED: "payment_kyt_failed",
+  INVALID_SIGNATURE: "payment_invalid_signature",
+  INVALID_SIGNATURE_ADDRESS: "payment_invalid_signature_address",
+  INVALID_SVM_TRANSACTION: "payment_invalid_svm_transaction",
+  INVALID_SVM_INSTRUCTIONS: "payment_invalid_svm_instructions",
+  INVALID_SVM_ATA: "payment_invalid_svm_ata",
+  INVALID_SVM_TRANSFER: "payment_invalid_svm_transfer",
+  INVALID_SVM_SIMULATION: "payment_invalid_svm_simulation",
+  SETTLEMENT_TIMEOUT: "payment_settlement_timeout",
+  SETTLEMENT_NODE_FAILURE: "payment_settlement_node_failure",
+  SETTLEMENT_FAILED_ONCHAIN: "payment_settlement_failed_onchain",
+  SETTLEMENT_BLOCK_HEIGHT_EXCEEDED: "payment_settlement_block_height_exceeded",
+  VERIFICATION_FAILED: "payment_verification_failed",
+  SETTLEMENT_FAILED: "payment_settlement_failed",
+};
+
+function mapFacilitatorReason(reason, phase) {
+  if (!reason) {
+    return phase === "settle"
+      ? ZKX402_PAYMENT_ERROR.SETTLEMENT_FAILED
+      : ZKX402_PAYMENT_ERROR.VERIFICATION_FAILED;
+  }
+
+  const map = {
+    insufficient_funds: ZKX402_PAYMENT_ERROR.INSUFFICIENT_FUNDS,
+    invalid_scheme: ZKX402_PAYMENT_ERROR.INVALID_SCHEME,
+    invalid_network: ZKX402_PAYMENT_ERROR.INVALID_NETWORK,
+    invalid_x402_version: ZKX402_PAYMENT_ERROR.INVALID_VERSION,
+    invalid_payment_requirements: ZKX402_PAYMENT_ERROR.INVALID_REQUIREMENTS,
+    invalid_payload: ZKX402_PAYMENT_ERROR.INVALID_PAYLOAD,
+    invalid_exact_evm_payload_authorization_value:
+      ZKX402_PAYMENT_ERROR.INVALID_AMOUNT,
+    invalid_exact_evm_payload_authorization_value_too_low:
+      ZKX402_PAYMENT_ERROR.AMOUNT_TOO_LOW,
+    invalid_exact_evm_payload_authorization_valid_after:
+      ZKX402_PAYMENT_ERROR.TOO_EARLY,
+    invalid_exact_evm_payload_authorization_valid_before:
+      ZKX402_PAYMENT_ERROR.EXPIRED,
+    invalid_exact_evm_payload_authorization_typed_data_message:
+      ZKX402_PAYMENT_ERROR.INVALID_PAYLOAD,
+    invalid_exact_evm_payload_authorization_from_address_kyt:
+      ZKX402_PAYMENT_ERROR.KYT_FAILED,
+    invalid_exact_evm_payload_authorization_to_address_kyt:
+      ZKX402_PAYMENT_ERROR.KYT_FAILED,
+    invalid_exact_evm_payload_signature:
+      ZKX402_PAYMENT_ERROR.INVALID_SIGNATURE,
+    invalid_exact_evm_payload_signature_address:
+      ZKX402_PAYMENT_ERROR.INVALID_SIGNATURE_ADDRESS,
+    invalid_exact_svm_payload_transaction:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSACTION,
+    invalid_exact_svm_payload_transaction_amount_mismatch:
+      ZKX402_PAYMENT_ERROR.INVALID_AMOUNT,
+    invalid_exact_svm_payload_transaction_create_ata_instruction:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_ATA,
+    invalid_exact_svm_payload_transaction_create_ata_instruction_incorrect_payee:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_ATA,
+    invalid_exact_svm_payload_transaction_create_ata_instruction_incorrect_asset:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_ATA,
+    invalid_exact_svm_payload_transaction_cannot_derive_receiver_ata:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_ATA,
+    invalid_exact_svm_payload_transaction_receiver_ata_not_found:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_ATA,
+    invalid_exact_svm_payload_transaction_sender_ata_not_found:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_ATA,
+    invalid_exact_svm_payload_transaction_instructions:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_INSTRUCTIONS,
+    invalid_exact_svm_payload_transaction_instructions_length:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_INSTRUCTIONS,
+    invalid_exact_svm_payload_transaction_instructions_compute_limit_instruction:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_INSTRUCTIONS,
+    invalid_exact_svm_payload_transaction_instructions_compute_price_instruction:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_INSTRUCTIONS,
+    invalid_exact_svm_payload_transaction_instructions_compute_price_instruction_too_high:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_INSTRUCTIONS,
+    invalid_exact_svm_payload_transaction_instruction_not_spl_token_transfer_checked:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSFER,
+    invalid_exact_svm_payload_transaction_instruction_not_token_2022_transfer_checked:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSFER,
+    invalid_exact_svm_payload_transaction_not_a_transfer_instruction:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSFER,
+    invalid_exact_svm_payload_transaction_transfer_to_incorrect_ata:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSFER,
+    invalid_exact_svm_payload_transaction_fee_payer_included_in_instruction_accounts:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSFER,
+    invalid_exact_svm_payload_transaction_fee_payer_transferring_funds:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_TRANSFER,
+    invalid_exact_svm_payload_transaction_simulation_failed:
+      ZKX402_PAYMENT_ERROR.INVALID_SVM_SIMULATION,
+    settle_exact_evm_transaction_confirmation_timed_out:
+      ZKX402_PAYMENT_ERROR.SETTLEMENT_TIMEOUT,
+    settle_exact_svm_transaction_confirmation_timed_out:
+      ZKX402_PAYMENT_ERROR.SETTLEMENT_TIMEOUT,
+    settle_exact_node_failure: ZKX402_PAYMENT_ERROR.SETTLEMENT_NODE_FAILURE,
+    settle_exact_failed_onchain:
+      ZKX402_PAYMENT_ERROR.SETTLEMENT_FAILED_ONCHAIN,
+    settle_exact_svm_block_height_exceeded:
+      ZKX402_PAYMENT_ERROR.SETTLEMENT_BLOCK_HEIGHT_EXCEEDED,
+  };
+
+  return (
+    map[String(reason)] ||
+    (phase === "settle"
+      ? ZKX402_PAYMENT_ERROR.SETTLEMENT_FAILED
+      : ZKX402_PAYMENT_ERROR.VERIFICATION_FAILED)
+  );
+}
+
 /**
  * Creates a payment middleware factory for Express
  *
@@ -882,9 +1000,11 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         paymentRequirement,
       );
       if (!response.isValid) {
+        const facilitatorReason = response.invalidReason || null;
         res.status(402).json({
           x402Version,
-          error: response.invalidReason,
+          error: mapFacilitatorReason(facilitatorReason, "verify"),
+          facilitatorReason,
           accepts: paymentRequirements,
           payer: response.payer,
         });
@@ -893,7 +1013,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
     } catch (error) {
       res.status(402).json({
         x402Version,
-        error: error?.message || String(error),
+        error: ZKX402_PAYMENT_ERROR.VERIFICATION_FAILED,
+        facilitatorError: error?.message || String(error),
         accepts: paymentRequirements,
       });
       return;
@@ -998,10 +1119,12 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       res.setHeader("X-PAYMENT-RESPONSE", responseHeader); // v1 compat
 
       if (!settleResponse.success) {
+        const facilitatorReason = settleResponse.errorReason || null;
         bufferedCalls = [];
         res.status(402).json({
           x402Version,
-          error: settleResponse.errorReason,
+          error: mapFacilitatorReason(facilitatorReason, "settle"),
+          facilitatorReason,
           accepts: paymentRequirements,
         });
         return;
@@ -1011,7 +1134,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         bufferedCalls = [];
         res.status(402).json({
           x402Version,
-          error: error?.message || String(error),
+          error: ZKX402_PAYMENT_ERROR.SETTLEMENT_FAILED,
+          facilitatorError: error?.message || String(error),
           accepts: paymentRequirements,
         });
         return;

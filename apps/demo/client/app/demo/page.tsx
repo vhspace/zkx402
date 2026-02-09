@@ -330,7 +330,9 @@ function DemoPageInner() {
       setVerification(data.verification ?? null);
 
       // parse payment response header - need this if we wanna show txn hash
-      const paymentResponseHeader = response.headers.get("x-payment-response");
+      const paymentResponseHeader =
+        response.headers.get("payment-response") ||
+        response.headers.get("x-payment-response");
       console.log("payment response header:", paymentResponseHeader);
 
       if (paymentResponseHeader) {
@@ -899,11 +901,11 @@ function DemoPageInner() {
 Content-Type: application/json
 
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "accepts": [
     {
       "scheme": "exact",
-      "network": "base-sepolia",
+      "network": "eip155:84532",
       "maxAmountRequired": "10000",
       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "payTo": "0xYourReceiverAddress",
@@ -1007,9 +1009,9 @@ PAYMENT-SIGNATURE: base64_encoded_json
 
 Decoded PAYMENT-SIGNATURE:
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "scheme": "exact",
-  "network": "base-sepolia",
+  "network": "eip155:84532",
   "payload": {
     "signature": "0xabc123...",
     "authorization": {
@@ -1152,7 +1154,7 @@ Decoded PAYMENT-RESPONSE:
 {
   "success": true,
   "transaction": "0x789abc...",
-  "network": "base-sepolia",
+  "network": "eip155:84532",
   "payer": "0xYourWalletAddress"
 }`}
                     </pre>

@@ -147,7 +147,7 @@ import { paymentMiddleware } from "x402-zkx402";
 app.use(paymentMiddleware(RECEIVER_WALLET, {
   "GET /premium": {
     price: "$0.10",
-    network: "base-sepolia"
+    network: "eip155:84532"
   }
 }));
 

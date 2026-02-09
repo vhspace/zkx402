@@ -70,7 +70,7 @@ or per-claim-key:
 
 Security note:
 
-- If `X-PAYMENT` is **not** present, the middleware will **avoid vendor API calls** and treat `X-Proof-Claims` as an *intent signal* (quote mode). Actual enforcement still occurs when the client submits payment + claims.
+- If `PAYMENT-SIGNATURE` (legacy: `X-PAYMENT`) is **not** present, the middleware will **avoid vendor API calls** and treat `X-Proof-Claims` as an *intent signal* (quote mode). Actual enforcement still occurs when the client submits payment + claims.
 
 ## 1.7.3 Route-level hard access control (deny unless claims verify)
 

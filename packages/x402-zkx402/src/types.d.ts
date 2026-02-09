@@ -322,7 +322,7 @@ export interface ZkProofRouteConfig {
   price?: string;
 
   /**
-   * Network to use (e.g., "base-sepolia", "eip155:84532")
+   * Network to use (e.g., "eip155:84532" for Base Sepolia)
    */
   network?: string;
 

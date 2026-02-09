@@ -53,7 +53,7 @@ app.use(paymentMiddleware(
   {
     "GET /api/data": {
       price: "$0.01",  // Default price
-      network: "base-sepolia",
+      network: "eip155:84532",
       config: {
         description: "Access to verified data",
         extra: {
@@ -102,7 +102,7 @@ You can provide v2 payment requirements directly:
   accepts: [
     {
       scheme: "exact",
-      network: "base-sepolia",
+      network: "eip155:84532",
       amount: "10000",
       payTo: "0xYourWallet",
       asset: "0xUSDC",
@@ -173,19 +173,55 @@ extra: {
 
 Behavior:
 
-- In **quote mode** (no `X-PAYMENT`), the server still returns `402` with `accepts[]`.
+- In **quote mode** (no `PAYMENT-SIGNATURE`, legacy: `X-PAYMENT`), the server still returns `402` with `accepts[]`.
 - In **paid mode**, after payment verifies, the server verifies required claims and returns **403** if they fail.
 
 #### Quote-mode vs paid-mode for API providers (important)
 
 When a route’s `proofPolicy` allows an **API provider** (e.g. `self_api`, `vlayer_api`):
 
-- **Quote mode** (no `X-PAYMENT`):
+- **Quote mode** (no `PAYMENT-SIGNATURE`, legacy: `X-PAYMENT`):
   - the middleware **does not call** the vendor API
   - the claim is treated as **quoted** (assumed verified for pricing) so the client can see the intended discount + any verification fees/commission
-- **Paid mode** (with `X-PAYMENT`):
+- **Paid mode** (with `PAYMENT-SIGNATURE`, legacy: `X-PAYMENT`):
   - the middleware performs the real verification (including vendor API calls when configured)
   - `requiredClaims` / `accessControl` are enforced *after* payment verification (returning `403` on failure)
+
+### Payment error codes (stable)
+
+When a facilitator fails to verify or settle a payment, the middleware returns a stable `error`
+code and preserves the raw facilitator reason for debugging:
+
+- `error`: stable zkx402 code (designed to be consistent across facilitators)
+- `facilitatorReason`: raw `invalidReason` / `errorReason` from the facilitator (if provided)
+- `facilitatorError`: raw exception string when the facilitator call itself fails
+
+Stable codes:
+
+- `payment_insufficient_funds`
+- `payment_invalid_scheme`
+- `payment_invalid_network`
+- `payment_invalid_version`
+- `payment_invalid_requirements`
+- `payment_invalid_payload`
+- `payment_invalid_amount`
+- `payment_amount_too_low`
+- `payment_too_early`
+- `payment_expired`
+- `payment_kyt_failed`
+- `payment_invalid_signature`
+- `payment_invalid_signature_address`
+- `payment_invalid_svm_transaction`
+- `payment_invalid_svm_instructions`
+- `payment_invalid_svm_ata`
+- `payment_invalid_svm_transfer`
+- `payment_invalid_svm_simulation`
+- `payment_settlement_timeout`
+- `payment_settlement_node_failure`
+- `payment_settlement_failed_onchain`
+- `payment_settlement_block_height_exceeded`
+- `payment_verification_failed`
+- `payment_settlement_failed`
 
 ### Content Metadata
 
@@ -257,7 +293,7 @@ Notes:
 
 ### Option B: `vlayer_api` (verify presented proof payload)
 
-This calls a verifier endpoint during paid requests (and is **skipped in quote mode** when `X-PAYMENT` is missing).
+This calls a verifier endpoint during paid requests (and is **skipped in quote mode** when `PAYMENT-SIGNATURE` is missing; legacy: `X-PAYMENT`).
 
 1) **Set server env**:
 

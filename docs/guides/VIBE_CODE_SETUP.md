@@ -138,7 +138,7 @@ We support two verification paths:
 - `X-Proof-Claims: [{"type":"origin_http_get"}]`
 - `X-Vlayer-Proof: <stringified payload or hex string>`
 
-**Important**: when `X-PAYMENT` is missing, the middleware is in **quote mode** and will avoid vendor API calls (including `vlayer_api`). Verification happens on the paid retry.
+**Important**: when `PAYMENT-SIGNATURE` (legacy: `X-PAYMENT`) is missing, the middleware is in **quote mode** and will avoid vendor API calls (including `vlayer_api`). Verification happens on the paid retry.
 
 ## Adding a new proof provider (agent-friendly checklist)
 

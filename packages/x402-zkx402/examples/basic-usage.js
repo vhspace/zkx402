@@ -20,7 +20,7 @@ app.use(
       // Example 1: Simple endpoint with zkproof discount
       "GET /api/quote": {
         price: "$0.01",
-        network: "base-sepolia",
+        network: "eip155:84532",
         config: {
           description: "Get a motivational quote",
           extra: {
@@ -47,7 +47,7 @@ app.use(
       // Example 2: Premium content with proof-gated discount tiers
       "GET /api/premium": {
         price: "$0.10",
-        network: "base-sepolia",
+        network: "eip155:84532",
         config: {
           description: "Premium verified content",
           extra: {
@@ -135,5 +135,5 @@ app.listen(PORT, () => {
  * });
  *
  * // First request returns 402 with discounted price
- * // Client handles payment and retries with X-PAYMENT header
+ * // Client handles payment and retries with PAYMENT-SIGNATURE (legacy: X-PAYMENT)
  */
