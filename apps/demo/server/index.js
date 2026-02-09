@@ -28,6 +28,7 @@ const { loadProofPolicyFile, loadProofCostFile, paymentMiddleware } =
   await (process.env.VERCEL
     ? import("./vendor/x402-zkx402/src/index.js")
     : import("../../../packages/x402-zkx402/src/index.js"));
+const { getRoutesFromConfig } = await import("./load-route-config.js");
 
 function loadProofPolicy() {
   try {
@@ -125,6 +126,82 @@ function compileOriginMatchers(raw) {
 
 const originMatchers = compileOriginMatchers(process.env.ALLOWED_ORIGINS);
 
+// Route config: JSON file (ROUTE_CONFIG_PATH or ./routes.json) or in-code fallback
+const assetForRoutes =
+  USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS ? LOCAL_USDC_ADDRESS : undefined;
+let ROUTES = getRoutesFromConfig({
+  proofPolicy: PROOF_POLICY,
+  proofCosts: PROOF_COSTS,
+  asset: assetForRoutes,
+});
+if (!ROUTES) {
+  // In-code fallback
+  ROUTES = {
+    "GET /motivate": {
+      price: "$0.01",
+      network: "base-sepolia",
+      config: {
+        description: "get a motivational quote to inspire your day",
+        asset: assetForRoutes,
+        outputSchema: {
+          type: "object",
+          properties: {
+            quote: { type: "string", description: "an inspirational quote" },
+            timestamp: {
+              type: "string",
+              description: "when the quote was generated",
+            },
+          },
+        },
+        extra: {
+          variableAmountRequired: [
+            { requiredClaims: [{ type: "human" }], amountRequired: "5000" },
+            {
+              requiredClaims: [{ type: "origin_http_get" }],
+              amountRequired: "4000",
+            },
+          ],
+          contentMetadata: [
+            { proof: "zkproof(Edward Snowden)" },
+            { proof: "zkproof(human)" },
+            { proof: "zkproof(origin_http_get)" },
+          ],
+          ...(PROOF_POLICY ? { proofPolicy: PROOF_POLICY } : {}),
+          ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),
+        },
+      },
+    },
+    ...(PROOF_POLICY
+      ? {
+          "GET /motivate-gated": {
+            price: "$0.01",
+            network: "base-sepolia",
+            config: {
+              description:
+                "motivational quote (requires payment + verified human proof)",
+              asset: assetForRoutes,
+              outputSchema: {
+                type: "object",
+                properties: {
+                  quote: { type: "string" },
+                  timestamp: { type: "string" },
+                },
+              },
+              extra: {
+                requiredClaims: [{ type: "human" }],
+                proofPolicy: PROOF_POLICY,
+                ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),
+              },
+            },
+          },
+        }
+      : {}),
+  };
+} else if (!PROOF_POLICY) {
+  // JSON config: omit motivate-gated when proof policy not loaded
+  delete ROUTES["GET /motivate-gated"];
+}
+
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow non-browser clients / same-origin requests
@@ -161,95 +238,11 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// apply x402 payment middleware
+// apply x402 payment middleware (routes from JSON or in-code fallback)
 app.use(
   paymentMiddleware(
     RECEIVER_WALLET,
-    {
-      // configure the x402-enabled endpoint
-      "GET /motivate": {
-        // price in USDC (0.01 USDC)
-        price: "$0.01",
-        // using Base Sepolia testnet
-        network: "base-sepolia",
-        // metadata about the endpoint for better discovery
-        config: {
-          description: "get a motivational quote to inspire your day",
-          asset:
-            USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS
-              ? LOCAL_USDC_ADDRESS
-              : undefined,
-          outputSchema: {
-            type: "object",
-            properties: {
-              quote: { type: "string", description: "an inspirational quote" },
-              timestamp: {
-                type: "string",
-                description: "when the quote was generated",
-              },
-            },
-          },
-          // zkx402: Self proof of humanity integrates with pricing
-          // - variableAmountRequired: human proof → 50% discount (5000 vs 10000)
-          // - proofPolicy routes to self_chain (on-chain) or self_api (Self.xyz API)
-          // - proofCosts: optional verification fee markup per provider
-          extra: {
-            variableAmountRequired: [
-              {
-                requiredClaims: [{ type: "human" }],
-                amountRequired: "5000",
-              },
-              {
-                // Example "web proof" tier (vlayer): if the caller can prove origin access,
-                // they qualify for a bigger discount. Verification fees (if any) are added
-                // on top via `proofCosts`.
-                requiredClaims: [{ type: "origin_http_get" }],
-                amountRequired: "4000",
-              },
-            ],
-            contentMetadata: [
-              { proof: "zkproof(Edward Snowden)" },
-              { proof: "zkproof(human)" },
-              { proof: "zkproof(origin_http_get)" },
-            ],
-            ...(PROOF_POLICY ? { proofPolicy: PROOF_POLICY } : {}),
-            ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),
-          },
-        },
-      },
-
-      // Hard proof-gated example: deny access unless the caller verifies as "human".
-      // Only enabled when PROOF_POLICY is present (otherwise the middleware will 500 on access).
-      ...(PROOF_POLICY
-        ? {
-            "GET /motivate-gated": {
-              price: "$0.01",
-              network: "base-sepolia",
-              config: {
-                description:
-                  "motivational quote (requires payment + verified human proof)",
-                asset:
-                  USE_LOCAL_FACILITATOR && LOCAL_USDC_ADDRESS
-                    ? LOCAL_USDC_ADDRESS
-                    : undefined,
-                outputSchema: {
-                  type: "object",
-                  properties: {
-                    quote: { type: "string" },
-                    timestamp: { type: "string" },
-                  },
-                },
-                extra: {
-                  // hard-gate access: deny without verified claim(s)
-                  requiredClaims: [{ type: "human" }],
-                  proofPolicy: PROOF_POLICY,
-                  ...(PROOF_COSTS ? { proofCosts: PROOF_COSTS } : {}),
-                },
-              },
-            },
-          }
-        : {}),
-    },
+    ROUTES,
     USE_LOCAL_FACILITATOR
       ? maybeCreateLocalFacilitator
         ? maybeCreateLocalFacilitator({

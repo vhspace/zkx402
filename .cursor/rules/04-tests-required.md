@@ -1,5 +1,13 @@
 # Tests must pass (Cursor rule)
 
+## After code changes / before pushing
+
+Run relevant tests **after making changes** and **before pushing**:
+
+- If core middleware or proof logic changed: `cd packages/x402-zkx402 && npm run lint && npm test`
+- If demo server/client or contracts changed: `cd apps/demo/local-chain && node run-e2e-test.js`
+- If UI changes were made: `npm run test:e2e`
+
 ## Before opening a PR
 
 All tests must pass:
