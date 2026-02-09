@@ -29,6 +29,10 @@ jobs:
       - name: Unit tests (repo tools)
         run: npm run test:tools
 
+      - name: Lint (x402-zkx402)
+        working-directory: packages/x402-zkx402
+        run: npm run lint
+
       - name: Unit tests (x402-zkx402)
         working-directory: packages/x402-zkx402
         run: npm test

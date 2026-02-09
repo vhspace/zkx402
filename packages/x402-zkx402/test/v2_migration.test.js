@@ -26,19 +26,17 @@ test("middleware: returns 402 with PAYMENT-REQUIRED header when no payment prese
     method: "GET",
     path: "/test",
     originalUrl: "/test",
-    header: (name) => null,
+    header: (_name) => null,
     headers: {},
     protocol: "http"
   };
   
   let statusSet = null;
   let headers = {};
-  let body = null;
-  
   const res = {
     status: (s) => { statusSet = s; return res; },
     set: (k, v) => { headers[k] = v; return res; },
-    json: (b) => { body = b; return res; },
+    json: (_b) => res,
     setHeader: (k, v) => { headers[k] = v; return res; }
   };
   
@@ -71,9 +69,9 @@ test("middleware: respects X-Forwarded headers for resource URL", async () => {
     method: "GET",
     path: "/test",
     originalUrl: "/test?foo=bar",
-    header: (name) => {
-      if (name === "X-Forwarded-Proto") return "https";
-      if (name === "X-Forwarded-Host") return "api.example.com";
+    header: (h) => {
+      if (h === "X-Forwarded-Proto") return "https";
+      if (h === "X-Forwarded-Host") return "api.example.com";
       return null;
     },
     headers: {
@@ -81,7 +79,7 @@ test("middleware: respects X-Forwarded headers for resource URL", async () => {
       "x-forwarded-host": "api.example.com"
     },
     protocol: "http",
-    get: (name) => null
+    get: (_name) => null
   };
   
   let headers = {};

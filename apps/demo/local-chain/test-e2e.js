@@ -215,7 +215,7 @@ async function main() {
   assert.equal(payerDiff, BigInt(maxAmountRequired));
   assert.equal(receiverDiff, BigInt(maxAmountRequired));
 
-  log(colors.blue, "\nStep 7: Hard-gated access control (deny without verified proof)");
+  log(colors.blue, "\nStep 7: Self proof of humanity — hard-gated (deny without verified proof)");
 
   // First: negotiate payment requirements for the gated endpoint
   const gatedInitial = await fetch(`${config.serverUrl}/motivate-gated`, {
@@ -279,7 +279,7 @@ async function main() {
   assert.equal(payerBalanceAfterGateDenied, payerBalanceBeforeGate);
   assert.equal(receiverBalanceAfterGateDenied, receiverBalanceBeforeGate);
 
-  log(colors.blue, "\nStep 8: Hard-gated access control (allow with verified proof)");
+  log(colors.blue, "\nStep 8: Self proof of humanity — allow with verified proof (self_chain)");
 
   const gatedProofsHeaders = {
     Accept: "application/json",

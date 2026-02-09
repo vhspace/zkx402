@@ -22,12 +22,10 @@ export function policyHash(policy) {
 export function logAuditEvent(event, { enabled } = {}) {
   if (!enabled) return;
   // stdout JSON is the v1 stub; later we can ship to a sink.
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify({ type: "zkx402_audit", ...event }));
 }
 
 export function logDebug(message, data, { enabled } = {}) {
   if (!enabled) return;
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify({ type: "zkx402_debug", message, data }));
 }

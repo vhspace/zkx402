@@ -17,6 +17,7 @@
     "vercel:deploy": "node scripts/vercel-deploy.mjs",
     "vercel:env": "node scripts/vercel-env.mjs",
     "test:tools": "node --test scripts/test/*.test.mjs",
+    "lint": "npm run lint --workspace=x402-zkx402",
     "test:e2e": "playwright test",
     "build": "npm run build --workspace=zkx402-client",
     "dev:server": "npm run dev --workspace=apps/demo/server",

@@ -189,7 +189,10 @@ app.use(
               },
             },
           },
-          // zkx402 additions
+          // zkx402: Self proof of humanity integrates with pricing
+          // - variableAmountRequired: human proof → 50% discount (5000 vs 10000)
+          // - proofPolicy routes to self_chain (on-chain) or self_api (Self.xyz API)
+          // - proofCosts: optional verification fee markup per provider
           extra: {
             variableAmountRequired: [
               {

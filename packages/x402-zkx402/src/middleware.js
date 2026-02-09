@@ -6,7 +6,6 @@ import {
   computeRoutePatterns,
   findMatchingRoute,
   processPriceToAtomicAmount,
-  toJsonSafe,
 } from "x402/shared"; // TODO: these are still from v1, need to check if they moved
 import { createPaywall } from "@x402/paywall";
 import { evmPaywall } from "@x402/paywall/evm";
@@ -177,11 +176,11 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       description,
       mimeType,
       maxTimeoutSeconds,
-      inputSchema,
-      outputSchema,
+      inputSchema: _inputSchema,
+      outputSchema: _outputSchema,
       customPaywallHtml,
       resource,
-      discoverable,
+      discoverable: _discoverable,
       extra: extraConfig,
       asset: assetOverride,
     } = config;
@@ -688,7 +687,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
                   verificationFeeAtomic += BigInt(String(totalUsdMicros));
                 }
               }
-            } catch (_) {
+            } catch {
               verificationFeeAtomic = 0n;
             }
 
@@ -726,7 +725,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
 
     req.verificationMetadata = verificationMetadata;
     const maxAmountRequired = finalMaxAmountRequired;
-    const asset = baseAsset;
+    const _asset = baseAsset;
 
     // v2: Respect proxy headers for resource URL
     const proto = req.header("X-Forwarded-Proto") || req.protocol;
@@ -866,7 +865,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       paymentRequirement =
         selectPaymentRequirement(paymentRequirements, decodedPayment) ||
         paymentRequirement;
-    } catch (error) {
+    } catch {
       res.status(402).json({
         x402Version,
         error: "Invalid or malformed payment header",
