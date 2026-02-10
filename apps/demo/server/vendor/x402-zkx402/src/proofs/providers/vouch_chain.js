@@ -20,6 +20,12 @@ function sha256Bytes32Hex(value) {
   return `0x${hex}`;
 }
 
+/**
+ * vouch chain provider (v1):
+ *
+ * We treat a "chain proof" as an on-chain attestation/receipt that a valid vouch proof
+ * was generated and recorded for a given subject + claim.
+ */
 export function createVouchChainProvider(options = {}) {
   const rpcUrl = options.rpcUrl || process.env.VOUCH_RPC_URL || null;
   const registryAddress =

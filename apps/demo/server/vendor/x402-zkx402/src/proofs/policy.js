@@ -16,6 +16,10 @@ export const DEFAULT_PROOF_POLICY = Object.freeze({
   fallback: "none",
 });
 
+export function normalizeProviderName(name) {
+  return String(name || "").trim();
+}
+
 export function normalizeProofPolicy(policy) {
   if (!policy || typeof policy !== "object") return { ...DEFAULT_PROOF_POLICY };
   return {
@@ -23,10 +27,10 @@ export function normalizeProofPolicy(policy) {
     scope: String(policy.scope ?? DEFAULT_PROOF_POLICY.scope),
     claims: Array.isArray(policy.claims) ? policy.claims : DEFAULT_PROOF_POLICY.claims,
     allowedProviders: Array.isArray(policy.allowedProviders)
-      ? policy.allowedProviders.map(String)
+      ? policy.allowedProviders.map((p) => normalizeProviderName(String(p)))
       : [...DEFAULT_PROOF_POLICY.allowedProviders],
     preferenceOrder: Array.isArray(policy.preferenceOrder)
-      ? policy.preferenceOrder.map(String)
+      ? policy.preferenceOrder.map((p) => normalizeProviderName(String(p)))
       : [...DEFAULT_PROOF_POLICY.preferenceOrder],
     fallback: String(policy.fallback ?? DEFAULT_PROOF_POLICY.fallback),
   };

@@ -12,8 +12,7 @@
     "apps/demo/local-chain"
   ],
   "dependencies": {
-    "@solana/kit": "^5.1.0",
-    "x402": "1.0.1"
+    "@solana/kit": "^5.1.0"
   },
   "scripts": {
     "vibe:setup": "node scripts/vibe-setup.mjs",

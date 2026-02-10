@@ -33,15 +33,9 @@ function txExplorerUrl(network, txHash) {
   return null;
 }
 
-// IMPORTANT:
-// - In CI/local dev, the monorepo contains `packages/x402-zkx402`, so import it directly
-//   to ensure the demo server uses the latest middleware behavior (incl. access control).
-// - In Vercel serverless deployments, the project root is `apps/demo/server`, so the monorepo
-//   package is not present. In that environment we fall back to the vendored copy.
+// Use vendored cleanroom copy (synced from packages/x402-zkx402) - works in monorepo and Vercel
 const { loadProofPolicyFile, loadProofCostFile, paymentMiddleware } =
-  await (process.env.VERCEL
-    ? import("./vendor/x402-zkx402/src/index.js")
-    : import("../../../packages/x402-zkx402/src/index.js"));
+  await import("./vendor/x402-zkx402/src/index.js");
 const { getRoutesFromConfig } = await import("./load-route-config.js");
 
 function loadProofPolicy() {

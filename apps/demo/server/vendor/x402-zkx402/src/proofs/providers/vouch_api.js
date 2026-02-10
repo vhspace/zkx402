@@ -18,13 +18,17 @@ function interpretVerifyResponse(data) {
 async function safeReadJson(res) {
   try {
     if (typeof res.json === "function") return await res.json();
-  } catch {}
+  } catch {
+    // fall through
+  }
   try {
     if (typeof res.text === "function") {
       const t = await res.text();
       return JSON.parse(t);
     }
-  } catch {}
+  } catch {
+    // ignore
+  }
   return null;
 }
 
