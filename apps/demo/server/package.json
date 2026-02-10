@@ -14,7 +14,7 @@
     "@coinbase/cdp-sdk": "latest",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "ethers": "^6.15.0",
+    "ethers": "^6.16.0",
     "viem": "^2.39.3"
   }
 }
