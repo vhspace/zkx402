@@ -20,6 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable pnpm (corepack)
+        run: corepack enable && corepack prepare pnpm@10.7.0 --activate
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -265,6 +268,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Enable pnpm (corepack)
+        run: corepack enable && corepack prepare pnpm@10.7.0 --activate
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
