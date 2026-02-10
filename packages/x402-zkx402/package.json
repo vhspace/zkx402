@@ -13,7 +13,7 @@
     "lint": "eslint src test --max-warnings 0"
   },
   "dependencies": {
-    "@solana/kit": "^5.1.0",
+    "@solana/kit": "^6.0.1",
     "@x402/core": "^2.2.0",
     "@x402/evm": "^2.2.0",
     "@x402/express": "^2.2.0",
