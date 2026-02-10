@@ -4,6 +4,7 @@ export const VerifyStatus = {
   VERIFIED: "verified",
   NOT_VERIFIED: "not_verified",
   NOT_IMPLEMENTED: "not_implemented",
+  NOT_CONFIGURED: "not_configured",
   ERROR: "error",
 };
 
@@ -44,7 +45,7 @@ export async function verifyClaimWithPolicy({
   if (!methodName) {
     return {
       status: VerifyStatus.NOT_IMPLEMENTED,
-      reason: `Claim not implemented in chain-only mode: ${claim.type}`,
+      reason: `Claim type not implemented: ${claim.type}`,
     };
   }
 
@@ -72,21 +73,75 @@ export async function verifyClaimWithPolicy({
     };
   }
 
+  const attempts = [];
+  let sawNotVerified = false;
+  let sawNonConfiguredFailure = false;
+  let lastNotVerifiedProvider = null;
+
   for (const provider of finalProviders) {
     const fn = provider?.[methodName];
     if (typeof fn !== "function") continue;
     const result = await fn({ ...(context || {}), claim, policy });
     if (!result?.ok) {
-      // continue trying other providers in chain-only mode
+      const status = String(result?.status ?? VerifyStatus.ERROR);
+      attempts.push({
+        provider: provider?.name ?? "unknown",
+        ok: false,
+        status,
+        reason: result?.reason ?? "provider_error",
+      });
+      if (status !== VerifyStatus.NOT_CONFIGURED) {
+        sawNonConfiguredFailure = true;
+      }
       continue;
     }
-    return result.verified
-      ? { status: VerifyStatus.VERIFIED, provider: provider.name }
-      : { status: VerifyStatus.NOT_VERIFIED, provider: provider.name };
+    attempts.push({
+      provider: provider?.name ?? "unknown",
+      ok: true,
+      status: result?.verified ? VerifyStatus.VERIFIED : VerifyStatus.NOT_VERIFIED,
+    });
+    if (result.verified) {
+      return { status: VerifyStatus.VERIFIED, provider: provider.name, attempts };
+    }
+    // If this provider says "not verified", try the next provider in policy order.
+    sawNotVerified = true;
+    lastNotVerifiedProvider = provider?.name ?? null;
   }
 
+  if (attempts.length === 0) {
+    return {
+      status: VerifyStatus.ERROR,
+      reason: "No provider implemented the required verification method",
+      attempts,
+    };
+  }
+
+  // If every provider failed only due to missing configuration, surface that explicitly.
+  const allNotConfigured = attempts.every(
+    (a) => a?.ok === false && String(a?.status) === VerifyStatus.NOT_CONFIGURED
+  );
+  if (allNotConfigured) {
+    return {
+      status: VerifyStatus.NOT_CONFIGURED,
+      reason: "All providers were not configured",
+      attempts,
+    };
+  }
+
+  // If at least one provider produced a definitive "not verified" result, surface NOT_VERIFIED.
+  if (sawNotVerified && !sawNonConfiguredFailure) {
+    return {
+      status: VerifyStatus.NOT_VERIFIED,
+      reason: "No provider verified the claim",
+      provider: lastNotVerifiedProvider || undefined,
+      attempts,
+    };
+  }
+
+  // Mixed failures (API errors, invalid input, etc.) are treated as ERROR to avoid false negatives.
   return {
     status: VerifyStatus.ERROR,
-    reason: "All providers failed or were not configured",
+    reason: "All providers failed",
+    attempts,
   };
 }

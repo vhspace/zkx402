@@ -6,7 +6,7 @@ import {
   computeRoutePatterns,
   findMatchingRoute,
   processPriceToAtomicAmount,
-} from "x402/shared"; // TODO: these are still from v1, need to check if they moved
+} from "./shared/route-price.js";
 import { createPaywall } from "@x402/paywall";
 import { evmPaywall } from "@x402/paywall/evm";
 import { svmPaywall } from "@x402/paywall/svm";
@@ -620,7 +620,6 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       if (!price) {
         throw new Error("Missing price for route without accepts amount");
       }
-      // v1 compat: processPriceToAtomicAmount still used for now
       const pricingNetwork = toLegacyNetwork(rawNetwork || network);
       const baseAtomicAmountForAsset = processPriceToAtomicAmount(
         price,

@@ -9,6 +9,22 @@ export interface ProofClaim {
   [key: string]: any;
 }
 
+export interface AccessControlConfig {
+  /**
+   * Hard-gate access: deny unless these claims verify.
+   */
+  requiredClaims: ProofClaim[];
+  /**
+   * Enforcement mode. "deny" means deny access when required claims fail.
+   * "off"/"none" disables enforcement.
+   */
+  mode?: "deny" | "off" | "none" | string;
+  /**
+   * HTTP status code for denied access (default 403).
+   */
+  statusCode?: number;
+}
+
 export interface ProofPolicy {
   version: number;
   scope: string;
@@ -93,6 +109,19 @@ export interface ZkProofExtraConfig {
   proofPolicy?: ProofPolicy;
 
   /**
+   * Hard-gate access: deny the request unless required claims verify.
+   *
+   * Shortcut form supported for backward-compatibility:
+   * - `requiredClaims: [...]` (implies `accessControl.mode = "deny"`)
+   */
+  requiredClaims?: ProofClaim[];
+
+  /**
+   * Explicit access control config (preferred for UI/dashboards).
+   */
+  accessControl?: AccessControlConfig;
+
+  /**
    * Proof verification cost schedule (separate from proofPolicy).
    */
   proofCosts?: ProofCosts;
@@ -123,9 +152,36 @@ export interface ProofVerificationDetail {
   verified: boolean;
 
   /**
+   * Machine-readable per-claim status.
+   *
+   * Expected values:
+   * - "verified"
+   * - "not_verified"
+   * - "not_implemented"
+   * - "not_configured"
+   * - "error"
+   */
+  status: string;
+
+  /**
    * Optional reason if verification failed
    */
   reason?: string;
+
+  /**
+   * Provider selected by routing (when available).
+   */
+  provider?: string;
+
+  /**
+   * Whether the claim was treated as "quoted" (e.g., API provider skipped in quote-mode).
+   */
+  quoted?: boolean;
+
+  /**
+   * Optional pricing breakdown for verification fees (USD micros).
+   */
+  verificationCost?: any;
 
   /**
    * Optional API verification result (for API-backed providers like `self_api`, `vouch_api`)
@@ -136,6 +192,16 @@ export interface ProofVerificationDetail {
    * Optional error details if verification failed
    */
   errorDetails?: any;
+
+  /**
+   * Provider attempts (useful for debugging/UX without leaking secrets)
+   */
+  attempts?: Array<{
+    provider: string;
+    ok: boolean;
+    status: string;
+    reason?: string;
+  }>;
 }
 
 /**
@@ -181,6 +247,11 @@ export interface ProofVerificationResult {
    * Detailed verification results for each proof
    */
   verificationDetails: ProofVerificationDetail[];
+
+  /**
+   * Payment requirements associated with this result (v2)
+   */
+  requirements?: any[];
 
   /**
    * Optional machine-readable reason when verification is skipped/disabled.
@@ -230,6 +301,15 @@ export interface ZkProofRequest extends Request {
    * Verification metadata set by middleware after zkproof verification
    */
   verificationMetadata?: VerificationMetadata | null;
+
+  /**
+   * Access-control metadata set by middleware (hard-gating).
+   */
+  accessControlMetadata?: {
+    mode: string;
+    requiredClaims: ProofClaim[];
+    verificationResult: ProofVerificationResult;
+  } | null;
 }
 
 /**
@@ -239,12 +319,17 @@ export interface ZkProofRouteConfig {
   /**
    * Price in dollar format (e.g., "$0.01")
    */
-  price: string;
+  price?: string;
 
   /**
-   * Network to use (e.g., "base-sepolia", "base")
+   * Network to use (e.g., "base-sepolia", "eip155:84532")
    */
-  network: string;
+  network?: string;
+
+  /**
+   * v2: Array of accepted payment options
+   */
+  accepts?: any[];
 
   /**
    * Additional configuration
