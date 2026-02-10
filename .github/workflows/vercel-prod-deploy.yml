@@ -190,7 +190,10 @@ jobs:
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
-          OUT="$(npx --yes vercel@latest --cwd apps/demo/server deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
+          OUT="$(npx --yes vercel@latest --cwd apps/demo/server deploy --yes \
+            -e E2E_FAUCET_MOCK=\"true\" \
+            -e ENABLE_PROOF_POLICY=\"true\" \
+            --token=\"${VERCEL_TOKEN}\" 2>&1)"
           echo "$OUT"
           # Try multiple patterns to extract the URL - Vercel CLI output format may vary
           URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"

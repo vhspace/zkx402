@@ -63,6 +63,7 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           npx --yes vercel@latest --no-color --cwd apps/demo/server deploy --yes \
             -e E2E_FAUCET_MOCK="true" \
+            -e ENABLE_PROOF_POLICY="true" \
             --token="${VERCEL_TOKEN}" 2>&1 | tee vercel-backend.out
           URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel-backend.out | tail -n 1 || true)"
           if [ -z "$URL" ]; then
