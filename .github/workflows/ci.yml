@@ -18,28 +18,23 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: pnpm
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Install workspace deps (root)
-        run: npm install --ignore-scripts --legacy-peer-deps
+        run: corepack enable && pnpm install --ignore-scripts
 
       - name: Unit tests (repo tools)
-        run: npm run test:tools
+        run: pnpm run test:tools
 
       - name: Lint (x402-zkx402)
-        working-directory: packages/x402-zkx402
-        run: npm run lint
+        run: pnpm --filter x402-zkx402 lint
 
       - name: Unit tests (x402-zkx402)
-        working-directory: packages/x402-zkx402
-        run: npm test
-
-      - name: Install local-chain deps
-        working-directory: apps/demo/local-chain
-        run: npm ci --ignore-scripts --legacy-peer-deps
+        run: pnpm --filter x402-zkx402 test
 
       - name: E2E (local chain)
         working-directory: apps/demo/local-chain

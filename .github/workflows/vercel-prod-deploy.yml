@@ -24,22 +24,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps
+        run: corepack enable && pnpm install --ignore-scripts
 
       - name: Repo tool tests
-        run: npm run test:tools
+        run: pnpm run test:tools
 
       - name: Server syntax check
         run: node --check apps/demo/server/index.js
 
       - name: Client lint
-        run: npm run lint --workspace=apps/demo/client
+        run: pnpm --filter zkx402-client lint
 
       - name: Client build
-        run: npm run build --workspace=apps/demo/client
+        run: pnpm --filter zkx402-client build
 
   deploy-prod:
     runs-on: ubuntu-latest
@@ -270,10 +270,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps
+        run: corepack enable && pnpm install --ignore-scripts
 
       - name: Detect Playwright version
         id: playwright_version
@@ -306,7 +306,7 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.frontend_url }}
           MAILSLURP_API_KEY: ${{ secrets.MAILSLURP_API_KEY }}
-        run: npm run test:e2e
+        run: pnpm run test:e2e
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4

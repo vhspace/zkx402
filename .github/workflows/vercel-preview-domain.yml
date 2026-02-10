@@ -162,7 +162,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Verify required secrets
         shell: bash
@@ -193,15 +193,8 @@ jobs:
           npm_config_fetch_retry_maxtimeout: 120000
         run: |
           set -euo pipefail
-          for i in 1 2 3; do
-            if npm ci --prefer-offline --no-audit --no-fund; then
-              exit 0
-            fi
-            echo "npm ci failed (attempt $i/3). Retrying..."
-            sleep $((i * 10))
-          done
-          echo "npm ci failed after 3 attempts."
-          exit 1
+          corepack enable
+          pnpm install --ignore-scripts
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -219,4 +212,4 @@ jobs:
         shell: bash
         env:
           CI: true
-        run: npm run test:e2e
+        run: pnpm run test:e2e
