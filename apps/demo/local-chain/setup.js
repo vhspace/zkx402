@@ -255,8 +255,8 @@ async function main() {
   log(colors.green, `  Test Payer:        ${PAYER_ADDRESS}`);
   console.log("");
   log(colors.blue, "Next steps:");
-  log(colors.yellow, "  1. Start the x402 server: npm run dev:server");
-  log(colors.yellow, "  2. Run E2E tests: npm test");
+  log(colors.yellow, "  1. Start the x402 server: pnpm run dev:server");
+  log(colors.yellow, "  2. Run E2E tests: pnpm --dir apps/demo/local-chain run test");
   console.log("");
 }
 

@@ -194,7 +194,7 @@ jobs:
         run: |
           set -euo pipefail
           corepack enable
-          pnpm install --ignore-scripts
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

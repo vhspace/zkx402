@@ -11,8 +11,8 @@ A text-based CLI for real testing of x402 endpoints with Self and vouch proofs.
 
 2. In another terminal:
    ```bash
-   cd apps/demo/client-cli
-   npm install
+   corepack enable
+   pnpm install --ignore-scripts
    ```
 
 3. Copy env from local-chain (created by setup):
@@ -22,7 +22,7 @@ A text-based CLI for real testing of x402 endpoints with Self and vouch proofs.
 
 4. Run the client:
    ```bash
-   npm start -- --local --endpoint /motivate
+   pnpm --dir apps/demo/client-cli start -- --local --endpoint /motivate
    ```
 
 ## Self verification (real Base Sepolia)
@@ -30,7 +30,7 @@ A text-based CLI for real testing of x402 endpoints with Self and vouch proofs.
 For `/motivate-gated` or discounted `/motivate` on real Base Sepolia, you need to verify as human first:
 
 ```bash
-npm start -- --server https://your-server.vercel.app --verify-self --popup-qr --endpoint /motivate-gated
+pnpm --dir apps/demo/client-cli start -- --server https://your-server.vercel.app --verify-self --popup-qr --endpoint /motivate-gated
 ```
 
 - `--verify-self` – Show Self QR before the request

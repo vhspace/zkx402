@@ -20,21 +20,20 @@ This project consists of two separate deployments on Vercel:
 
 ### Recommended Vercel settings (important for this monorepo)
 
-This repo uses npm workspaces, and **Node 24 can trigger workspace-related install/build issues on Vercel**
-(commonly showing `npm error code ENOWORKSPACES` during Next.js SWC install/download).
+This repo uses a `pnpm` workspace, and we pin Node 22 for consistent installs/builds on Vercel.
 
 For both the backend and frontend Vercel projects, set:
 
 - **Node.js Version**: **22.x** (Project → Settings → General → Node.js Version)
-- **Install Command**: `npm install --ignore-scripts --legacy-peer-deps`
+- **Install Command**: `corepack enable && pnpm install --ignore-scripts`
   - (Project → Settings → Build & Development Settings → Install Command)
 
 ### Optional: Node-based helpers (recommended)
 
 From repo root:
 
-- Deploy both projects interactively: `npm run vercel:deploy`
-- Set env vars from your local environment: `npm run vercel:env`
+- Deploy both projects interactively: `pnpm run vercel:deploy`
+- Set env vars from your local environment: `pnpm run vercel:env`
 
 ## Backend Deployment (API Server)
 
@@ -307,7 +306,7 @@ If you want CI to remain green even when aliasing is temporarily blocked (e.g., 
 Instead of bash scripts, use the Node helpers shipped in this repo:
 
 ```bash
-npm run vercel:deploy
+pnpm run vercel:deploy
 ```
 
 To set environment variables non-interactively (values read from your local environment):
@@ -318,7 +317,7 @@ export CDP_API_KEY_SECRET="..."
 export RECEIVER_WALLET="0x..."
 export NEXT_PUBLIC_CDP_PROJECT_ID="..."
 export NEXT_PUBLIC_API_URL="https://<your-backend>.vercel.app"
-npm run vercel:env
+pnpm run vercel:env
 ```
 
 ## Troubleshooting
@@ -327,7 +326,7 @@ npm run vercel:env
 
 **Error: Module not found**
 - Ensure all dependencies are in `package.json`
-- Run `npm install` locally to verify
+- Run `corepack enable && pnpm install --ignore-scripts` locally to verify
 - Redeploy with `vercel --prod`
 
 **Error: Function execution timeout**
@@ -344,13 +343,13 @@ npm run vercel:env
 
 **Build errors**
 - Check build logs: `vercel logs`
-- Test build locally: `npm run build`
+- Test build locally: `pnpm run build`
 - Verify all dependencies are installed
 
-**`npm error code ENOWORKSPACES` (often during “Downloading swc package @next/swc-…”)**
-- Ensure the Vercel project is using **Node 22.x** (not 24).
-- Set an explicit **Install Command** (Vercel project settings):
-  - `npm install --ignore-scripts --legacy-peer-deps`
+**Install errors / wrong package manager**
+- Ensure the Vercel project is using **Node 22.x**.
+- Ensure the project is using `pnpm` (Vercel should detect `pnpm-lock.yaml` automatically).
+- Set an explicit **Install Command** if detection is flaky: `corepack enable && pnpm install --ignore-scripts`
 - Redeploy with **“Clear cache”** enabled.
 
 ### Environment Variables
@@ -394,13 +393,13 @@ Test locally before deploying:
 ```bash
 # Backend
 cd apps/demo/server
-npm install
-npm start
+corepack enable && pnpm install --ignore-scripts
+pnpm --filter x402-demo-server start
 
 # Frontend (in another terminal)
 cd apps/demo/client
-npm install
-npm run dev
+corepack enable && pnpm install --ignore-scripts
+pnpm --filter zkx402-client dev
 ```
 
 ## Production URLs

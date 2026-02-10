@@ -15,7 +15,7 @@
 
 ## Install
 
-- Prefer: `npm install --ignore-scripts --legacy-peer-deps`
+- Prefer: `corepack enable && pnpm install --ignore-scripts`
 - Avoid Node 24 for installs (native deps may fail). Node 20/22 is safest.
 
 ## AI-agent pointers

@@ -145,8 +145,8 @@ async function main() {
     }
 
     console.log("\nNext steps:");
-    console.log("- Install deps: npm install --ignore-scripts --legacy-peer-deps");
-    console.log("- Run demo: npm run dev:replit (or dev:server + dev:client)");
+    console.log("- Install deps: corepack enable && pnpm install --ignore-scripts");
+    console.log("- Run demo: pnpm run dev:replit (or dev:server + dev:client)");
     console.log("- For deterministic E2E: cd apps/demo/local-chain && node run-e2e-test.js\n");
   } finally {
     rl.close();

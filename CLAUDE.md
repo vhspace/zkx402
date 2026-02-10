@@ -16,7 +16,8 @@ These notes are for **Claude Code** working in this repo.
 Prefer:
 
 ```bash
-npm install --ignore-scripts --legacy-peer-deps
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 ## Local E2E (recommended fastest validation)

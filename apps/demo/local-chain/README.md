@@ -11,9 +11,10 @@ node run-e2e-test.js
 If you want the step-by-step flow instead:
 
 ```bash
-npm install
-npm run setup
-npm test
+corepack enable
+pnpm install --ignore-scripts
+pnpm run setup
+pnpm run test
 ```
 
 ## What This Does
@@ -33,7 +34,7 @@ This testing suite provides a complete local environment to test the x402 paymen
 ### Setup
 
 ```bash
-npm run setup
+pnpm run setup
 ```
 
 Starts Anvil, deploys MockUSDC, funds test accounts, and creates `.env.local` configuration.
@@ -41,7 +42,7 @@ Starts Anvil, deploys MockUSDC, funds test accounts, and creates `.env.local` co
 ### Run Tests
 
 ```bash
-npm test
+pnpm run test
 ```
 
 Runs the end-to-end test suite that validates:
@@ -56,7 +57,7 @@ Runs the end-to-end test suite that validates:
 ### Teardown
 
 ```bash
-npm run teardown
+pnpm run teardown
 ```
 
 Stops the Anvil process.
@@ -64,7 +65,7 @@ Stops the Anvil process.
 ### Clean
 
 ```bash
-npm run clean
+pnpm run clean
 ```
 
 Stops Anvil and removes all PID files.
@@ -130,7 +131,7 @@ The setup uses Anvil's default deterministic accounts:
 
 ## Configuration
 
-After running `npm run setup`, a `.env.local` file is created in `../server/`:
+After running `pnpm run setup`, a `.env.local` file is created in `../server/`:
 
 ```env
 CHAIN_ID=31337
@@ -151,7 +152,7 @@ After setup, start the x402 server:
 
 ```bash
 cd ../server
-npm run dev
+pnpm run dev
 ```
 
 The server will use the local chain configuration and MockUSDC.
@@ -161,19 +162,20 @@ The server will use the local chain configuration and MockUSDC.
 ```bash
 # Terminal 1: Setup and keep Anvil running
 cd apps/demo/local-chain
-npm install
-npm run setup
+corepack enable
+pnpm install --ignore-scripts
+pnpm run setup
 
 # Terminal 2: Start the server
 cd apps/demo/server
-npm run dev
+pnpm run dev
 
 # Terminal 3: Run tests
 cd apps/demo/local-chain
-npm test
+pnpm run test
 
 # When done
-npm run teardown
+pnpm run teardown
 ```
 
 ## Troubleshooting
@@ -181,15 +183,15 @@ npm run teardown
 ### Anvil already running
 
 ```bash
-npm run teardown
-npm run setup
+pnpm run teardown
+pnpm run setup
 ```
 
 ### Port 8545 in use
 
 ```bash
 lsof -ti:8545 | xargs kill -9
-npm run setup
+pnpm run setup
 ```
 
 ### Server not responding
@@ -218,8 +220,8 @@ The MockUSDC contract source is in `../contracts/src/MockUSDC.sol`. After change
 cd ../contracts
 forge build
 cd ../local-chain
-npm run clean
-npm run setup
+pnpm run clean
+pnpm run setup
 ```
 
 ### Custom Facilitator Logic

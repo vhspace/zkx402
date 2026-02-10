@@ -29,7 +29,7 @@ const config = {
 
 if (!config.usdcAddress) {
   log(colors.red, "Missing USDC_ADDRESS in .env.local");
-  log(colors.yellow, "Run npm run setup first");
+  log(colors.yellow, "Run pnpm run setup first");
   process.exit(1);
 }
 
@@ -84,7 +84,7 @@ async function main() {
     log(colors.green, `  Server is ${healthData.status}`);
   } catch (error) {
     log(colors.red, "  Server is not running");
-    log(colors.yellow, "  Start the server: cd ../server && npm run dev");
+    log(colors.yellow, "  Start the server: cd ../server && pnpm run dev");
     process.exit(1);
   }
 

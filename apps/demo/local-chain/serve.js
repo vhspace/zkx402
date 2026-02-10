@@ -4,7 +4,7 @@
  * Keeps the server running until Ctrl+C (unlike run-e2e-test.js which runs tests and exits).
  *
  * Usage: node serve.js
- * Then in another terminal: cd ../client-cli && npm start -- --local --endpoint /motivate
+ * Then in another terminal: pnpm --dir ../client-cli start -- --local --endpoint /motivate
  */
 import { spawn } from "child_process";
 import { execSync } from "child_process";
@@ -223,16 +223,23 @@ async function main() {
   await fundAccounts(usdcAddress);
   createEnvFile(usdcAddress, mockHumanRegistryAddress, vouchProofRegistryAddress);
 
-  const serverDir = path.join(__dirname, "..", "server");
-  if (!fs.existsSync(path.join(serverDir, "node_modules"))) {
-    execSync("npm install --legacy-peer-deps --ignore-scripts", { cwd: serverDir, stdio: "ignore" });
+  // This repo is a pnpm workspace: a single root install is the reliable path.
+  const repoRoot = findRepoRoot(__dirname);
+  if (!fs.existsSync(path.join(repoRoot, "node_modules"))) {
+    execSync("corepack enable && pnpm install --ignore-scripts", {
+      cwd: repoRoot,
+      stdio: "ignore",
+    });
   }
 
   const serverProcess = await startServer();
   await new Promise((r) => setTimeout(r, 500));
 
   log(colors.cyan, "\nIn another terminal:");
-  log(colors.yellow, "  cd apps/demo/client-cli && npm start -- --local --endpoint /motivate");
+  log(
+    colors.yellow,
+    "  pnpm --dir apps/demo/client-cli start -- --local --endpoint /motivate",
+  );
   log(colors.cyan, "\nServer URL: http://localhost:3001");
 
   const cleanup = () => {

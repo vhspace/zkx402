@@ -292,8 +292,7 @@ This validates:
 ### 3.2 Unit tests only
 
 ```bash
-cd packages/x402-zkx402
-npm test
+pnpm --filter x402-zkx402 test
 ```
 
 

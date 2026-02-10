@@ -25,7 +25,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Install workspace deps (root)
-        run: corepack enable && pnpm install --ignore-scripts
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Unit tests (repo tools)
         run: pnpm run test:tools

@@ -27,7 +27,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: corepack enable && pnpm install --ignore-scripts
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Repo tool tests
         run: pnpm run test:tools
@@ -273,7 +273,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: corepack enable && pnpm install --ignore-scripts
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Detect Playwright version
         id: playwright_version
