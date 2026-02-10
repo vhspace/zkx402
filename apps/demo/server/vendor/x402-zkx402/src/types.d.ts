@@ -128,7 +128,7 @@ export interface ProofVerificationDetail {
   reason?: string;
 
   /**
-   * Optional API verification result (for API-backed providers like `self_api`, `vlayer_api`)
+   * Optional API verification result (for API-backed providers like `self_api`, `vouch_api`)
    */
   apiResult?: any;
 

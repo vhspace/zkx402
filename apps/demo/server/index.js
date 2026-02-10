@@ -7,6 +7,8 @@ import { getTokenBalances } from "./balances.js";
 import { join, dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { createRequire } from "module";
+import { randomUUID } from "crypto";
+import { createLogger } from "./logger.js";
 
 dotenv.config({ path: ".env" });
 dotenv.config({ path: ".env.local", override: true });
@@ -15,9 +17,21 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const ENABLE_PROOF_POLICY = process.env.ENABLE_PROOF_POLICY === "true";
 const ENABLE_PROOF_COSTS = process.env.ENABLE_PROOF_COSTS === "true";
+const logger = createLogger({ service: "x402-demo-server" });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+function txExplorerUrl(network, txHash) {
+  if (!txHash || typeof txHash !== "string") return null;
+  if (network === "base-sepolia" || network === "eip155:84532") {
+    return `https://sepolia.basescan.org/tx/${txHash}`;
+  }
+  if (network === "base" || network === "eip155:8453") {
+    return `https://basescan.org/tx/${txHash}`;
+  }
+  return null;
+}
 
 // IMPORTANT:
 // - In CI/local dev, the monorepo contains `packages/x402-zkx402`, so import it directly
@@ -37,7 +51,8 @@ function loadProofPolicy() {
       : join(__dirname, "proof-policy.json");
     const parsed = loadProofPolicyFile(p);
     return parsed.ok ? parsed.policy : null;
-  } catch {
+  } catch (error) {
+    logger.warn("proof_policy_load_failed", { err: error });
     return null;
   }
 }
@@ -51,7 +66,8 @@ function loadProofCosts() {
       : join(__dirname, "proof-costs.json");
     const parsed = loadProofCostFile(p);
     return parsed.ok ? parsed.costs : null;
-  } catch {
+  } catch (error) {
+    logger.warn("proof_costs_load_failed", { err: error });
     return null;
   }
 }
@@ -77,10 +93,9 @@ const maybeCreateLocalFacilitator = (() => {
     const mod = require("../local-chain/local-facilitator.js");
     return mod?.createLocalFacilitator ?? null;
   } catch (e) {
-    console.warn(
-      "USE_LOCAL_FACILITATOR=true but local facilitator module not found; falling back to hosted facilitator.",
-      e?.message || e,
-    );
+    logger.warn("local_facilitator_not_found_fallback_hosted", {
+      error: e?.message || String(e),
+    });
     return null;
   }
 })();
@@ -238,6 +253,35 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Per-request correlation IDs and request lifecycle logs (JSON, logstash-friendly).
+app.use((req, res, next) => {
+  const requestId = req.header("x-request-id") || randomUUID();
+  const correlationId = req.header("x-correlation-id") || requestId;
+  const startedAt = Date.now();
+
+  req.requestId = requestId;
+  req.correlationId = correlationId;
+  req.log = logger.child({
+    request_id: requestId,
+    correlation_id: correlationId,
+    method: req.method,
+    path: req.originalUrl || req.url,
+  });
+
+  res.setHeader("x-request-id", requestId);
+  res.setHeader("x-correlation-id", correlationId);
+
+  req.log.info("http_request_started");
+  res.on("finish", () => {
+    req.log.info("http_request_completed", {
+      status_code: res.statusCode,
+      duration_ms: Date.now() - startedAt,
+    });
+  });
+
+  next();
+});
+
 // apply x402 payment middleware (routes from JSON or in-code fallback)
 app.use(
   paymentMiddleware(
@@ -358,7 +402,7 @@ app.get("/balance/:address", async (req, res) => {
       token: "USDC",
     });
   } catch (error) {
-    console.error("Balance error:", error);
+    (req.log || logger).error("balance_request_failed", { err: error });
     res.status(500).json({
       error: error.message || "failed to fetch balance",
     });
@@ -393,17 +437,22 @@ app.post("/faucet", async (req, res) => {
         .json({ error: "server not configured with CDP API credentials" });
     }
 
-    console.log(`requesting faucet for address: ${address}`);
+    (req.log || logger).info("faucet_requested", { address });
     const txHash = await requestFaucet(address, apiKeyId, privateKey);
 
-    console.log(`Faucet successful! Transaction: ${txHash}`);
+    (req.log || logger).info("faucet_succeeded", {
+      address,
+      transaction: txHash,
+      network: "base-sepolia",
+      explorer_url: txExplorerUrl("base-sepolia", txHash),
+    });
     res.json({
       success: true,
       transactionHash: txHash,
       message: "USDC will arrive shortly",
     });
   } catch (error) {
-    console.error("Faucet error:", error);
+    (req.log || logger).error("faucet_request_failed", { err: error });
     res.status(500).json({
       error: error.message || "Faucet request failed",
       details: "may be hitting rate limits; try again in a few min",
@@ -425,31 +474,16 @@ const isEntrypoint = (() => {
 
 if (!process.env.VERCEL && isEntrypoint) {
   app.listen(PORT, () => {
-    console.log(`x402 demo server running on http://localhost:${PORT}`);
-    console.log(`\nEndpoints:`);
-    console.log(`   • GET  /health           - health check (public)`);
-    console.log(
-      `   • GET  /balance/:address - USDC balance via CDP Token Balances API (public)`,
-    );
-    console.log(
-      `   • POST /faucet           - request test USDC via CDP Faucet API (public)`,
-    );
-    console.log(
-      `   • GET  /motivate         - motivational quote (requires 0.01 USDC payment)`,
-    );
-    if (PROOF_POLICY) {
-      console.log(
-        `   • GET  /motivate-gated   - motivational quote (requires payment + verified human proof)`,
-      );
-    }
-    console.log(`\nCDP products in use:`);
-    console.log(
-      `   • CDP x402 Facilitator - payment verification & settlement`,
-    );
-    console.log(`   • CDP Faucet API       - test USDC distribution`);
-    console.log(`   • CDP Token Balances   - real-time balance checking`);
-    console.log(`\nreceiving payments at: ${RECEIVER_WALLET}`);
-    console.log(`Price: 0.01 USDC on Base Sepolia`);
+    logger.info("server_started", {
+      url: `http://localhost:${PORT}`,
+      receiver_wallet: RECEIVER_WALLET,
+      price: "0.01 USDC",
+      network: "base-sepolia",
+      proof_policy_enabled: Boolean(PROOF_POLICY),
+      endpoints: PROOF_POLICY
+        ? ["/health", "/balance/:address", "/faucet", "/motivate", "/motivate-gated"]
+        : ["/health", "/balance/:address", "/faucet", "/motivate"],
+    });
   });
 }
 

@@ -6,8 +6,8 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ZKx402 - Verified Data Marketplace",
-  description: "A trustless marketplace connecting whistleblowers with journalists and AI agents using Zero-Knowledge Proofs",
+  title: "zx402",
+  description: "Temporary placeholder while zx402 is refactored.",
 };
 
 export default function RootLayout({

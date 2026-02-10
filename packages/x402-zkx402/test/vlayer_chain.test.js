@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 
-import { createVlayerChainProvider } from "../src/proofs/providers/vlayer_chain.js";
+import { createVouchChainProvider } from "../src/proofs/providers/vouch_chain.js";
 import { ClaimType } from "../src/proofs/claims.js";
 
 function startJsonRpcServer({ ethCallResultHex = null } = {}) {
@@ -43,8 +43,8 @@ function startJsonRpcServer({ ethCallResultHex = null } = {}) {
   });
 }
 
-test("vlayer_chain: not configured without registryAddress", async () => {
-  const provider = createVlayerChainProvider({ rpcUrl: "http://127.0.0.1:1" });
+test("vouch_chain: not configured without registryAddress", async () => {
+  const provider = createVouchChainProvider({ rpcUrl: "http://127.0.0.1:1" });
   const res = await provider.verifyOriginHttpGet({
     walletAddress: "0x0000000000000000000000000000000000000001",
     claim: { type: ClaimType.ORIGIN_HTTP_GET, url: "https://example.com" },
@@ -54,8 +54,8 @@ test("vlayer_chain: not configured without registryAddress", async () => {
   assert.equal(res.status, "not_configured");
 });
 
-test("vlayer_chain: not configured without rpcUrl", async () => {
-  const provider = createVlayerChainProvider({
+test("vouch_chain: not configured without rpcUrl", async () => {
+  const provider = createVouchChainProvider({
     registryAddress: "0x0000000000000000000000000000000000000002",
   });
   const res = await provider.verifyOriginHttpGet({
@@ -67,8 +67,8 @@ test("vlayer_chain: not configured without rpcUrl", async () => {
   assert.equal(res.status, "not_configured");
 });
 
-test("vlayer_chain: invalid input without walletAddress", async () => {
-  const provider = createVlayerChainProvider({
+test("vouch_chain: invalid input without walletAddress", async () => {
+  const provider = createVouchChainProvider({
     rpcUrl: "http://127.0.0.1:1",
     registryAddress: "0x0000000000000000000000000000000000000002",
   });
@@ -81,13 +81,13 @@ test("vlayer_chain: invalid input without walletAddress", async () => {
   assert.equal(res.status, "invalid_input");
 });
 
-test("vlayer_chain: verified=true when eth_call returns 1", async () => {
+test("vouch_chain: verified=true when eth_call returns 1", async () => {
   const { server, url } = await startJsonRpcServer({
     ethCallResultHex: "0x" + "0".repeat(63) + "1",
   });
 
   try {
-    const provider = createVlayerChainProvider({
+    const provider = createVouchChainProvider({
       rpcUrl: url,
       registryAddress: "0x0000000000000000000000000000000000000002",
     });
@@ -104,13 +104,13 @@ test("vlayer_chain: verified=true when eth_call returns 1", async () => {
   }
 });
 
-test("vlayer_chain: verified=false when eth_call returns 0", async () => {
+test("vouch_chain: verified=false when eth_call returns 0", async () => {
   const { server, url } = await startJsonRpcServer({
     ethCallResultHex: "0x" + "0".repeat(64),
   });
 
   try {
-    const provider = createVlayerChainProvider({
+    const provider = createVouchChainProvider({
       rpcUrl: url,
       registryAddress: "0x0000000000000000000000000000000000000002",
     });

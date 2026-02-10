@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "zkx402 - x402 protocol extension with zero-knowledge proof verification",
   "private": true,
+  "packageManager": "pnpm@10.7.0",
   "workspaces": [
     "packages/*",
     "apps/demo/client",
-    "apps/demo/server"
+    "apps/demo/server",
+    "apps/demo/client-cli",
+    "apps/demo/local-chain"
   ],
   "dependencies": {
     "@solana/kit": "^5.1.0",
@@ -17,12 +20,12 @@
     "vercel:deploy": "node scripts/vercel-deploy.mjs",
     "vercel:env": "node scripts/vercel-env.mjs",
     "test:tools": "node --test scripts/test/*.test.mjs",
-    "lint": "npm run lint --workspace=x402-zkx402",
+    "lint": "pnpm --filter x402-zkx402 lint",
     "test:e2e": "playwright test",
-    "build": "npm run build --workspace=zkx402-client",
-    "dev:server": "npm run dev --workspace=apps/demo/server",
-    "dev:client": "npm run dev --workspace=apps/demo/client",
-    "dev:replit": "concurrently -k -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\""
+    "build": "pnpm --filter zkx402-client build",
+    "dev:server": "pnpm --filter x402-demo-server dev",
+    "dev:client": "pnpm --filter zkx402-client dev",
+    "dev:replit": "concurrently -k -n server,client -c blue,green \"pnpm run dev:server\" \"pnpm run dev:client\""
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
@@ -38,6 +41,7 @@
   "author": "",
   "license": "ISC",
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=22 <23",
+    "pnpm": ">=10.7.0"
   }
 }

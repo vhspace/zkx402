@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { stableStringify } from "./policy.js";
+import { normalizeProviderName } from "./policy.js";
 import { claimKey } from "./claims.js";
 
 export const DEFAULT_PROOF_COSTS = Object.freeze({
@@ -23,7 +24,9 @@ function clampInt(n, { min, max, fallback }) {
 
 function normalizeCostEntry(e) {
   if (!e || typeof e !== "object") return null;
-  const provider = typeof e.provider === "string" ? e.provider.trim() : "";
+  const provider = normalizeProviderName(
+    typeof e.provider === "string" ? e.provider.trim() : ""
+  );
   const claimKey = typeof e.claimKey === "string" ? e.claimKey.trim() : "";
   if (!provider || !claimKey) return null;
 
@@ -101,6 +104,7 @@ export function computeVerificationCostUsdMicros({
   commissionBpsOverride,
 }) {
   const normalized = normalizeProofCosts(costs);
+  const providerName = normalizeProviderName(provider);
   const bps = clampInt(
     typeof commissionBpsOverride === "number"
       ? commissionBpsOverride
@@ -119,13 +123,13 @@ export function computeVerificationCostUsdMicros({
 
   for (const c of Array.isArray(claims) ? claims : []) {
     const k = claimKey(c);
-    const key = `${provider}:${k}`;
+    const key = `${providerName}:${k}`;
     const base = toBigIntOrZero(costByProviderClaimKey.get(key));
     const commission = applyCommissionBps(base, bps);
     const lineTotal = base + commission;
     total += lineTotal;
     breakdown.push({
-      provider,
+      provider: providerName,
       claimKey: k,
       baseUsdMicros: base.toString(),
       commissionBps: bps,
@@ -136,7 +140,7 @@ export function computeVerificationCostUsdMicros({
 
   return {
     ok: true,
-    provider,
+    provider: providerName,
     currency: normalized.currency,
     totalUsdMicros: total.toString(),
     breakdown,

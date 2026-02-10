@@ -1,0 +1,21 @@
+{
+  "name": "@zkx402/client-cli",
+  "version": "0.1.0",
+  "description": "Text-based x402 client for real testing with Self and vouch proofs",
+  "type": "module",
+  "bin": {
+    "zkx402-client": "./cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "test": "node cli.js --local --endpoint /motivate"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "@selfxyz/core": "^1.0.0",
+    "@selfxyz/qrcode": "^1.0.18",
+    "ethers": "^6.15.0",
+    "node-fetch": "^3.3.2",
+    "qrcode": "^1.5.4"
+  }
+}
