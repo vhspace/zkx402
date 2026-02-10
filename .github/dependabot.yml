@@ -9,36 +9,6 @@ updates:
     open-pull-requests-limit: 5
     versioning-strategy: increase
 
-  - package-ecosystem: "npm"
-    directory: "/packages/x402-zkx402"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-
-  - package-ecosystem: "npm"
-    directory: "/apps/demo/client-cli"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-
-  - package-ecosystem: "npm"
-    directory: "/apps/demo/server"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-
-  - package-ecosystem: "npm"
-    directory: "/apps/demo/client"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-
-  - package-ecosystem: "npm"
-    directory: "/apps/demo/local-chain"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

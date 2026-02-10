@@ -1,4 +1,4 @@
-run = "npm run dev:replit"
+run = "corepack enable && pnpm run dev:replit"
 
 [env]
 NODE_ENV = "development"

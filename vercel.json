@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build --workspace=zkx402-client",
+  "buildCommand": "pnpm --filter zkx402-client build",
   "outputDirectory": "apps/demo/client/.next"
 }
 

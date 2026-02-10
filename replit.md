@@ -16,7 +16,8 @@ These notes are for **Replit AI / Agent** working in this repo.
 Prefer:
 
 ```bash
-npm install --ignore-scripts --legacy-peer-deps
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 ## Fast validation loop (recommended)

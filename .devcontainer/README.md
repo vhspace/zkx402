@@ -40,7 +40,7 @@ This devcontainer provides a consistent development environment for the zkx402 p
 
 3. **First Time Setup**
    - The container image includes Foundry (forge/cast/anvil) and Node via devcontainer features.
-   - Install repo dependencies when you need them (some setups may prefer `npm install --ignore-scripts --legacy-peer-deps`).
+   - Install repo dependencies when you need them: `corepack enable && pnpm install --ignore-scripts`.
 
 ## 1Password (`op`) Setup (Recommended)
 
@@ -111,10 +111,10 @@ anvil
 cd apps/demo/client
 
 # Install dependencies (if needed)
-npm install
+corepack enable && pnpm install --ignore-scripts
 
 # Run dev server
-npm run dev
+pnpm run dev
 ```
 
 ### Backend
@@ -122,10 +122,10 @@ npm run dev
 cd apps/demo/server
 
 # Install dependencies (if needed)
-npm install
+corepack enable && pnpm install --ignore-scripts
 
 # Start server
-npm start
+pnpm start
 ```
 
 ## Foundry Commands

@@ -20,26 +20,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable pnpm (corepack)
+        run: corepack enable && corepack prepare pnpm@10.7.0 --activate
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Repo tool tests
-        run: npm run test:tools
+        run: pnpm run test:tools
 
       - name: Server syntax check
         run: node --check apps/demo/server/index.js
 
       - name: Client lint
-        run: npm run lint --workspace=apps/demo/client
+        run: pnpm --filter zkx402-client lint
 
       - name: Client build
-        run: npm run build --workspace=apps/demo/client
+        run: pnpm --filter zkx402-client build
 
   deploy-prod:
     runs-on: ubuntu-latest
@@ -187,14 +190,15 @@ jobs:
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_SERVER}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
-          OUT="$(npx --yes vercel@latest --cwd apps/demo/server deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
-          echo "$OUT"
-          # Try multiple patterns to extract the URL - Vercel CLI output format may vary
-          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
+          npx --yes vercel@latest --no-color --cwd apps/demo/server deploy --yes \
+            -e E2E_FAUCET_MOCK="true" \
+            -e ENABLE_PROOF_POLICY="true" \
+            --token="${VERCEL_TOKEN}" 2>&1 | tee vercel-backend.out
+          URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel-backend.out | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse backend preview URL from vercel output"
             echo "=== Full Vercel Output ==="
-            echo "$OUT"
+            cat vercel-backend.out || true
             exit 1
           fi
           echo "backend_url=$URL" >> "$GITHUB_OUTPUT"
@@ -206,15 +210,16 @@ jobs:
           set -euo pipefail
           export VERCEL_PROJECT_ID="${VERCEL_PROJECT_ID_CLIENT}"
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
+          BACKEND_URL="${{ steps.deploy_backend.outputs.backend_url }}"
           # NOTE: `--cwd` is a global Vercel CLI flag. Put it BEFORE the subcommand.
-          OUT="$(npx --yes vercel@latest --cwd apps/demo/client deploy --yes --token="${VERCEL_TOKEN}" 2>&1)"
-          echo "$OUT"
-          # Try multiple patterns to extract the URL - Vercel CLI output format may vary
-          URL="$(echo "$OUT" | grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' | tail -n 1 || true)"
+          npx --yes vercel@latest --no-color --cwd apps/demo/client deploy --yes \
+            -b NEXT_PUBLIC_API_URL="${BACKEND_URL}" \
+            --token="${VERCEL_TOKEN}" 2>&1 | tee vercel-frontend.out
+          URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel-frontend.out | tail -n 1 || true)"
           if [ -z "$URL" ]; then
             echo "Failed to parse frontend preview URL from vercel output"
             echo "=== Full Vercel Output ==="
-            echo "$OUT"
+            cat vercel-frontend.out || true
             exit 1
           fi
           echo "frontend_url=$URL" >> "$GITHUB_OUTPUT"
@@ -266,14 +271,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable pnpm (corepack)
+        run: corepack enable && corepack prepare pnpm@10.7.0 --activate
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Detect Playwright version
         id: playwright_version
@@ -306,7 +314,7 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.frontend_url }}
           MAILSLURP_API_KEY: ${{ secrets.MAILSLURP_API_KEY }}
-        run: npm run test:e2e
+        run: pnpm run test:e2e
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4

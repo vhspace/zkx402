@@ -248,12 +248,12 @@ VOUCH_PROOF_REGISTRY=${vouchProofRegistryAddress}
 
 function installDependencies() {
   log(colors.blue, "Checking server dependencies...");
-  const serverDir = path.join(__dirname, "..", "server");
+  const repoRoot = findRepoRoot(__dirname);
 
-  if (!fs.existsSync(path.join(serverDir, "node_modules"))) {
+  if (!fs.existsSync(path.join(repoRoot, "node_modules"))) {
     try {
-      execSync("npm install --legacy-peer-deps --ignore-scripts", {
-        cwd: serverDir,
+      execSync("corepack enable && pnpm install --ignore-scripts", {
+        cwd: repoRoot,
         stdio: "ignore",
       });
       log(colors.green, "Dependencies installed");
@@ -446,8 +446,10 @@ async function main() {
 
     log(colors.blue, "Running unit tests (x402-zkx402)...");
     const repoRoot = findRepoRoot(__dirname);
-    const unitTestCwd = path.join(repoRoot, "packages", "x402-zkx402");
-    execSync("npm test", { cwd: unitTestCwd, stdio: "inherit" });
+    execSync("corepack enable && pnpm --filter x402-zkx402 test", {
+      cwd: repoRoot,
+      stdio: "inherit",
+    });
     log(colors.green, "Unit tests passed.");
 
     const isRunning = await checkAnvilRunning();

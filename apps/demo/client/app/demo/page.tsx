@@ -395,8 +395,20 @@ function DemoPageInner() {
       const data: ApiResponse = await response.json();
       setQuote(data.quote);
     } catch (err) {
-      const msg =
+      let msg =
         err instanceof Error ? err.message : "failed to call proof-gated API";
+      // AbortController errors can vary by runtime. Make the UI message stable so
+      // preview E2E can assert a "proof-gated" failure mode.
+      const maybeName =
+        err && typeof err === "object" && "name" in err
+          ? String(err.name)
+          : "";
+      if (
+        maybeName === "AbortError" ||
+        /signal is aborted|aborted without reason/i.test(msg)
+      ) {
+        msg = "proof-gated request timed out";
+      }
       setError(msg);
       console.error(err);
     } finally {

@@ -257,8 +257,7 @@ CLIENT_URL=http://localhost:3000
 
 ```bash
 # 1. Start your server
-cd server
-npm run dev
+pnpm --filter x402-demo-server dev
 
 # 2. Check a verified wallet
 curl http://localhost:3001/verify/0xE37bdCA8f1206B861E3b2ECF29b3e07839d1ad2c

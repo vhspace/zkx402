@@ -12,11 +12,12 @@ This repo is intended to be production-quality code (not a one-off demo). Please
 
 ## Development setup
 
-- **Node**: prefer Node 20 (matches CI). Some transitive packages are picky about Node versions.
+- **Node**: prefer Node 22 (matches CI and `package.json` engines).
 - **Install** (from repo root):
 
 ```bash
-npm install --ignore-scripts --legacy-peer-deps
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 ## Running locally
@@ -24,13 +25,13 @@ npm install --ignore-scripts --legacy-peer-deps
 ### Demo app
 
 ```bash
-npm run dev:server
+pnpm run dev:server
 ```
 
 In another terminal:
 
 ```bash
-npm run dev:client
+pnpm run dev:client
 ```
 
 ### Local E2E (recommended before opening a PR)
@@ -52,8 +53,7 @@ This runs:
 ### Package unit tests
 
 ```bash
-cd packages/x402-zkx402
-npm test
+pnpm --filter x402-zkx402 test
 ```
 
 ### CI
@@ -79,7 +79,7 @@ git submodule update --init --recursive
 ## PR checklist
 
 - Run:
-  - `cd packages/x402-zkx402 && npm test`
+  - `pnpm --filter x402-zkx402 test`
   - `cd apps/demo/local-chain && node run-e2e-test.js`
 - Update docs when you change:
   - paths, scripts, env vars, JSON formats, or CI behavior

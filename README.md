@@ -39,19 +39,20 @@ It runs:
 From repo root:
 
 ```bash
-npm install --ignore-scripts --legacy-peer-deps
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 Then:
 
 ```bash
-npm run dev:server
+pnpm run dev:server
 ```
 
 In another terminal:
 
 ```bash
-npm run dev:client
+pnpm run dev:client
 ```
 
 ## Using `x402-zkx402` in your own server

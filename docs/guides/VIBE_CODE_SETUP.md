@@ -29,7 +29,7 @@ It runs:
 
 ## Prereqs
 
-- **Node.js**: 18+ (repo often works on newer, but Node 24 can break native builds; see `.cursor/rules/01-repo-basics.md`)
+- **Node.js**: 22+ (the repo pins Node 22 in CI and `package.json` engines)
 - **Foundry**: required for Anvil/forge/cast
 
 Foundry install:
@@ -44,7 +44,8 @@ foundryup
 From repo root:
 
 ```bash
-npm install --ignore-scripts --legacy-peer-deps
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 Notes for agent tools:
@@ -56,20 +57,20 @@ Notes for agent tools:
 ### Server
 
 ```bash
-npm run dev:server
+pnpm run dev:server
 ```
 
 ### Client
 
 ```bash
-npm run dev:client
+pnpm run dev:client
 ```
 
 ## Replit support (vibe coding)
 
 This repo includes a Replit-friendly setup:
 
-- `.replit` runs: `npm run dev:replit`
+- `.replit` runs: `pnpm run dev:replit`
 - `replit.nix` installs Node
 
 ### Recommended Replit flow
@@ -84,14 +85,15 @@ This repo includes a Replit-friendly setup:
 2) Run the setup wizard (optional, writes local env files):
 
 ```bash
-npm run vibe:setup
+pnpm run vibe:setup
 ```
 
 3) Install deps and start:
 
 ```bash
-npm install --ignore-scripts --legacy-peer-deps
-npm run dev:replit
+corepack enable
+pnpm install --ignore-scripts
+pnpm run dev:replit
 ```
 
 Notes:
@@ -102,9 +104,11 @@ Notes:
 
 Where we provide automation, we prefer **Node scripts** over bash:
 
-- Setup wizard: `npm run vibe:setup`
-- Vercel deploy helper: `npm run vercel:deploy`
-- Vercel env helper: `npm run vercel:env`
+- Setup wizard: `pnpm run vibe:setup`
+- Vercel deploy helper: `pnpm run vercel:deploy`
+- Vercel env helper: `pnpm run vercel:env`
+ 
+All of these scripts can be run via `pnpm run ...` as well (recommended for this repo).
 
 ## vlayer proofs in this repo (how to “get” them)
 

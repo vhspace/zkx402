@@ -81,13 +81,15 @@ NEXT_PUBLIC_BASE_REGISTRY_ADDRESS=<your-base-contract>
 ### Step 4: Start the App
 
 ```bash
+# From repo root:
+corepack enable
+pnpm install --ignore-scripts
+
 # Terminal 1: Start server
-cd server
-npm run dev:server
+pnpm run dev:server
 
 # Terminal 2: Start client
-cd client
-npm run dev:client
+pnpm run dev:client
 ```
 
 ### Step 5: Test Verification

@@ -88,7 +88,10 @@ async function showSelfQR(walletAddress, popupQr) {
     SelfAppBuilder = qrcodeMod.SelfAppBuilder;
     getUniversalLink = coreMod.getUniversalLink;
   } catch (e) {
-    log(colors.red, "Missing @selfxyz/qrcode or @selfxyz/core. Run: npm install");
+    log(
+      colors.red,
+      "Missing @selfxyz/qrcode or @selfxyz/core. Run: corepack enable && pnpm install --ignore-scripts",
+    );
     process.exit(1);
   }
 

@@ -63,6 +63,7 @@ jobs:
           export VERCEL_ORG_ID="${VERCEL_ORG_ID}"
           npx --yes vercel@latest --no-color --cwd apps/demo/server deploy --yes \
             -e E2E_FAUCET_MOCK="true" \
+            -e ENABLE_PROOF_POLICY="true" \
             --token="${VERCEL_TOKEN}" 2>&1 | tee vercel-backend.out
           URL="$(grep -oE 'https?://[a-zA-Z0-9.-]+\.vercel\.app' vercel-backend.out | tail -n 1 || true)"
           if [ -z "$URL" ]; then
@@ -158,11 +159,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable pnpm (corepack)
+        run: corepack enable && corepack prepare pnpm@10.7.0 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Verify required secrets
         shell: bash
@@ -193,21 +197,14 @@ jobs:
           npm_config_fetch_retry_maxtimeout: 120000
         run: |
           set -euo pipefail
-          for i in 1 2 3; do
-            if npm ci --prefer-offline --no-audit --no-fund; then
-              exit 0
-            fi
-            echo "npm ci failed (attempt $i/3). Retrying..."
-            sleep $((i * 10))
-          done
-          echo "npm ci failed after 3 attempts."
-          exit 1
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-ms-playwright-
 
@@ -219,4 +216,4 @@ jobs:
         shell: bash
         env:
           CI: true
-        run: npm run test:e2e
+        run: pnpm run test:e2e

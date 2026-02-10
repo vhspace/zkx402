@@ -6,8 +6,8 @@ const logger = createLogger({ service: "zkx402", component: "proofs_audit" });
 
 export function getCorrelationId(req) {
   const existing =
-    req?.headers?.["x-request-id"] ||
     req?.headers?.["x-correlation-id"] ||
+    req?.headers?.["x-request-id"] ||
     req?.headers?.["cf-ray"];
   if (existing) return String(existing);
   return crypto.randomUUID();

@@ -24,9 +24,19 @@ export async function signInWithEmailOtpViaMailSlurp(page: Page) {
     await page.getByPlaceholder('enter your email').fill(inbox.emailAddress);
     await page.getByRole('button', { name: /send otp/i }).click();
 
-    await expect(page.getByText(/enter the 6-digit code sent to/i)).toBeVisible({
-      timeout: 30_000,
-    });
+    const otpPrompt = page.getByText(/enter the 6-digit code sent to/i);
+    const errorBox = page.locator('.error');
+
+    // In some Preview environments the OTP send can fail (e.g. origin allowlist / provider issues).
+    // If that happens, surface a typed error so the higher-level E2E can skip instead of flaking.
+    await Promise.race([
+      otpPrompt.waitFor({ state: 'visible', timeout: 30_000 }),
+      errorBox.waitFor({ state: 'visible', timeout: 30_000 }),
+    ]);
+    if (await errorBox.isVisible().catch(() => false)) {
+      const txt = await errorBox.innerText().catch(() => '');
+      throw new Error(`OTP_SEND_FAILED: ${txt}`.trim());
+    }
 
     const email = await mailslurpWaitForLatestEmail(inbox.id, { timeoutMs: 90_000 });
     const otp = extractSixDigitOtp(email);

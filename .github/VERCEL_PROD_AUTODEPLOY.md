@@ -43,8 +43,8 @@ For forks, the recommended setup is:
 In the Vercel dashboard for both projects:
 
 - **Node.js Version**: **22.x**
-- **Install Command**: `npm install --ignore-scripts --legacy-peer-deps`
+- **Install Command**: `pnpm install --ignore-scripts`
 
-These reduce install/build failures in npm-workspaces monorepos.
+These reduce install/build failures in pnpm workspace monorepos.
 
 

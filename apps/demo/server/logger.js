@@ -20,7 +20,10 @@ const REDACT_KEYS = new Set([
 ]);
 
 function currentLevelValue() {
-  const raw = String(process.env.LOG_LEVEL || "info").toLowerCase();
+  // Prefer ZKX402_LOG_LEVEL, but allow LOG_LEVEL for shared environments.
+  const raw = String(
+    process.env.ZKX402_LOG_LEVEL || process.env.LOG_LEVEL || "info",
+  ).toLowerCase();
   return LEVELS[raw] ?? LEVELS.info;
 }
 

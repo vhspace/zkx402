@@ -43,7 +43,7 @@ this project showcases **four Coinbase Developer Platform (CDP) products** worki
 
 ### pre-reqs
 
-1. **Node.js v18+** installed
+1. **Node.js v22+** installed
 2. **Foundry** installed (for local testing)
 3. **CDP Project** created at https://portal.cdp.coinbase.com/
 4. **CDP API Key** for using CDP Facilitator, Faucet API, and Token Balances API
@@ -115,9 +115,11 @@ When adding a new proof system:
 
 ### 1. install server dependencies
 
+From repo root:
+
 ```bash
-cd apps/demo/server
-npm install
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 ### 2. configure server
@@ -149,8 +151,7 @@ CLIENT_URL=http://localhost:3000
 ### 3. start server
 
 ```bash
-cd apps/demo/server
-npm run dev
+pnpm --filter x402-demo-server dev
 ```
 
 you should see:
@@ -166,9 +167,11 @@ leave this terminal running
 
 open a new terminal:
 
+From repo root:
+
 ```bash
-cd apps/demo/client
-npm install
+corepack enable
+pnpm install --ignore-scripts
 ```
 
 ### 5. configure client
@@ -192,8 +195,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 ### 6. start client (in a new terminal)
 
 ```bash
-cd apps/demo/client
-npm run dev
+pnpm --filter zkx402-client dev
 ```
 
 you should see:
@@ -341,7 +343,7 @@ the **`useX402` hook** from CDP Embedded Wallet automatically:
    - explain the endpoint just returns data normally
 
 2. **start server**
-   - run `cd apps/demo/server && npm run dev` (or from repo root: `npm run dev:server`)
+   - run `cd apps/demo/server && pnpm run dev` (or from repo root: `pnpm run dev:server`)
    - show it's just a normal Express server
 
 3. **show client UI** (http://localhost:3000)
