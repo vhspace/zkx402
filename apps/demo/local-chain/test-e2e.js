@@ -39,6 +39,10 @@ const erc20Abi = [
   "function version() view returns (string)",
 ];
 
+const LOG_FLOW_CORRELATION_ID = "e2e-flow-motivate-1";
+const LOG_FLOW_QUOTE_REQUEST_ID = "e2e-flow-motivate-quote-1";
+const LOG_FLOW_PAID_REQUEST_ID = "e2e-flow-motivate-paid-1";
+
 function getRequirementAmount(requirement) {
   return requirement?.amount ?? requirement?.maxAmountRequired;
 }
@@ -69,6 +73,14 @@ async function main() {
   try {
     const healthResponse = await fetch(`${config.serverUrl}/health`);
     const healthData = await healthResponse.json();
+    assert.ok(
+      healthResponse.headers.get("x-request-id"),
+      "expected x-request-id header on /health"
+    );
+    assert.ok(
+      healthResponse.headers.get("x-correlation-id"),
+      "expected x-correlation-id header on /health"
+    );
     log(colors.green, `  Server is ${healthData.status}`);
   } catch (error) {
     log(colors.red, "  Server is not running");
@@ -81,6 +93,8 @@ async function main() {
     method: "GET",
     headers: {
       Accept: "application/json",
+      "X-Request-Id": LOG_FLOW_QUOTE_REQUEST_ID,
+      "X-Correlation-Id": LOG_FLOW_CORRELATION_ID,
     },
   });
 
@@ -162,6 +176,8 @@ async function main() {
     method: "GET",
     headers: {
       Accept: "application/json",
+      "X-Request-Id": LOG_FLOW_PAID_REQUEST_ID,
+      "X-Correlation-Id": LOG_FLOW_CORRELATION_ID,
       "X-PAYMENT": paymentHeader,
     },
   });
@@ -181,6 +197,14 @@ async function main() {
   if (paymentResponseHeader) {
     log(colors.green, "  Received payment response header");
   }
+  assert.ok(
+    paidResponse.headers.get("x-request-id"),
+    "expected x-request-id header on paid request"
+  );
+  assert.ok(
+    paidResponse.headers.get("x-correlation-id"),
+    "expected x-correlation-id header on paid request"
+  );
 
   log(colors.blue, "\nStep 6: Check final balances");
 
@@ -215,7 +239,7 @@ async function main() {
   assert.equal(payerDiff, BigInt(maxAmountRequired));
   assert.equal(receiverDiff, BigInt(maxAmountRequired));
 
-  log(colors.blue, "\nStep 7: Hard-gated access control (deny without verified proof)");
+  log(colors.blue, "\nStep 7: Self proof of humanity — hard-gated (deny without verified proof)");
 
   // First: negotiate payment requirements for the gated endpoint
   const gatedInitial = await fetch(`${config.serverUrl}/motivate-gated`, {
@@ -279,7 +303,7 @@ async function main() {
   assert.equal(payerBalanceAfterGateDenied, payerBalanceBeforeGate);
   assert.equal(receiverBalanceAfterGateDenied, receiverBalanceBeforeGate);
 
-  log(colors.blue, "\nStep 8: Hard-gated access control (allow with verified proof)");
+  log(colors.blue, "\nStep 8: Self proof of humanity — allow with verified proof (self_chain)");
 
   const gatedProofsHeaders = {
     Accept: "application/json",
@@ -461,80 +485,80 @@ async function main() {
     );
   }
 
-  log(colors.blue, "\nStep 9: Test vlayer_chain claim (origin_http_get) pricing");
+  log(colors.blue, "\nStep 9: Test vouch_chain claim (origin_http_get) pricing");
 
-  const vlayerHeaders = {
+  const vouchHeaders = {
     Accept: "application/json",
     "X-Wallet-Address": config.payerAddress,
     "X-Proof-Claims": JSON.stringify([{ type: "origin_http_get", url: "https://example.com" }]),
   };
 
-  const vlayerResponse = await fetch(`${config.serverUrl}/motivate`, {
+  const vouchResponse = await fetch(`${config.serverUrl}/motivate`, {
     method: "GET",
-    headers: { ...vlayerHeaders },
+    headers: { ...vouchHeaders },
   });
 
-  assert.equal(vlayerResponse.status, 402);
-  const vlayerRequirements = await vlayerResponse.json();
-  const vlayerRequirement = vlayerRequirements.accepts[0];
+  assert.equal(vouchResponse.status, 402);
+  const vouchRequirements = await vouchResponse.json();
+  const vouchRequirement = vouchRequirements.accepts[0];
 
-  log(colors.green, "  Received requirements with vlayer_chain claim");
+  log(colors.green, "  Received requirements with vouch_chain claim");
   log(
     colors.yellow,
-    `  Discounted price (vlayer): ${ethers.formatUnits(getRequirementAmount(vlayerRequirement), 6)} USDC`
+    `  Discounted price (vouch): ${ethers.formatUnits(getRequirementAmount(vouchRequirement), 6)} USDC`
   );
 
-  // Expect the vlayer tier to be more discounted than the base price.
-  assert.ok(BigInt(getRequirementAmount(vlayerRequirement)) < BigInt(maxAmountRequired));
+  // Expect the vouch tier to be more discounted than the base price.
+  assert.ok(BigInt(getRequirementAmount(vouchRequirement)) < BigInt(maxAmountRequired));
 
-  log(colors.blue, "\nStep 10: Pay vlayer discounted price (vlayer_chain provider path)");
+  log(colors.blue, "\nStep 10: Pay vouch discounted price (vouch_chain provider path)");
 
   const payerBalanceBeforeVlayer = await usdcContract.balanceOf(config.payerAddress);
   const receiverBalanceBeforeVlayer = await usdcContract.balanceOf(config.receiverAddress);
 
-  const vlayerAuthorization = {
+  const vouchAuthorization = {
     from: config.payerAddress,
-    to: vlayerRequirement.payTo,
-    value: getRequirementAmount(vlayerRequirement),
+    to: vouchRequirement.payTo,
+    value: getRequirementAmount(vouchRequirement),
     validAfter,
     validBefore,
     nonce: ethers.hexlify(ethers.randomBytes(32)),
   };
 
-  const vlayerSignature = await payerWallet.signTypedData(domain, types, vlayerAuthorization);
+  const vouchSignature = await payerWallet.signTypedData(domain, types, vouchAuthorization);
 
-  const vlayerPaymentHeader = Buffer.from(
+  const vouchPaymentHeader = Buffer.from(
     JSON.stringify({
       x402Version: 1,
       scheme: "exact",
-      network: vlayerRequirement.network,
+      network: vouchRequirement.network,
       payload: {
-        signature: vlayerSignature,
+        signature: vouchSignature,
         authorization: {
-          from: vlayerAuthorization.from,
-          to: vlayerAuthorization.to,
-          value: String(vlayerAuthorization.value),
-          validAfter: String(vlayerAuthorization.validAfter),
-          validBefore: String(vlayerAuthorization.validBefore),
-          nonce: vlayerAuthorization.nonce,
+          from: vouchAuthorization.from,
+          to: vouchAuthorization.to,
+          value: String(vouchAuthorization.value),
+          validAfter: String(vouchAuthorization.validAfter),
+          validBefore: String(vouchAuthorization.validBefore),
+          nonce: vouchAuthorization.nonce,
         },
       },
     })
   ).toString("base64");
 
-  const vlayerPaidResponse = await fetch(`${config.serverUrl}/motivate`, {
+  const vouchPaidResponse = await fetch(`${config.serverUrl}/motivate`, {
     method: "GET",
     headers: {
-      ...vlayerHeaders,
-      "X-PAYMENT": vlayerPaymentHeader,
+      ...vouchHeaders,
+      "X-PAYMENT": vouchPaymentHeader,
     },
   });
 
-  assert.equal(vlayerPaidResponse.status, 200);
-  const vlayerPaidData = await vlayerPaidResponse.json();
-  assert.equal(vlayerPaidData.paid, true);
-  assert.equal(vlayerPaidData.verification?.qualified, true);
-  assert.equal(vlayerPaidData.verification?.discountApplied, true);
+  assert.equal(vouchPaidResponse.status, 200);
+  const vouchPaidData = await vouchPaidResponse.json();
+  assert.equal(vouchPaidData.paid, true);
+  assert.equal(vouchPaidData.verification?.qualified, true);
+  assert.equal(vouchPaidData.verification?.discountApplied, true);
 
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -544,12 +568,12 @@ async function main() {
   const payerDiffVlayer = payerBalanceBeforeVlayer - payerBalanceAfterVlayer;
   const receiverDiffVlayer = receiverBalanceAfterVlayer - receiverBalanceBeforeVlayer;
 
-  assert.equal(payerDiffVlayer, BigInt(getRequirementAmount(vlayerRequirement)));
-  assert.equal(receiverDiffVlayer, BigInt(getRequirementAmount(vlayerRequirement)));
+  assert.equal(payerDiffVlayer, BigInt(getRequirementAmount(vouchRequirement)));
+  assert.equal(receiverDiffVlayer, BigInt(getRequirementAmount(vouchRequirement)));
 
   log(
     colors.green,
-    `  vlayer payment spent: ${ethers.formatUnits(payerDiffVlayer, 6)} USDC`
+    `  vouch payment spent: ${ethers.formatUnits(payerDiffVlayer, 6)} USDC`
   );
 
   log(colors.blue, "\nTest Summary");
@@ -559,7 +583,7 @@ async function main() {
   log(colors.green, "  Payment accepted and content received");
   log(colors.green, "  Payment response header received");
   log(colors.green, "  Dynamic pricing with zkproofs tested");
-  log(colors.green, "  Dynamic pricing with vlayer_chain tested");
+  log(colors.green, "  Dynamic pricing with vouch_chain tested");
   log(colors.green, "  Hard proof-gated access control tested");
 
   log(colors.blue, "\nAll tests passed!\n");

@@ -1,4 +1,10 @@
 import { generateJwt } from "@coinbase/cdp-sdk/auth";
+import { createLogger } from "./logger.js";
+
+const logger = createLogger({
+  service: "x402-demo-server",
+  component: "balances",
+});
 
 /**
  * get token balances for an address using CDP Token Balances API
@@ -27,7 +33,10 @@ export async function getTokenBalances(address, network, apiKeyId, apiKeySecret)
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Token Balances API error:", errorText);
+    logger.error("token_balances_api_error", {
+      status_code: response.status,
+      body: errorText,
+    });
     throw new Error(`failed to fetch balances: ${response.status}`);
   }
 

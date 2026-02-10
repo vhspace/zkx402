@@ -23,6 +23,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # local env files
 .env*.local
@@ -44,6 +45,8 @@ next-env.d.ts
 # local testing
 **/.anvil.pid
 **/.env.local
+/.pnpm-store/
+test-results/
 
 # backup files
 *.bak

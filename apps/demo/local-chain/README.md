@@ -25,8 +25,8 @@ This testing suite provides a complete local environment to test the x402 paymen
 3. **Test Accounts**: Uses Anvil's deterministic accounts with funded balances
 4. **Proof registries (local)**:
    - Deploys `MockHumanRegistry` for `self` chain verification (`human`)
-   - Deploys `VlayerProofRegistry` for `vlayer_chain` verification (`origin_http_get`)
-5. **E2E Tests**: Tests the complete payment flow including dynamic pricing with zkproofs (Self + vlayer)
+   - Deploys `VlayerProofRegistry` for `vouch_chain` verification (`origin_http_get`)
+5. **E2E Tests**: Tests the complete payment flow including dynamic pricing with zkproofs (Self + vouch)
 
 ## Commands
 

@@ -4,7 +4,7 @@ export const ClaimType = {
   EXCLUDED_COUNTRIES_NOT_CONTAINS: "excluded_countries_not_contains",
   OFAC_CLEAR: "ofac_clear",
   // Vendor-neutral claim: subject can prove access to an HTTP GET resource.
-  // Verified either via a vendor API verifier (e.g., vlayer) or by checking an on-chain
+  // Verified either via a vendor API verifier (e.g., vouch) or by checking an on-chain
   // attestation/registry that a valid proof was recorded.
   ORIGIN_HTTP_GET: "origin_http_get",
 };

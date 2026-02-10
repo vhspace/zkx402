@@ -1,13 +1,14 @@
-'use client';
-
-import { Hero } from '@/components/Hero';
-import { Header } from '@/components/Header';
-
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Hero />
-    </div>
+    <main className="min-h-screen bg-white text-black">
+      <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6">
+        <div className="text-center">
+          <h1 className="text-5xl font-bold tracking-tight">zx402</h1>
+          <p className="mt-4 text-base text-gray-600">
+            Placeholder site while refactor is in progress.
+          </p>
+        </div>
+      </div>
+    </main>
   );
 }

@@ -4,12 +4,12 @@
     "version": 1,
     "scope": "zkx402",
     "claims": [{ "type": "human" }, { "type": "origin_http_get" }],
-    "allowedProviders": ["vlayer_chain", "vlayer_api", "self", "self_api"],
-    "preferenceOrder": ["vlayer_chain", "vlayer_api", "self", "self_api"],
+    "allowedProviders": ["vouch_chain", "vouch_api", "self", "self_api"],
+    "preferenceOrder": ["vouch_chain", "vouch_api", "self", "self_api"],
     "fallback": "none"
   },
   "integrity": {
     "hashAlg": "sha256",
-    "hash": "b8791baeca660749b6c731694cf04188598b31b43339772ffd4378d733394a1e"
+    "hash": "bd61e3f2ffb7dd4beae61a6f4d1ef4e13d61e324334a1d53ffadabce7a8efc68"
   }
 }

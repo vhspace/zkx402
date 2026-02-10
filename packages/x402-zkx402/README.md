@@ -14,7 +14,7 @@ Routes can quote/charge different prices based on **canonical proof claims** (st
 - ✅ **Drop-in Replacement** - Works with existing x402 infrastructure
 - ✅ **Multiple claim types (opt-in)** - Human (chain), plus richer claims via API provider when configured
 - ✅ **Cross-chain Compatible** - Works with Base, Celo, and other EVM chains
-- ✅ **vlayer support (API + chain)** - Verify “web origin” proofs via `vlayer_api` or chain-first `vlayer_chain`
+- ✅ **vouch support (API + chain)** - Verify “web origin” proofs via `vouch_api` or chain-first `vouch_chain`
 
 ## Installation
 
@@ -178,7 +178,7 @@ Behavior:
 
 #### Quote-mode vs paid-mode for API providers (important)
 
-When a route’s `proofPolicy` allows an **API provider** (e.g. `self_api`, `vlayer_api`):
+When a route’s `proofPolicy` allows an **API provider** (e.g. `self_api`, `vouch_api`):
 
 - **Quote mode** (no `X-PAYMENT`):
   - the middleware **does not call** the vendor API
@@ -215,13 +215,13 @@ This middleware uses **canonical claims** end-to-end:
 | age_gte | `{ type: "age_gte", age: 21 }` | `self_api` only |
 | excluded_countries_not_contains | `{ type: "excluded_countries_not_contains", countries: ["US","RU"] }` | `self_api` only |
 | ofac_clear | `{ type: "ofac_clear" }` | `self_api` only |
-| origin_http_get | `{ type: "origin_http_get" }` | `vlayer_chain` (chain) or `vlayer_api` (API) |
+| origin_http_get | `{ type: "origin_http_get" }` | `vouch_chain` (chain) or `vouch_api` (API) |
 
-## vlayer proofs (step-by-step)
+## vouch proofs (step-by-step)
 
 There are **two** supported paths. Use **chain** if you want reliability and low request-path latency; use **API** if you want to verify a newly presented proof on demand.
 
-### Option A: `vlayer_chain` (recommended for production request-path)
+### Option A: `vouch_chain` (recommended for production request-path)
 
 This assumes an attestor/prover flow already recorded an attestation on-chain. The middleware does a **read-only** chain lookup during request handling.
 
@@ -231,8 +231,8 @@ This assumes an attestor/prover flow already recorded an attestation on-chain. T
 
 2) **Set server env**:
 
-- `VLAYERS_RPC_URL=<rpc url>`
-- `VLAYERS_PROOF_REGISTRY=<0x...>`
+- `VOUCH_RPC_URL=<rpc url>`
+- `VOUCH_PROOF_REGISTRY=<0x...>`
 
 3) **Enable the provider in policy**:
 
@@ -241,8 +241,8 @@ proofPolicy: {
   version: 1,
   scope: "zkx402",
   claims: [{ type: "origin_http_get" }],
-  allowedProviders: ["vlayer_chain"],
-  preferenceOrder: ["vlayer_chain"],
+  allowedProviders: ["vouch_chain"],
+  preferenceOrder: ["vouch_chain"],
   fallback: "none",
 }
 ```
@@ -255,15 +255,15 @@ proofPolicy: {
 Notes:
 - In the default implementation, the claim hash includes `{ scope, claim }`. **If you add fields** (like `url`) to the *required* claim, they become part of the attestation key.
 
-### Option B: `vlayer_api` (verify presented proof payload)
+### Option B: `vouch_api` (verify presented proof payload)
 
 This calls a verifier endpoint during paid requests (and is **skipped in quote mode** when `X-PAYMENT` is missing).
 
 1) **Set server env**:
 
-- `VLAYERS_API_URL=<https://...>` (required)
-- `VLAYERS_API_KEY=<secret>` (optional)
-- `VLAYERS_API_TIMEOUT_MS=8000` (optional)
+- `VOUCH_API_URL=<https://...>` (required)
+- `VOUCH_API_KEY=<secret>` (optional)
+- `VOUCH_API_TIMEOUT_MS=8000` (optional)
 
 2) **Enable the provider in policy**:
 
@@ -272,19 +272,19 @@ proofPolicy: {
   version: 1,
   scope: "zkx402",
   claims: [{ type: "origin_http_get" }],
-  allowedProviders: ["vlayer_api"],
-  preferenceOrder: ["vlayer_api"],
+  allowedProviders: ["vouch_api"],
+  preferenceOrder: ["vouch_api"],
   fallback: "none",
 }
 ```
 
 3) **Client sends the proof payload**:
 
-- `X-Vlayer-Proof: <json string or hex string>`
+- `X-Vouch-Proof: <json string or hex string>`
 
 4) (Optional) **Constrain provider selection** (useful when multiple providers are allowed):
 
-- `X-ZK-Proof-Plan: {"provider":"vlayer_api"}`
+- `X-ZK-Proof-Plan: {"provider":"vouch_api"}`
 
 5) **Costing**:
 

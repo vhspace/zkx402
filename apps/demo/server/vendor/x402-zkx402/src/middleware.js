@@ -24,8 +24,8 @@ import {
 } from "./proofs/audit.js";
 import { createSelfChainProvider } from "./proofs/providers/self_chain.js";
 import { createSelfApiProvider } from "./proofs/providers/self_api.js";
-import { createVlayerChainProvider } from "./proofs/providers/vlayer_chain.js";
-import { createVlayerApiProvider } from "./proofs/providers/vlayer_api.js";
+import { createVouchChainProvider } from "./proofs/providers/vouch_chain.js";
+import { createVouchApiProvider } from "./proofs/providers/vouch_api.js";
 import { verifyClaimWithPolicy, VerifyStatus } from "./proofs/router.js";
 import { computeVerificationCostUsdMicros, proofCostsHash } from "./proofs/costs.js";
 
@@ -121,8 +121,8 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
   const proofProviders = [
     createSelfChainProvider(),
     createSelfApiProvider(),
-    createVlayerChainProvider(),
-    createVlayerApiProvider(),
+    createVouchChainProvider(),
+    createVouchApiProvider(),
   ];
   const dbg = (message, data) =>
     logDebug(message, data, { enabled: debugEnabled });
@@ -200,19 +200,19 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
       }
     }
 
-    let vlayerProof = null;
-    const vlayerProofHeader =
-      req.headers["x-vlayer-proof"] ||
-      req.headers["x-vlayer-presentation"] ||
-      req.headers["x-vlayer-presentation-json"] ||
+    let vouchProof = null;
+    const vouchProofHeader =
+      req.headers["x-vouch-proof"] ||
+      req.headers["x-vouch-presentation"] ||
+      req.headers["x-vouch-presentation-json"] ||
       null;
-    if (vlayerProofHeader) {
+    if (vouchProofHeader) {
       try {
-        vlayerProof = JSON.parse(String(vlayerProofHeader));
+        vouchProof = JSON.parse(String(vouchProofHeader));
       } catch (error) {
         // Allow non-JSON payloads (e.g., hex-encoded proof blobs) as raw strings.
-        vlayerProof = String(vlayerProofHeader);
-        dbg("x_vlayer_proof_parse_failed", {
+        vouchProof = String(vouchProofHeader);
+        dbg("x_vouch_proof_parse_failed", {
           correlationId,
           error: error?.message || String(error),
         });
@@ -309,7 +309,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               claim,
               policy: routedPolicy,
               providers: proofProviders,
-              context: { walletAddress, selfProof, vlayerProof, correlationId },
+              context: { walletAddress, selfProof, vouchProof, correlationId },
             });
             durationMs = Date.now() - startedAt;
           }

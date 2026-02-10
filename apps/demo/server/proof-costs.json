@@ -13,10 +13,10 @@
         "description": "On-chain read (RPC) for isVerified(address)"
       },
       {
-        "provider": "vlayer_chain",
+        "provider": "vouch_chain",
         "claimKey": "origin_http_get",
         "costUsdMicros": "0",
-        "description": "On-chain read (RPC) of vlayer proof registry attestation"
+        "description": "On-chain read (RPC) of vouch proof registry attestation"
       },
       {
         "provider": "self_api",
@@ -25,10 +25,10 @@
         "description": "Vendor API call (set non-zero if billed per request)"
       },
       {
-        "provider": "vlayer_api",
+        "provider": "vouch_api",
         "claimKey": "origin_http_get",
         "costUsdMicros": "2500",
-        "description": "vlayer verifier API call (example: $0.0025 + commission)"
+        "description": "vouch verifier API call (example: $0.0025 + commission)"
       },
       {
         "provider": "self_api",
@@ -46,7 +46,7 @@
   },
   "integrity": {
     "hashAlg": "sha256",
-    "hash": "ca02ad5852ad2ff968eb91a6c677b5c7e50cbdc03ec127274c72e8819f2488c6"
+    "hash": "fdd1abd7b1c6bffdbf33f07bff740db96ad98756cacef11d719d71afd511cfb3"
   }
 }
 

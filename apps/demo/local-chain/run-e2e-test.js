@@ -30,6 +30,9 @@ const PAYER_ADDRESS = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 const RPC_URL = "http://localhost:8545";
 const CHAIN_ID = 31337;
 const SERVER_PORT = 3001;
+const LOG_FLOW_CORRELATION_ID = "e2e-flow-motivate-1";
+const LOG_FLOW_QUOTE_REQUEST_ID = "e2e-flow-motivate-quote-1";
+const LOG_FLOW_PAID_REQUEST_ID = "e2e-flow-motivate-paid-1";
 
 function findRepoRoot(startDir) {
   let dir = startDir;
@@ -177,7 +180,7 @@ async function deployVlayerProofRegistry({ payerAddress } = {}) {
   log(colors.green, `VlayerProofRegistry deployed at: ${registryAddress}`);
 
   // Seed a verified attestation for the payer for the demo claim.
-  // Matches the hashing logic in x402-zkx402's vlayer_chain provider.
+  // Matches the hashing logic in x402-zkx402's vouch_chain provider.
   const claimHash = claimHashSha256Hex({
     scope: "zkx402",
     claim: { type: "origin_http_get" },
@@ -188,9 +191,9 @@ async function deployVlayerProofRegistry({ payerAddress } = {}) {
       `cast send ${registryAddress} "setVerified(address,bytes32,bool)" ${payerAddress || PAYER_ADDRESS} ${claimHash} true --rpc-url ${RPC_URL} --private-key ${DEPLOYER_PRIVATE_KEY}`,
       { encoding: "utf-8", stdio: "ignore" }
     );
-    log(colors.green, "Seeded vlayer_chain attestation for payer (origin_http_get)");
+    log(colors.green, "Seeded vouch_chain attestation for payer (origin_http_get)");
   } catch (error) {
-    log(colors.red, "Failed to seed vlayer proof registry");
+    log(colors.red, "Failed to seed vouch proof registry");
     throw error;
   }
 
@@ -218,7 +221,7 @@ async function fundAccounts(usdcAddress) {
   }
 }
 
-function createEnvFile(usdcAddress, mockHumanRegistryAddress, vlayerProofRegistryAddress) {
+function createEnvFile(usdcAddress, mockHumanRegistryAddress, vouchProofRegistryAddress) {
   log(colors.blue, "Creating .env.local...");
 
   const envContent = `CHAIN_ID=${CHAIN_ID}
@@ -234,8 +237,8 @@ USE_LOCAL_FACILITATOR=true
 ENABLE_PROOF_POLICY=true
 SELF_RPC_URL=${RPC_URL}
 BASE_PROOF_OF_HUMAN_RECEIVER=${mockHumanRegistryAddress}
-VLAYERS_RPC_URL=${RPC_URL}
-VLAYERS_PROOF_REGISTRY=${vlayerProofRegistryAddress}
+VOUCH_RPC_URL=${RPC_URL}
+VOUCH_PROOF_REGISTRY=${vouchProofRegistryAddress}
 `;
 
   const envPath = path.join(__dirname, "..", "server", ".env.local");
@@ -288,16 +291,36 @@ function startServer() {
     });
 
     let output = "";
+    const jsonLogs = [];
+    const parseJsonLines = (chunkText) => {
+      for (const line of chunkText.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object") {
+            jsonLogs.push(parsed);
+          }
+        } catch {
+          // Ignore non-JSON lines.
+        }
+      }
+    };
     let resolved = false;
 
     server.stdout.on("data", (data) => {
       const text = data.toString();
       process.stdout.write(text);
       output += text;
-      if (!resolved && output.toLowerCase().includes("running on")) {
+      parseJsonLines(text);
+      if (
+        !resolved &&
+        (output.toLowerCase().includes("running on") ||
+          output.includes('"message":"server_started"'))
+      ) {
         resolved = true;
         log(colors.green, "Server started");
-        resolve(server);
+        resolve({ process: server, getJsonLogs: () => jsonLogs.slice() });
       }
     });
 
@@ -305,10 +328,15 @@ function startServer() {
       const text = data.toString();
       process.stderr.write(text);
       output += text;
-      if (!resolved && output.toLowerCase().includes("running on")) {
+      parseJsonLines(text);
+      if (
+        !resolved &&
+        (output.toLowerCase().includes("running on") ||
+          output.includes('"message":"server_started"'))
+      ) {
         resolved = true;
         log(colors.green, "Server started");
-        resolve(server);
+        resolve({ process: server, getJsonLogs: () => jsonLogs.slice() });
       }
       if (!resolved && output.includes("EADDRINUSE")) {
         resolved = true;
@@ -331,6 +359,54 @@ function startServer() {
       }
     }, 5000);
   });
+}
+
+function assertLogFlowSequence(logs) {
+  const trackedRequestIds = new Set([
+    LOG_FLOW_QUOTE_REQUEST_ID,
+    LOG_FLOW_PAID_REQUEST_ID,
+  ]);
+  const flowLogs = logs.filter(
+    (l) =>
+      l &&
+      typeof l === "object" &&
+      l.path === "/motivate" &&
+      trackedRequestIds.has(l.request_id)
+  );
+
+  const expected = [
+    { message: "http_request_started", request_id: LOG_FLOW_QUOTE_REQUEST_ID },
+    { message: "x402_quote_issued", request_id: LOG_FLOW_QUOTE_REQUEST_ID },
+    { message: "http_request_completed", request_id: LOG_FLOW_QUOTE_REQUEST_ID },
+    { message: "http_request_started", request_id: LOG_FLOW_PAID_REQUEST_ID },
+    { message: "x402_payment_settled", request_id: LOG_FLOW_PAID_REQUEST_ID },
+    { message: "http_request_completed", request_id: LOG_FLOW_PAID_REQUEST_ID },
+  ];
+
+  let idx = 0;
+  for (const entry of flowLogs) {
+    const want = expected[idx];
+    if (
+      want &&
+      entry.message === want.message &&
+      entry.request_id === want.request_id
+    ) {
+      idx += 1;
+      if (idx === expected.length) break;
+    }
+  }
+
+  if (idx !== expected.length) {
+    const debugSlice = flowLogs.map((e) => ({
+      message: e.message,
+      request_id: e.request_id,
+      correlation_id: e.correlation_id,
+      status_code: e.status_code,
+    }));
+    throw new Error(
+      `Missing expected logging sequence. Expected=${JSON.stringify(expected)} Got=${JSON.stringify(debugSlice)}`
+    );
+  }
 }
 
 async function runTests() {
@@ -358,7 +434,7 @@ async function main() {
   log(colors.blue, "\nComplete E2E Test Runner\n");
 
   let anvilProcess;
-  let serverProcess;
+  let serverRuntime;
   let startedAnvil = false;
 
   try {
@@ -385,17 +461,20 @@ async function main() {
 
     const usdcAddress = await deployMockUSDC();
     const mockHumanRegistryAddress = await deployMockHumanRegistry();
-    const vlayerProofRegistryAddress = await deployVlayerProofRegistry({
+    const vouchProofRegistryAddress = await deployVlayerProofRegistry({
       payerAddress: PAYER_ADDRESS,
     });
     await fundAccounts(usdcAddress);
-    createEnvFile(usdcAddress, mockHumanRegistryAddress, vlayerProofRegistryAddress);
+    createEnvFile(usdcAddress, mockHumanRegistryAddress, vouchProofRegistryAddress);
     installDependencies();
 
-    serverProcess = await startServer();
+    serverRuntime = await startServer();
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     await runTests();
+    const logs = serverRuntime?.getJsonLogs ? serverRuntime.getJsonLogs() : [];
+    assertLogFlowSequence(logs);
+    log(colors.green, "Log flow sequence assertion passed.");
 
     log(colors.green, "\nAll tests passed!\n");
     process.exit(0);
@@ -403,8 +482,8 @@ async function main() {
     log(colors.red, "\nTest failed:", error.message);
     process.exit(1);
   } finally {
-    if (serverProcess) {
-      serverProcess.kill();
+    if (serverRuntime?.process) {
+      serverRuntime.process.kill();
     }
     if (startedAnvil) {
       try {

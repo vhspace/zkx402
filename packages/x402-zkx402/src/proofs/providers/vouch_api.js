@@ -32,24 +32,34 @@ async function safeReadJson(res) {
   return null;
 }
 
-export function createVlayerApiProvider(options = {}) {
-  const apiUrl = options.apiUrl || process.env.VLAYERS_API_URL || null;
-  const apiKey = options.apiKey || process.env.VLAYERS_API_KEY || null;
+export function createVouchApiProvider(options = {}) {
+  const apiUrl = options.apiUrl || process.env.VOUCH_API_URL || null;
+  const apiKey = options.apiKey || process.env.VOUCH_API_KEY || null;
   const timeoutMs = coerceTimeoutMs(
-    options.timeoutMs ?? process.env.VLAYERS_API_TIMEOUT_MS,
+    options.timeoutMs ?? process.env.VOUCH_API_TIMEOUT_MS,
     8000
   );
   const fetchImpl = options.fetchImpl || globalThis.fetch;
 
-  async function verifyViaApi({ walletAddress, claim, policy, vlayerProof, correlationId }) {
+  async function verifyViaApi({
+    walletAddress,
+    claim,
+    policy,
+    vouchProof,
+    correlationId,
+  }) {
     if (!apiUrl) {
-      return { ok: false, status: "not_configured", reason: "Missing VLAYERS_API_URL" };
+      return { ok: false, status: "not_configured", reason: "Missing VOUCH_API_URL" };
     }
     if (typeof fetchImpl !== "function") {
       return { ok: false, status: "not_configured", reason: "Missing fetch implementation" };
     }
-    if (!vlayerProof) {
-      return { ok: false, status: "invalid_input", reason: "Missing vlayer proof payload (x-vlayer-proof)" };
+    if (!vouchProof) {
+      return {
+        ok: false,
+        status: "invalid_input",
+        reason: "Missing vouch proof payload (x-vouch-proof)",
+      };
     }
 
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -60,11 +70,11 @@ export function createVlayerApiProvider(options = {}) {
     if (correlationId) headers["X-Correlation-Id"] = String(correlationId);
 
     const body = {
-      vendor: "vlayer",
+      vendor: "vouch",
       scope: policy?.scope || null,
       subject: walletAddress ? { walletAddress: String(walletAddress).toLowerCase() } : null,
       claim,
-      proof: vlayerProof,
+      proof: vouchProof,
     };
 
     try {
@@ -80,7 +90,7 @@ export function createVlayerApiProvider(options = {}) {
         return {
           ok: false,
           status: "api_error",
-          reason: `vlayer API error: ${res?.status ?? "unknown"}`,
+          reason: `vouch API error: ${res?.status ?? "unknown"}`,
           errorDetails: data,
         };
       }
@@ -90,7 +100,7 @@ export function createVlayerApiProvider(options = {}) {
         return {
           ok: false,
           status: "bad_response",
-          reason: "vlayer API response did not include a recognizable verification result",
+          reason: "vouch API response did not include a recognizable verification result",
           errorDetails: data,
         };
       }
@@ -99,8 +109,8 @@ export function createVlayerApiProvider(options = {}) {
     } catch (error) {
       const msg =
         error?.name === "AbortError"
-          ? "vlayer API request timed out"
-          : error?.message || "vlayer API request failed";
+          ? "vouch API request timed out"
+          : error?.message || "vouch API request failed";
       return { ok: false, status: "error", reason: msg };
     } finally {
       if (timer) clearTimeout(timer);
@@ -108,7 +118,7 @@ export function createVlayerApiProvider(options = {}) {
   }
 
   return {
-    name: "vlayer_api",
+    name: "vouch_api",
     kind: "api",
     supportsClaims: ["origin_http_get"],
     verifyOriginHttpGet: (ctx) => verifyViaApi(ctx),

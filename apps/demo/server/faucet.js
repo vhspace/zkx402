@@ -1,4 +1,7 @@
 import { generateJwt } from "@coinbase/cdp-sdk/auth";
+import { createLogger } from "./logger.js";
+
+const logger = createLogger({ service: "x402-demo-server", component: "faucet" });
 
 /**
  * request USDC from CDP Faucet
@@ -29,7 +32,10 @@ export async function requestFaucet(address, apiKeyId, apiKeySecret) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Faucet API error:", errorText);
+    logger.error("faucet_api_error", {
+      status_code: response.status,
+      body: errorText,
+    });
     throw new Error(`Faucet request failed: ${response.status} ${errorText}`);
   }
 

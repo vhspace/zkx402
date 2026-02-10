@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "apps/demo/client"
+  - "apps/demo/server"
+  - "apps/demo/client-cli"
+  - "apps/demo/local-chain"
