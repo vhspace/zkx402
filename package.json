@@ -38,7 +38,7 @@
     "verification"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "engines": {
     "node": ">=22 <23",
     "pnpm": ">=10.7.0"
