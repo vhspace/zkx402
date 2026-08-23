@@ -39,6 +39,12 @@ jobs:
       - name: Unit tests (x402-zkx402)
         run: pnpm --filter x402-zkx402 test
 
+      - name: Lint (x402-kit)
+        run: pnpm --filter x402-kit lint
+
+      - name: Unit tests (x402-kit)
+        run: pnpm --filter x402-kit test
+
       - name: E2E (local chain)
         working-directory: apps/demo/local-chain
         run: node run-e2e-test.js

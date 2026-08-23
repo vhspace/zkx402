@@ -1,0 +1,38 @@
+{
+  "name": "x402-kit",
+  "version": "0.1.0",
+  "description": "eXpress402 x402 v2 payment middleware slice - Yellow Network off-chain and Arc Gateway payment rails for paid APIs",
+  "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "lint": "eslint src test --max-warnings 0"
+  },
+  "keywords": [
+    "x402",
+    "express402",
+    "middleware",
+    "payment",
+    "yellow-network",
+    "arc-gateway",
+    "usdc"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vhspace/zkx402"
+  },
+  "bugs": {
+    "url": "https://github.com/vhspace/zkx402/issues"
+  },
+  "homepage": "https://github.com/vhspace/zkx402#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "eslint": "^9.15.0",
+    "globals": "^15.12.0"
+  }
+}
