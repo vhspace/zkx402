@@ -30,6 +30,9 @@ jobs:
       - name: Install workspace deps (root)
         run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Guard X-PAYMENT payloads against x402 npm schema (#117)
+        run: pnpm --filter x402-zkx402 exec node --test test/x_payment_schema.test.js
+
       - name: Unit tests (repo tools)
         run: pnpm run test:tools
 
