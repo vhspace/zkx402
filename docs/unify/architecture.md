@@ -19,7 +19,7 @@ placed by **technical fit only**.
 | Attestation (Chainlink CRE + Confidential AI) | goldenmcp `contracts/`, `infra/` | `packages/attestation` | Pluggable attestor interface; PoT is a second attestor implementation later. |
 | Registry (Arc) + discovery (ENS ENSIP-25/26) | goldenmcp `contracts/`, ENS integration | `packages/discovery`, `apps/registry` | Contracts stay Foundry; deployment scripts move to `apps/registry`. |
 | Demo frontends | goldenmcp `apps/`, `demo/`; eXpress402 demo | `apps/demo` | One demo that shows: discover → pay → evaluate → attest. |
-| TEE multi-model consensus | proof-of-thought `src/` | external service | Expose `POST /consensus` + proof-chain fetch; monorepo treats it as an attestor over HTTP. Separate for stack reasons (0G/Gensyn vs EVM), not license. |
+| TEE multi-model consensus | proof-of-thought `src/` | external service | Expose `POST /consensus` + proof-chain fetch; monorepo treats it as an attestor over HTTP. Separate for stack reasons (0G/Gensyn vs EVM), not license. Boundary: [`pot-http-attestor.md`](pot-http-attestor.md). |
 
 ## Runtime flows
 
