@@ -1,0 +1,18 @@
+{
+  "name": "zkx402-eval-engine",
+  "version": "0.0.0",
+  "description": "STUB: goldenmcp eval engine (accuracy / tool-path / token-efficiency scoring for web3 MCP). Placeholder pending the uv-workspace Python import.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "x402",
+    "mcp",
+    "eval",
+    "scoring",
+    "goldenmcp"
+  ],
+  "license": "MIT"
+}
