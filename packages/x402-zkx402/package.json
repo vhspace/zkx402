@@ -1,6 +1,6 @@
 {
   "name": "x402-zkx402",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Zero-knowledge proof verification middleware for x402 protocol - enables identity-based variable pricing and content provenance verification",
   "main": "src/index.js",
   "type": "module",
