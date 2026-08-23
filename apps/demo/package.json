@@ -22,7 +22,7 @@
     "usdc"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "GPL-3.0",
   "dependencies": {
     "@coinbase/cdp-hooks": "^0.0.66"
   }
