@@ -1,0 +1,19 @@
+{
+  "name": "zkx402-attestation",
+  "version": "0.0.0",
+  "description": "STUB: goldenmcp attestation (Chainlink CRE + Confidential AI TEE inference records for MCP evals). Placeholder pending the goldenmcp import.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "x402",
+    "mcp",
+    "attestation",
+    "chainlink",
+    "confidential-ai",
+    "goldenmcp"
+  ],
+  "license": "MIT"
+}
