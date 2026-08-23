@@ -1,3 +1,5 @@
+> **Unification home.** This `vhspace/zkx402` repo is the living home for hackathon unification (docs + issues). Pre-unify tree: [`archive/pre-unify-2026-08-22`](https://github.com/vhspace/zkx402/tree/archive/pre-unify-2026-08-22). See [`docs/unify/`](docs/unify/). Licenses are not a constraint (owner code).
+
 # zkx402
 
 [![CI](https://img.shields.io/github/actions/workflow/status/vhspace/zkx402/ci.yml?branch=main)](https://github.com/vhspace/zkx402/actions/workflows/ci.yml)
