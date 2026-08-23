@@ -15,6 +15,8 @@ const config = {
   pricePerCall: '0.1',
   network: 'yellow:sandbox',
   maxTimeoutSeconds: 60,
+  // Test stand-in for the real clearnode ledger check.
+  verifyLedger: () => ({ ok: true, remaining: 999999 }),
 };
 
 function matchingPayload(receiptAmount) {
@@ -159,6 +161,52 @@ describe('x402 payment helpers', () => {
 
     const failDefault = buildSettlementResponse(false, 'yellow:sandbox');
     assert.equal(failDefault.errorReason, 'payment_failed');
+  });
+});
+
+describe('yellow ledger verification (#115)', () => {
+  const { verifyLedger: _omit, ...configWithoutVerifier } = config;
+
+  it('throws instead of silently passing when verifyLedger is missing', () => {
+    assert.throws(
+      () => validateYellowPayment(matchingPayload('0.1'), configWithoutVerifier),
+      TypeError
+    );
+  });
+
+  it('rejects a forged receipt the clearnode ledger does not know', () => {
+    const forgedConfig = {
+      ...config,
+      verifyLedger: () => ({ ok: false, reason: 'ledger_transfer_not_found' }),
+    };
+    const result = validateYellowPayment(matchingPayload('0.1'), forgedConfig);
+    assert.deepEqual(result, { ok: false, reason: 'ledger_transfer_not_found' });
+  });
+
+  it('rejects an over-spend when the session balance goes negative', () => {
+    const overspentConfig = { ...config, verifyLedger: () => ({ ok: true, remaining: -1 }) };
+    const result = validateYellowPayment(matchingPayload('0.5'), overspentConfig);
+    assert.deepEqual(result, { ok: false, reason: 'insufficient_session_balance' });
+  });
+
+  it('maps a malformed verifier result to a rejection, not acceptance', () => {
+    const brokenConfig = { ...config, verifyLedger: () => undefined };
+    const result = validateYellowPayment(matchingPayload('0.1'), brokenConfig);
+    assert.deepEqual(result, { ok: false, reason: 'ledger_verification_failed' });
+  });
+
+  it('accepts only after the ledger check passes', () => {
+    const seen = [];
+    const checkingConfig = {
+      ...config,
+      verifyLedger: ({ receipt }) => {
+        seen.push(receipt.transferId);
+        return { ok: true, remaining: 42 };
+      },
+    };
+    const result = validateYellowPayment(matchingPayload('0.1'), checkingConfig);
+    assert.equal(result.ok, true);
+    assert.deepEqual(seen, ['123']);
   });
 });
 

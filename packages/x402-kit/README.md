@@ -27,7 +27,13 @@ Exports:
 - `buildPaymentRequired(config, resourceUrl, description)` — builds an x402 v2
   `PaymentRequired` advertising both rails plus a SIWx auth extension.
 - `validateYellowPayment(payload, config)` — validates a Yellow off-chain
-  payment receipt against merchant config.
+  payment receipt against merchant config **and** against the clearnode
+  ledger via `config.verifyLedger({ receipt })`. The verifier must confirm the
+  `transferId` (`get_ledger_transactions`) and the payer's prepaid session
+  balance; it returns `{ ok: true, remaining? }` or `{ ok: false, reason }`.
+  A negative `remaining` is rejected as an over-spend. If `verifyLedger` is
+  missing, `validateYellowPayment` throws instead of silently accepting an
+  unverified receipt ([#115](https://github.com/vhspace/zkx402/issues/115)).
 - `buildSettlementResponse(ok, network, payer?, transaction?, reason?)`.
 - ARC testnet constants + `getArcConfig()` (honors `ARC_RPC_URL`,
   `ARC_GATEWAY_MINTER_ADDRESS`, `ARC_USDC_ADDRESS`).
@@ -51,6 +57,16 @@ const config = {
   pricePerCall: '0.1',
   network: 'yellow:sandbox',
   maxTimeoutSeconds: 60,
+  // Required, synchronous: real clearnode ledger check (no silent demo bypass).
+  // Wrap async transports (WS/RPC) in a sync snapshot lookup at a higher layer.
+  verifyLedger: ({ receipt }) => {
+    const tx = ledgerSnapshot.get(receipt.transferId);
+    if (!tx || tx.payer !== receipt.payer) {
+      return { ok: false, reason: 'ledger_transfer_not_found' };
+    }
+    const remaining = Number(sessionBalanceOf(tx.payer)) - Number(receipt.amount);
+    return { ok: remaining >= 0, remaining };
+  },
 };
 
 // 1) Advertise payment requirements on a 402
