@@ -12,6 +12,15 @@
 - `specs/PROOF_VERIFICATION_PLAN.md`
 - `proof-concepts.md`
 
+## Unification
+
+- `unify/README.md`
+- `unify/architecture.md`
+- `unify/license-matrix.md`
+- `unify/pot-http-attestor.md`
+
+Per-repo unification notes live in `repos/`.
+
 ## Process
 
 - `process/mistakes.md`

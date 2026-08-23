@@ -24,7 +24,8 @@ Folded from `spooky-fox/hackathon-unify-proposal@70e5f7e` (README + architecture
 - `vhspace/zkx402` — this repo (proof-aware x402 middleware/demo)
 - `vhspace/goldenmcp` — onchain reputation / eval / attestation
 - `vhspace/eXpress402` — paid MCP + Yellow channels
-- `vhspace/proof-of-thought` — satellite TEE consensus service (HTTP attestor)
+- `vhspace/proof-of-thought` — satellite TEE consensus service (HTTP attestor;
+  boundary: [`pot-http-attestor.md`](pot-http-attestor.md))
 
 ## Out of scope (listed only)
 

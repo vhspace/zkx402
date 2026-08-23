@@ -42,6 +42,10 @@ External attestor over HTTP: expose `POST /consensus` + proof-chain fetch;
 monorepo's attestation package treats it as a second attestor implementation.
 Define the HTTP interface contract in docs before any integration (issue #111).
 
+Import path: none — external service, consumed over HTTP (x402-gated report
+fetch). The attestor boundary of record is
+[`docs/unify/pot-http-attestor.md`](../unify/pot-http-attestor.md).
+
 ## References
 
 - https://github.com/vhspace/proof-of-thought
