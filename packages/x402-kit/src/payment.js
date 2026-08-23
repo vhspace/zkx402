@@ -33,6 +33,21 @@ function randomHex(bytes) {
  * @property {string} pricePerCall
  * @property {string} network
  * @property {number} maxTimeoutSeconds
+ * @property {YellowLedgerVerifier} verifyLedger Required: verifies the
+ *   receipt's transferId against the clearnode ledger / prepaid session
+ *   balance (e.g. via `get_ledger_transactions`).
+ */
+
+/**
+ * Checks a Yellow receipt against the clearnode ledger. Must confirm the
+ * transferId exists, matches payer/amount/recipient, and that the payer's
+ * prepaid session balance covers the spend.
+ *
+ * @callback YellowLedgerVerifier
+ * @param {{ receipt: YellowReceipt }} input
+ * @returns {{ ok: true, remaining?: number } | { ok: false, reason: string }}
+ *   `remaining` is the payer's post-settlement session balance; a negative
+ *   value is treated as an over-spend and rejected.
  */
 
 /**
@@ -246,11 +261,17 @@ export function buildPaymentRequired(config, resourceUrl, description) {
 
 /**
  * Validate a client's Yellow off-chain payment payload against the expected
- * merchant configuration.
+ * merchant configuration, then verify the receipt against the clearnode
+ * ledger via `config.verifyLedger`.
+ *
+ * Throws if `config.verifyLedger` is missing: structural checks alone prove
+ * nothing about the ledger, so an unverified receipt is never accepted
+ * silently (zkx402#115).
  *
  * @param {PaymentPayload} payload
  * @param {YellowPaymentConfig} config
  * @returns {{ ok: true, info: YellowReceipt } | { ok: false, reason: string }}
+ * @throws {TypeError} when `config.verifyLedger` is not a function
  */
 export function validateYellowPayment(payload, config) {
   if (payload?.x402Version !== 2) {
@@ -286,6 +307,25 @@ export function validateYellowPayment(payload, config) {
   const required = Number(config.pricePerCall);
   if (Number.isNaN(paid) || paid < required) {
     return { ok: false, reason: 'insufficient_amount' };
+  }
+
+  if (typeof config.verifyLedger !== 'function') {
+    // No silent bypass of ledger verification (zkx402#115).
+    throw new TypeError(
+      'validateYellowPayment: config.verifyLedger is required to check the receipt against the clearnode ledger'
+    );
+  }
+
+  const ledger = config.verifyLedger({ receipt });
+  if (!ledger || ledger.ok !== true) {
+    return {
+      ok: false,
+      reason: (ledger && ledger.reason) || 'ledger_verification_failed',
+    };
+  }
+
+  if (typeof ledger.remaining === 'number' && ledger.remaining < 0) {
+    return { ok: false, reason: 'insufficient_session_balance' };
   }
 
   return { ok: true, info: receipt };
