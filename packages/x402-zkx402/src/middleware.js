@@ -426,7 +426,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
               }
             : normalizedPolicy;
 
-          let routed = null;
+          let routed;
           let durationMs = 0;
           const quoteOnly = !payment;
           const eligibleProviders = filterProvidersForClaim(
@@ -610,7 +610,7 @@ export function paymentMiddleware(payTo, routes, facilitator, paywall) {
         : null;
     const primaryAcceptConfig = acceptsList ? acceptsList[0] : null;
 
-    let baseMaxAmountRequired = null;
+    let baseMaxAmountRequired;
     let baseAsset = null;
 
     if (
