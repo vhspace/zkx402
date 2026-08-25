@@ -18,7 +18,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Enable pnpm (corepack)
         run: corepack enable && corepack prepare pnpm@10.7.0 --activate
@@ -60,7 +60,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify required secrets
         shell: bash
@@ -172,7 +172,7 @@ jobs:
       frontend_url: ${{ steps.deploy_frontend.outputs.frontend_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify required secrets
         shell: bash
@@ -269,7 +269,7 @@ jobs:
     if: github.repository == 'vhspace/zkx402' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Enable pnpm (corepack)
         run: corepack enable && corepack prepare pnpm@10.7.0 --activate

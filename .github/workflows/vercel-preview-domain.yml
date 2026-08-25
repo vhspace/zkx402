@@ -32,7 +32,7 @@ jobs:
       VERCEL_SCOPE: markballews-projects
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify required secrets
         shell: bash
@@ -157,7 +157,7 @@ jobs:
       MAILSLURP_API_KEY: ${{ secrets.MAILSLURP_API_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Enable pnpm (corepack)
         run: corepack enable && corepack prepare pnpm@10.7.0 --activate
