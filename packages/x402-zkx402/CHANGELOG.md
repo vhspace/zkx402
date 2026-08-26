@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/vhspace/zkx402/compare/x402-zkx402-v0.4.0...x402-zkx402-v0.4.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* bump @x402/express from 2.3.0 to 2.23.0 ([#133](https://github.com/vhspace/zkx402/issues/133)) ([86c4456](https://github.com/vhspace/zkx402/commit/86c44567955beed9eac36545ddbd44a5609fac44))
+
 ## [0.4.0](https://github.com/vhspace/zkx402/compare/x402-zkx402-v0.3.0...x402-zkx402-v0.4.0) (2026-08-26)
 
 
