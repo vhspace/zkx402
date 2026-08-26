@@ -14,7 +14,7 @@
     "@coinbase/cdp-sdk": "latest",
     "@x402/core": "^2.2.0",
     "@x402/evm": "^2.2.0",
-    "@x402/express": "^2.2.0",
+    "@x402/express": "^2.23.0",
     "@x402/paywall": "^2.2.0",
     "@x402/svm": "^2.2.0",
     "cors": "^2.8.5",
